@@ -20,7 +20,7 @@ class IkedaCarpenterConvoluted(IPeakFunction):
                 self.declareParameter("Height") #IPeak Height property
 
         def functionLocal(self, t_prim_n):
-		print np.shape(t_prim_n)
+		#print np.shape(t_prim_n)
 		singleFlag = False
 		if len(t_prim_n) == 1:
 			t_prim_n = np.array(range(20))+1
@@ -28,7 +28,7 @@ class IkedaCarpenterConvoluted(IPeakFunction):
                 c = np.zeros(self.numParams())
                 for i in range(self.numParams()):
                         c[i] = self.getParamValue(i)
-                n_time = np.prod(np.shape(t_prim_n))
+                n_time = 20#np.prod(np.shape(t_prim_n))
                 t_prim = np.array(range(n_time))+1
                 #print np.min(t_prim), np.max(t_prim)
                 #print ['%4.4f'%i for i in c] 
@@ -64,7 +64,7 @@ class IkedaCarpenterConvoluted(IPeakFunction):
                 if singleFlag:
 			#print 'returning %4.4f'%np.max(f_int)
 			return np.array(np.max(f_int))
-		print 'returning length %i'%len(f_int)
+		#print 'returning length %i'%len(f_int)
 		return f_int
 
 	def functionDerivLocal(self, xvals, jacobian):
@@ -81,17 +81,14 @@ class IkedaCarpenterConvoluted(IPeakFunction):
           return 2.0*math.sqrt(2.0*math.log(2.0))*self.getParameterValue("Sigma")
 
         def setCentre(self, new_centre):
-	  print 'setCentre'
           # User picked point new_centre
           self.setParameter("PeakCentre",new_centre)
 
         def setHeight(self, new_height):
-	  print 'setHeight'
           # User set new height for peak
           self.setParameter("Height", new_height)
 
         def setFwhm(self, new_fwhm):
-	  print 'setFWHM'
           # User had a guess at the width using the range picker bar
           sigma = new_fwhm/(2.0*math.sqrt(2.0*math.log(2.0)))
           self.setParameter("Sigma",sigma)
@@ -117,9 +114,6 @@ class PyGaussian(IPeakFunction):
 
     offset_sq=np.square(xvals-peak_centre)
     out=height*np.exp(-0.5*offset_sq*weight)
-    print '------'
-    print out
-    print type(out)
     return out
     
   def functionDerivLocal(self, xvals, jacobian):
