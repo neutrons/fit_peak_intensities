@@ -1,3 +1,4 @@
+#This is a test
 import sys
 import os
 sys.path.append(os.environ['MANTIDPATH'])
