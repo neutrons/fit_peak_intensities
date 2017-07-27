@@ -85,10 +85,9 @@ class IkedaCarpenterConvoluted(IPeakFunction):
 		return f_trial
 
 	#Construction the Jacobian (df) for the function	
-	def functionDerivLocal(self, xvals, df, eps=1.0e-3):
+	def functionDerivLocal(self, xvals, jacobian, eps=1.0e-3):
 		print 'functionDerivLocal not implemented for ICC'
-		print type(df)
-		return
+		print type(jacobian)
 		f_int = self.functionLocal(xvals)
 		#Fetch parametres into array c
                 c = np.zeros(self.numParams())
@@ -98,12 +97,12 @@ class IkedaCarpenterConvoluted(IPeakFunction):
 		nc = np.prod(np.shape(c))
 		f_shape = f_int.shape
 		nf = np.prod(f_shape)
-		df = np.zeros([nf, nc]) #This is the approximate Jacobian
 		for k in range(nc):
 			dc = np.zeros(nc)
 			dc[k] = max(eps*abs(c.flat[k]), eps)
 			f_new = self.functionLocalDiffParams(xvals,c+dc)
-			df[:,k] = f_new - f_int
+			for i,dF in enumerate(f_new-f_int):
+				jacobian.set(i,k,dF)
 
         def centre(self):
           return self.getParameterValue("PeakCentre")
