@@ -66,6 +66,7 @@ def plotBGModel(eventX, eventHist, lam,figNumber=10):
 
 
 #box = Load('MDpeak_15629_61.nxs')
+#box = Load('MDpeak_15647_0.nxs')
 box = Load('MDpeak_15647_0.nxs')
 #Pull the number of events
 n_events = box.getNumEventsArray()
@@ -190,6 +191,7 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 x0 = [3.4415e+05, 6.7163e+03, 1.6690e-01, 4.5778e+00, 4.2383e+01,
    1.4795e-03, 3.5690e-02, 7.7825e+01, 0.5, 5.7125e-02, 5.0000e-01,
    0.1975, 0.001, 1400 ]
+x0[-3] = tPoints[np.argmax(h[0])] #Peak center
 #x0 = [9611.0368,0.0000,0.0296,6.8605,44.2194,0.0024,0.0000,7.8570,0.5000,0.0093,0.5000, 0.230, 0.05, 1400]
 #x0 = [98611.0351,9469.4850,0.2111,2.7892,38.0725,0.0015,0.0000,145.3966,42.0000,0.0566,-0.0112,0.1975,0.001,1400]
 #x0 = [88262.3366,9353.4956,0.1980,2.6622,38.7615,0.0015,0.0000,143.6135,-35.0000,0.0571,-0.0113,0.1985,0.005,8000]
@@ -199,7 +201,7 @@ paramNames = [fICC.getParamName(x) for x in range(fICC.numParams())]
 xRange = [np.min(tPointsPadded)-dt/2.0,np.max(tPointsPadded)+dt/2.0]
 peakRange = [np.min(tPoints)-dt/2.0, np.max(tPoints)+dt/2.0]
 
-fitWS = FitPeak(InputWorkspace='tofWS', ParameterTableWorkspace='peakresultConv', PeakFunctionType='IkedaCarpenterConvoluted', FitWindow=xRange, PeakRange=peakRange,BackgroundType='Flat (A0)',BackgroundParameterValues=[0],PeakParameterNames=paramNames, PeakParameterValues=x0,FitBackgroundFirst=False,Minimizer='Simplex')
+fitWS = FitPeak(InputWorkspace='tofWS', ParameterTableWorkspace='peakresultConv', PeakFunctionType='IkedaCarpenterConvoluted', FitWindow=xRange, PeakRange=peakRange,BackgroundType='Flat (A0)',BackgroundParameterValues=[0],PeakParameterNames=paramNames, PeakParameterValues=x0,FitBackgroundFirst=False)
 
 #Get the function
 plt.plot(fitWS.OutputWorkspace.readX(1), fitWS.OutputWorkspace.readY(1),'g.-',label='From fitWS.OutputWorkspace')
