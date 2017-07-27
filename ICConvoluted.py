@@ -1,3 +1,12 @@
+# ICConvoluted.py
+#
+# Defines two IPeakFunctions.  The first is IkedaCarpenterConvoluted
+# which is the standard Ikeda-Carpenter (IC) function convoluted with 
+# a square wave and a single exponential.  This implementation is 
+# the same as is implemented in Rick's 'est_ic_nn_T.m'.  The second
+# is a gaussian which is taken from the Mantid homepage as an example
+# custom IPeakFunction.
+#
 import math
 import numpy as np
 from mantid.api._api import IPeakFunction
@@ -19,8 +28,8 @@ class IkedaCarpenterConvoluted(IPeakFunction):
                 self.declareParameter("Sigma") #IPeak FWHM property
                 self.declareParameter("Height") #IPeak Height property
 
+	#Evaluate the function
         def functionLocal(self, t_prim_n):
-		#print np.shape(t_prim_n)
 		singleFlag = False
 		if len(t_prim_n) == 1:
 			t_prim_n = np.array(range(20))+1
@@ -30,10 +39,7 @@ class IkedaCarpenterConvoluted(IPeakFunction):
                         c[i] = self.getParamValue(i)
                 n_time = 20#np.prod(np.shape(t_prim_n))
                 t_prim = np.array(range(n_time))+1
-                #print np.min(t_prim), np.max(t_prim)
-                #print ['%4.4f'%i for i in c] 
                 t_prim = c[5]*(t_prim-c[3])/(c[4]-c[3])
-                #print np.min(t_prim), np.max(t_prim)
                 f_int = (1-c[2])*(c[0]/2)*\
                         (np.power(c[0]*t_prim,2))*np.exp(-c[0]*t_prim)+\
                         (c[2]*c[1]*np.power(c[0],3)/np.power(c[0]-c[1],3))*\
@@ -46,7 +52,6 @@ class IkedaCarpenterConvoluted(IPeakFunction):
                 lowIDX  = np.max([mid_point_hat-np.abs(c[8]),0])
                 highIDX = np.min([mid_point_hat+np.abs(c[8]),len(gc_x)])
                 ppd[lowIDX:highIDX] = 1.0;
-                #print lowIDX, highIDX, ppd
 		ppd = ppd/sum(ppd);
 
                 gc_x = np.array(range(len(f_int))).astype(float)
@@ -62,11 +67,10 @@ class IkedaCarpenterConvoluted(IPeakFunction):
                 f_int = np.convolve(f_int,gc_f,'full')[first:first+len(f_int)];
                 f_int = f_int+c[6];
                 if singleFlag:
-			#print 'returning %4.4f'%np.max(f_int)
 			return np.array(np.max(f_int))
-		#print 'returning length %i'%len(f_int)
 		return f_int
 
+	#Evaluate the function for a differnt set of paremeters (trialc)
 	def functionLocalDiffParams(self, xvals, trialc):
 		#First, grab the original parameters and set to trialc
                 c = np.zeros(self.numParams())
@@ -80,6 +84,7 @@ class IkedaCarpenterConvoluted(IPeakFunction):
 			self.setParameter(i, c[i])
 		return f_trial
 
+	
 	def functionDerivLocal(self, xvals, df, eps=1.0e-3):
 		print 'functionDerivLocal not implemented for ICC'
 		print type(df)
@@ -124,7 +129,9 @@ class IkedaCarpenterConvoluted(IPeakFunction):
 
 
 
-
+#This is an example class included from the mantid
+#homepage. It can be useful for testing so I left
+#it in here.
 class PyGaussian(IPeakFunction):
     
   def category(self):
