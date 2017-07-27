@@ -84,7 +84,7 @@ class IkedaCarpenterConvoluted(IPeakFunction):
 			self.setParameter(i, c[i])
 		return f_trial
 
-	
+	#Construction the Jacobian (df) for the function	
 	def functionDerivLocal(self, xvals, df, eps=1.0e-3):
 		print 'functionDerivLocal not implemented for ICC'
 		print type(df)
