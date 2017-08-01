@@ -9,9 +9,9 @@
 #
 import math
 import numpy as np
-from mantid.api._api import IPeakFunction
+from mantid.api._api import IFunction1D
 
-class IkedaCarpenterConvoluted(IPeakFunction):
+class IkedaCarpenterConvoluted(IFunction1D):
         def init(self):
                 self.declareParameter("Alpha") #c[0]//C1
                 self.declareParameter("Beta") #c[1]//C2
@@ -22,16 +22,14 @@ class IkedaCarpenterConvoluted(IPeakFunction):
                 self.declareParameter("Td") #c[6]//C7
                 self.declareParameter("gc_alpha") #c[7]//C8
                 self.declareParameter("pp_width") #c[8]//C9
-                self.declareParameter("PeakCentre",0) #IPeak peak property
-                self.declareAttribute("Sigma",0) #IPeak FWHM property
-                self.declareAttribute("Height",0) #IPeak Height property
-		self.addConstraints('0<=R<=1')
+		'''self.addConstraints('0<=R<=1')
 		self.addConstraints('Alpha>0')
 		self.addConstraints('Beta>0')
 		self.addConstraints('Ta>0,Tb>0,Tc>0,Td>0')
 		self.addConstraints('gc_alpha>0,pp_width>0')
+		'''
 	#Evaluate the function
-        def functionLocal(self, t_prim_n):
+        def function1D(self, t_prim_n):
 		singleFlag = False
 		if len(t_prim_n) == 1:
 			t_prim_n = np.array(range(20))+1
@@ -53,7 +51,9 @@ class IkedaCarpenterConvoluted(IPeakFunction):
                 ppd = 0.0*gc_x
                 lowIDX  = np.max([mid_point_hat-np.abs(c[8]),0])
                 highIDX = np.min([mid_point_hat+np.abs(c[8]),len(gc_x)])
-                ppd[lowIDX:highIDX] = 1.0;
+                
+		#print c, lowIDX, highIDX
+		ppd[lowIDX:highIDX] = 1.0;
 		ppd = ppd/sum(ppd);
 
                 gc_x = np.array(range(len(f_int))).astype(float)
@@ -73,7 +73,7 @@ class IkedaCarpenterConvoluted(IPeakFunction):
 		return f_int
 
 	#Evaluate the function for a differnt set of paremeters (trialc)
-	def functionLocalDiffParams(self, xvals, trialc):
+	def function1DDiffParams(self, xvals, trialc):
 		#First, grab the original parameters and set to trialc
                 c = np.zeros(self.numParams())
                 for i in range(self.numParams()):
@@ -81,7 +81,7 @@ class IkedaCarpenterConvoluted(IPeakFunction):
 			self.setParameter(i, trialc[i])
 		
 		#Get the trial values
-		f_trial = self.functionLocal(xvals)
+		f_trial = self.function1D(xvals)
 		
 		#Now return to the orignial
 		for i in range(self.numParams()):
@@ -89,8 +89,8 @@ class IkedaCarpenterConvoluted(IPeakFunction):
 		return f_trial
 
 	#Construction the Jacobian (df) for the function	
-	def functionDerivLocal(self, xvals, jacobian, eps=1.e-3):
-		f_int = self.functionLocal(xvals)
+	def functionDeriv1D(self, xvals, jacobian, eps=1.e-6):
+		f_int = self.function1D(xvals)
 		#Fetch parameters into array c
                 c = np.zeros(self.numParams())
                 for i in range(self.numParams()):
@@ -101,108 +101,12 @@ class IkedaCarpenterConvoluted(IPeakFunction):
 		nf = np.prod(f_shape)
 		for k in range(nc):
 			dc = np.zeros(nc)
-			dc[k] = eps#max(eps*abs(c[k]), eps)
-			f_new = self.functionLocalDiffParams(xvals,c+dc)
+			dc[k] = max(eps,eps*c[k])
+			f_new = self.function1DDiffParams(xvals,c+dc)
 			for i,dF in enumerate(f_new-f_int):
-				jacobian.set(i,k,dF)
-
-        def centre(self):
-          return self.getParameterValue("PeakCentre")
-
-        def height(self):
-          return self.getAttributeValue("Height")
-
-        def fwhm(self): #This I have to calculte for IC
-          return 2.0*math.sqrt(2.0*math.log(2.0))*self.getAttributeValue("Sigma")
-
-        def setCentre(self, new_centre):
-          # User picked point new_centre
-          self.setAttributeValue("PeakCentre",new_centre)
-
-        def setHeight(self, new_height):
-          # User set new height for peak
-          self.setAttributeValue("Height", new_height)
-
-        def setFwhm(self, new_fwhm):
-          # User had a guess at the width using the range picker bar
-          sigma = new_fwhm/(2.0*math.sqrt(2.0*math.log(2.0)))
-          self.setAttributeValue("Sigma",sigma)
+				jacobian.set(i,k,dF/dc[k])
 
 
 
-#This is an example class included from the mantid
-#homepage. It can be useful for testing so I left
-#it in here.
-class PyGaussian(IPeakFunction):
-    
-  def category(self):
-    return "Examples"
 
-  def init(self):
-    self.declareParameter("Height")
-    self.declareParameter("PeakCentre")
-    self.declareParameter("Sigma")
-       
-  def functionLocal(self, xvals):
-    height = self.getParameterValue("Height")
-    peak_centre = self.getParameterValue("PeakCentre")
-    sigma = self.getParameterValue("Sigma")
-    weight = math.pow(1./sigma,2);
-
-    offset_sq=np.square(xvals-peak_centre)
-    out=height*np.exp(-0.5*offset_sq*weight)
-    return out
-    
-  def functionDerivLocal(self, xvals, jacobian):
-    height = self.getParameterValue("Height");
-    peak_centre = self.getParameterValue("PeakCentre");
-    sigma = self.getParameterValue("Sigma")
-    weight = math.pow(1./sigma,2);
-        
-    # X index
-    i = 0
-    for x in xvals:
-      diff = x-peak_centre
-      exp_term = math.exp(-0.5*diff*diff*weight)
-      jacobian.set(i,0, exp_term)
-      jacobian.set(i,1, diff*height*exp_term*weight)
-      # derivative with respect to weight not sigma
-      jacobian.set(i,2, -0.5*diff*diff*height*exp_term)
-      i += 1
-
-  def activeParameter(self, index):
-    param_value = self.getParameterValue(index)
-    if index == 2: #Sigma. Actually fit to 1/(sigma^2) for stability
-      return 1./math.pow(param_value,2)
-    else:
-      return param_value
-
-  def setActiveParameter(self, index, value):
-    param_value = value
-    explicit = False
-    if index == 2:
-      param_value = math.sqrt(math.fabs(1.0/value))
-    else:
-      param_value = value
-      # Final explicit argument is required to be false here
-      self.setParameter(index, param_value, False) 
-
-  def centre(self):
-    return self.getParameterValue("PeakCentre")
-
-  def height(self):
-    return self.getParameterValue("Height")
-
-  def fwhm(self):
-    return 2.0*math.sqrt(2.0*math.log(2.0))*self.getParameterValue("Sigma")
-
-  def setCentre(self, new_centre):
-    self.setParameter("PeakCentre",new_centre)
-
-  def setHeight(self, new_height):
-    self.setParameter("Height", new_height)
-
-  def setFwhm(self, new_fwhm):
-    sigma = new_fwhm/(2.0*math.sqrt(2.0*math.log(2.0)))
-    self.setParameter("Sigma",sigma)
 
