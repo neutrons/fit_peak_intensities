@@ -85,11 +85,7 @@ def getTOFWS(box):
 	h = plt.hist(tList,tBins,weights=weightList);
 	tPoints = 0.5*(h[1][1:] + h[1][:-1])
 	dt = np.abs(tPoints[1]-tPoints[0]) #assumes uniform time binning
-	padWidth = 3
-	tPointsPadded = np.lib.pad(tPoints,(padWidth,), 'linear_ramp',
-        end_values=(min(tPoints)-padWidth*dt,max(tPoints)+padWidth*dt))
-	countsPadded = np.lib.pad(h[0],(padWidth,),'constant')
-	tofWS = CreateWorkspace(OutputWorkspace='tofWS', DataX=tPointsPadded, DataY=countsPadded)
+	tofWS = CreateWorkspace(OutputWorkspace='tofWS', DataX=tPoints, DataY=h[0])
 	return tofWS
 
 
@@ -107,7 +103,7 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaksFile):
     peaks_ws = LoadIsawPeaks(Filename = peaksFile)
 
     #getting box for each peak
-    p = range(100)#range(peaks_ws.getNumberPeaks())
+    p = range(1000)#range(peaks_ws.getNumberPeaks())
     for i in p:
 	peak = peaks_ws.getPeak(i)
         if peak.getRunNumber() == run:
@@ -126,15 +122,14 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaksFile):
 	energy = 81.804 / wavelength**2 #in meV
     	print '---fitting peak ' + str(i) + '  Num events: ' + str(Box.getNEvents()), ' ', peak.getHKL()
 	print energy,'meV'
-	for abcd in [1]:#try:
+	try:#for abcd in [3]:#try:
 		#Do background removal and construct the TOF workspace for fitting
 		tofWS = getTOFWS(Box)
-		tofWS = mtd['tofWS']		
 
 		#Integrate the peak
 		totalCounts = np.sum(tofWS.readY(0)) 
 		tPointsPadded = tofWS.readX(0)
-		tPoints = tofWS.readX(0)[3:-3]
+		tPoints = tofWS.readX(0)
 		dt = np.abs(tPoints[1]-tPoints[0]) #assumes uniform time binning
 		
 		fICC = ICC.IkedaCarpenterConvoluted()
@@ -142,16 +137,18 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaksFile):
 		paramNames = [fICC.getParamName(x) for x in range(fICC.numParams())]
 		xRange = [np.min(tPointsPadded)-dt/2.0,np.max(tPointsPadded)+dt/2.0]
 		peakRange = [np.min(tPoints)-dt/2.0, np.max(tPoints)+dt/2.0]
-		x0 = np.zeros(len(paramNames))	
-		x0[0] = np.polyval([9.2653e-05,8.9562e-01,0.0000e+00],totalCounts)
-		x0[1] = np.polyval([9.9709e-06,1.6083e-01,0.0000e+00],totalCounts)
+		x0 = np.zeros(len(paramNames))
+		x0[0] = np.polyval([4.3739e-05,1.0057e+00,3.9586e+02],totalCounts)
+		x0[1] = np.polyval([1.7313e-06,6.7054e-01,0.0000e+00],totalCounts)/5
 		x0[2] = 0.1
-		x0[4] = 43.988*np.exp(-0.0432*totalCounts) + 2.3954*np.exp(-2.519e-5*totalCounts) + 41.937 #c(5)
-		x0[5] = 2.8514*np.exp(-0.0689*totalCounts) + 0.4744*np.exp(-0.0041*totalCounts) + 0.0113 #c(6) 
-		x0[6] = 0.0
+		x0[4] = 6.7729 
+		x0[5] = 0.13861
+		x0[6] = 0.
 		x0[7] = 50.0
 		x0[8] = 0.50
-		
+		if np.max(tofWS.readY(0)) > 150:
+			x0 = [4.0599e+04,6.2156e+03,2.1305e-01,2.8399e+00,1.7260e+01,1.1451e-03,0.0000e+00,1.2244e+02,5.0000e-01]
+			x0 = [1.8172e+04,3.4136e+02,0.0000e+00,9.0390e+00,4.5982e+01,2.2817e-03,0.0000e+00,3.0412e+00,5.0000e-01]
 		'''#x0[0] = pade2011(alphax0, energy/1000.0)*4.0e3 #alpha (1/s)
 		#x0[1] = pade2011(betax0, energy/1000.0)*1.0e3 #beta (1/s)
 		#x0[2] = pade2011(rx0, energy/1000.0) #R
@@ -162,22 +159,29 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaksFile):
 		x0[7] = 50.0 #gc_alpha 
 		x0[8] = 0.50 #pp_width
 		'''
-		x0[9] = tofWS.readX(0)[np.argmax(tofWS.readY(0))] #Peak center
+		#x0 = [1.0599e+04,6.2156e+03,2.1305e-01,2.8399e+00,1.7260e+01,1.1451e-03,0.0000e+00,1.2244e+02,5.0000e-01,2.5569e-01,5.0000e-01]
+		#x0 = [4.0599e+04,6.2156e+03,2.1305e-01,2.8399e+00,1.7260e+01,1.1451e-03,0.0000e+00,1.2244e+02,5.0000e-01,2.5569e-01,5.0000e-01]
+		[fICC.setParameter(iii,v) for iii,v in enumerate(x0[:fICC.numParams()])]		
+		paramString = ''.join(['%s=%4.4f, '%(fICC.getParamName(iii),x0[iii]) for iii in range(fICC.numParams())])
 
-		fitWS = FitPeak(InputWorkspace='tofWS', OutputWorkspace='fitWS_'+str(i), ParameterTableWorkspace='parmWS_'+str(i), PeakFunctionType='IkedaCarpenterConvoluted', FitWindow=xRange, PeakRange=peakRange,BackgroundType='Flat (A0)',BackgroundParameterValues=[0],PeakParameterNames=paramNames, PeakParameterValues=x0,FitBackgroundFirst=False)
-		
+		funcString = 'name=IkedaCarpenterConvoluted, ' + paramString
+		constraintString = ''.join(['%s > 0, '%(fICC.getParamName(iii)) for iii in range(fICC.numParams())])
+		constraintString += 'Td < 10'
+		fitStatus, chiSq, covarianceTable, paramTable, fitWorkspace = Fit(Function=funcString, InputWorkspace='tofWS', Output='fit',Constraints=constraintString)
 		plt.figure(1); plt.clf()
-		r = mtd['fitWS_'+str(i)] 
-		plt.plot(r.readX(0)[3:-3],r.readY(0)[3:-3],'o')
-		plt.plot(r.readX(1)[3:-3],r.readY(1)[3:-3],'.-')
+		r = mtd['fit_Workspace'] 
+		plt.plot(r.readX(0),r.readY(0),'o')
+		plt.plot(r.readX(1),r.readY(1),'.-')
+		plt.plot(r.readX(0),fICC.function1D(r.readX(0)))
+		plt.title('%4.4e'%chiSq)
 		plt.savefig('integration_method_comparison_figs/mantid_'+str(i)+'.png')
 		#Set the intensity before moving on to the next peak
-'''	except:
+	except:
 		print 'Error with peak ', str(i)
 		exc_type, exc_obj, exc_tb = sys.exc_info()
     		fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
     		print(exc_type, fname, exc_tb.tb_lineno)
-'''
+
 
 
 sizeBox = 0.5
@@ -196,8 +200,8 @@ UBFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Mono
 '''
 #Si - 2016A
 sampleRuns = range(15647,15648)
-#peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/15647_Niggli.integrate'
-peaksFile = '/SNS/users/vel/Dropbox (ORNL)/first62.peaks'
+peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/15647_Niggli.integrate'
+#peaksFile = '/SNS/users/vel/Dropbox (ORNL)/first62.peaks'
 UBFile =  '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/15647_Niggli.mat'
 
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
