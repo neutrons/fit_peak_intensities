@@ -22,12 +22,14 @@ class IkedaCarpenterConvoluted(IPeakFunction):
                 self.declareParameter("Td") #c[6]//C7
                 self.declareParameter("gc_alpha") #c[7]//C8
                 self.declareParameter("pp_width") #c[8]//C9
-                self.declareParameter("C10") #c[9]//C10
-                self.declareParameter("C11") #c[10]//C11
-                self.declareParameter("PeakCentre") #IPeak peak property
-                self.declareParameter("Sigma") #IPeak FWHM property
-                self.declareParameter("Height") #IPeak Height property
-
+                self.declareParameter("PeakCentre",0) #IPeak peak property
+                self.declareAttribute("Sigma",0) #IPeak FWHM property
+                self.declareAttribute("Height",0) #IPeak Height property
+		self.addConstraints('0<=R<=1')
+		self.addConstraints('Alpha>0')
+		self.addConstraints('Beta>0')
+		self.addConstraints('Ta>0,Tb>0,Tc>0,Td>0')
+		self.addConstraints('gc_alpha>0,pp_width>0')
 	#Evaluate the function
         def functionLocal(self, t_prim_n):
 		singleFlag = False
@@ -77,19 +79,19 @@ class IkedaCarpenterConvoluted(IPeakFunction):
                 for i in range(self.numParams()):
                         c[i] = self.getParamValue(i)
 			self.setParameter(i, trialc[i])
+		
 		#Get the trial values
 		f_trial = self.functionLocal(xvals)
+		
 		#Now return to the orignial
 		for i in range(self.numParams()):
 			self.setParameter(i, c[i])
 		return f_trial
 
 	#Construction the Jacobian (df) for the function	
-	def functionDerivLocal(self, xvals, jacobian, eps=1.0e-3):
-		print 'functionDerivLocal not implemented for ICC'
-		print type(jacobian)
+	def functionDerivLocal(self, xvals, jacobian, eps=1.e-3):
 		f_int = self.functionLocal(xvals)
-		#Fetch parametres into array c
+		#Fetch parameters into array c
                 c = np.zeros(self.numParams())
                 for i in range(self.numParams()):
                         c[i] = self.getParamValue(i)
@@ -99,7 +101,7 @@ class IkedaCarpenterConvoluted(IPeakFunction):
 		nf = np.prod(f_shape)
 		for k in range(nc):
 			dc = np.zeros(nc)
-			dc[k] = max(eps*abs(c.flat[k]), eps)
+			dc[k] = eps#max(eps*abs(c[k]), eps)
 			f_new = self.functionLocalDiffParams(xvals,c+dc)
 			for i,dF in enumerate(f_new-f_int):
 				jacobian.set(i,k,dF)
@@ -108,23 +110,23 @@ class IkedaCarpenterConvoluted(IPeakFunction):
           return self.getParameterValue("PeakCentre")
 
         def height(self):
-          return self.getParameterValue("Height")
+          return self.getAttributeValue("Height")
 
         def fwhm(self): #This I have to calculte for IC
-          return 2.0*math.sqrt(2.0*math.log(2.0))*self.getParameterValue("Sigma")
+          return 2.0*math.sqrt(2.0*math.log(2.0))*self.getAttributeValue("Sigma")
 
         def setCentre(self, new_centre):
           # User picked point new_centre
-          self.setParameter("PeakCentre",new_centre)
+          self.setAttributeValue("PeakCentre",new_centre)
 
         def setHeight(self, new_height):
           # User set new height for peak
-          self.setParameter("Height", new_height)
+          self.setAttributeValue("Height", new_height)
 
         def setFwhm(self, new_fwhm):
           # User had a guess at the width using the range picker bar
           sigma = new_fwhm/(2.0*math.sqrt(2.0*math.log(2.0)))
-          self.setParameter("Sigma",sigma)
+          self.setAttributeValue("Sigma",sigma)
 
 
 

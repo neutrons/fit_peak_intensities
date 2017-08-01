@@ -1,4 +1,3 @@
-#This is a test
 import sys
 import os
 sys.path.append(os.environ['MANTIDPATH'])
@@ -16,7 +15,7 @@ import ICConvoluted as ICC
 reload(ICC)
 plt.ion()
 
-doPlotBGModel = True
+doPlotBGModel = False 
 
 '''#Use this for testing evaluating newIC
 #Define ICC and guess some initial parameters
@@ -66,9 +65,7 @@ def plotBGModel(eventX, eventHist, lam,figNumber=10):
 	plt.ylabel('Number of q pixels')
 
 
-#box = Load('MDpeak_15629_61.nxs')
-#box = Load('MDpeak_15647_0.nxs')
-box = Load('MDpeak_15647_0.nxs')
+box = Load('/SNS/users/ntv/dropbox/run15647/MDpeak_15647_4.nxs')
 #Pull the number of events
 n_events = box.getNumEventsArray()
 
@@ -92,35 +89,14 @@ neigh_length_m = 1
 maxBin = np.shape(n_events)
 boxMean = np.zeros(len(hasEventsIDX[0]))
 boxMeanIDX = list()
-
-#copy Rick's way
-x_vals = np.zeros([N,N,N],dtype='int')
-y_vals = np.zeros([N,N,N],dtype='int')
-z_vals = np.zeros([N,N,N],dtype='int')
-xyz = range(N)
-for j1 in range(N):
-    for j2 in range(N):
-        x_vals[:,j1,j2] = xyz
-        y_vals[j1,:,j2] = xyz
-        z_vals[j1,j2,:] = xyz
-xyzUseIDX = np.where((n_events.flatten(order='F')>0)&(~np.isnan(n_events.flatten(order='F'))))
-xyz_vals = np.vstack([x_vals.flatten(order='F')[xyzUseIDX], y_vals.flatten(order='F')[xyzUseIDX],
-	 z_vals.flatten(order='F')[xyzUseIDX]]).transpose()
-for i,idx in enumerate(xyz_vals):
-        dataBox = n_events[max(idx[0] - neigh_length_m,0):min(idx[0] + neigh_length_m + 1, maxBin[0]),
-                           max(idx[1] - neigh_length_m,0):min(idx[1] + neigh_length_m + 1, maxBin[1]),
-                           max(idx[2] - neigh_length_m,0):min(idx[2] + neigh_length_m + 1, maxBin[2])]
-        boxMean[i] = np.mean(dataBox)
-        boxMeanIDX.append(idx)
-
-'''#A more pythonic version
+#A more pythonic version
 for i,idx in enumerate(np.array(hasEventsIDX).transpose()):
 	dataBox = n_events[max(idx[0] - neigh_length_m,0):min(idx[0] + neigh_length_m+1, maxBin[0]),
 			   max(idx[1] - neigh_length_m,0):min(idx[1] + neigh_length_m+1, maxBin[1]),
 			   max(idx[2] - neigh_length_m,0):min(idx[2] + neigh_length_m+1, maxBin[2])]
 	boxMean[i] = np.mean(dataBox)
 	boxMeanIDX.append(idx)
-'''
+
 
 boxMeanIDX = np.asarray(boxMeanIDX)
 signalIDX = np.where(boxMean > pp_lambda+1.65*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
@@ -149,13 +125,8 @@ tMin = tMin - tmpv
 tMax = tMax + tmpv
 tBins = np.linspace(tMin, tMax, 21)
 weightList = n_events[useIDX.transpose()[:,0],useIDX.transpose()[:,1],useIDX.transpose()[:,2]]
-'''
-tau_full = 1/np.sqrt(np.power(qx[x_vals.astype(int).flatten(order='F')],2) + 
-	np.power(qy[y_vals.astype(int).flatten(order='F')],2) + 
-	np.power(qz[z_vals.astype(int).flatten(order='F')],2))
-tList = tau_full[signalIDX]
-'''
-#Plot the TOF distribution
+
+#For and plot the TOF distribution
 h = plt.hist(tList,tBins,weights=weightList);
 tPoints = 0.5*(h[1][1:] + h[1][:-1])
 dt = np.abs(tPoints[1]-tPoints[0]) #assumes uniform time binning
@@ -170,29 +141,61 @@ plt.plot(tPointsPadded,countsPadded,'ko',label='Padded Data')
 plt.xlabel('TOF')
 plt.ylabel('Counts')
 
-# Let's try to do this as a mantid workspace
+# Let's try to fit the profile as a mantid workspace
 tofWS = CreateWorkspace(DataX=tPointsPadded, DataY=countsPadded)
 
 #det = LoadInstrument(tofWS, '/opt/Mantid/instrument/TOPAZ_Definition_2016-04-06.xml',RewriteSpectraMap=True)
 #LoadInstrumentFromNexus(tofWS, Filename='/SNS/TOPAZ/shared/PeakIntegration/data/TOPAZ_15647_event.nxs')
-'''
-fitWS = FitPeak(InputWorkspace='tofWS', ParameterTableWorkspace='peakresult', PeakFunctionType='IkedaCarpenterPV (I, Alpha0, Alpha1, Beta0, Kappa, SigmaSquared, Gamma, X0)', FitWindow=[0.22,0.25], PeakRange=[0.222,0.248],BackgroundType='Flat (A0)',BackgroundParameterValues=[0],PeakParameterValues=[1.03,7.4e-4,7.4e-4,2.0e-2,1.0e-2,2.0e-9,2.3e-4,0.23],FitBackgroundFirst=True)
+
+#This section will fit to an IkedaCarpenterPV - which does not fit the observed tails as well as our ICConvoluted does. 
+xRange = [np.min(tPointsPadded)-dt/2.0,np.max(tPointsPadded)+dt/2.0]
+peakRange = [np.min(tPoints)-dt/2.0, np.max(tPoints)+dt/2.0]
+x0 = [1.03,7.4e-4,7.4e-4,2.0e-2,1.0e-2,2.0e-9,2.3e-4,0.153]
+x0 = [8.66e+00,5.67e-03,7.68e-03,2.00e-02,1.00e-02,2.92e-05,3.28e-02,2.69e-01]
+x0[-1] = tPointsPadded[np.argmax(countsPadded)] #Peak center
+
+fitWS = FitPeak(InputWorkspace='tofWS', ParameterTableWorkspace='peakresult', PeakFunctionType='IkedaCarpenterPV (I, Alpha0, Alpha1, Beta0, Kappa, SigmaSquared, Gamma, X0)', FitWindow=xRange, PeakRange=peakRange,BackgroundType='Flat (A0)',BackgroundParameterValues=[0],PeakParameterValues=x0,FitBackgroundFirst=False)
 
 #Get the function
 fIC = FunctionFactory.createFunction('IkedaCarpenterPV')
 fitParms = fitWS.FittedPeakParameterValues
 for i, param in enumerate(fitParms):
 	fIC.setParameter(i,param)
-plt.plot(fitWS.OutputWorkspace.readX(1), fitWS.OutputWorkspace.readY(1))
-'''
+plt.plot(fitWS.OutputWorkspace.readX(1), fitWS.OutputWorkspace.readY(1),'b',label='IkedaCarpenterPV')
 
-#Now do it with the exponential/sq wave modified IC
+
+#Fit the profile with an exponential/sq wave modified IC
 tofWS = CreateWorkspace(DataX=tPoints, DataY=h[0])
 FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
-x0 = [3.4415e+05, 6.7163e+03, 1.6690e-01, 4.5778e+00, 4.2383e+01,
-   1.4795e-03, 3.5690e-02, 7.7825e+01, 0.5, 5.7125e-02, 5.0000e-01,
-   0.1975, 0.001, 1400 ]
-x0[-3] = tPoints[np.argmax(h[0])] #Peak center
+x0 = [3.2415e+05, 6.7163e+03, 1.6690e-01, 4.5778e+00, 4.2383e+01,
+   1.4795e-03, 3.5690e-02, 7.7825e+01, 0.5, 5.7125e-02, 5.0000e-01,0.0]
+x0 = [8804.7119,1.2173,0.0000,7.1541,45.8515,0.0026,0.0000,9.2165,0.5000,0.0093,0.00240,0.0]
+#Here we'll try estimating some values based on the total counts
+
+#Estiamte from total counts
+totalCounts = np.sum(h[0])
+x0[0] = np.polyval([9.2653e-05,8.9562e-01,0.0000e+00],totalCounts)
+x0[1] = np.polyval([9.9709e-06,1.6083e-01,0.0000e+00],totalCounts)
+x0[2] = 0.1
+x0[3] = 6.2117
+x0[4] = 43.988*np.exp(-0.0432*totalCounts) + 2.3954*np.exp(-2.519e-5*totalCounts) + 41.937 #c(5)
+x0[5] = 2.8514*np.exp(-0.0689*totalCounts) + 0.4744*np.exp(-0.0041*totalCounts) + 0.0113 #c(6) 
+x0[8] = 0.50
+#x0[9] = 1316.8*np.exp(-0.0119*totalCounts) + 100.0*np.exp(-0.09986*totalCounts) + 21.93 
+x0[-1] = tPoints[np.argmax(h[0])] #Peak center
+'''
+# Estiamte how rick does
+x0[0] = np.max(h[0])
+x0[1] = x0[0]/10.0
+x0[2] = 0.1
+x0[3] = np.min(np.where(h[0]>0)).astype(float)
+x0[4] = np.max(np.where(h[0]>0)).astype(float)
+x0[5] = np.max(np.where(h[0]/np.max(h[0]) > 0.10)).astype(float)
+x0[6] = 0.0
+x0[7] = 50.0
+x0[8] = 4.0
+x0[-1] = tPoints[np.argmax(h[0])] #Peak center
+'''
 #x0 = [9611.0368,0.0000,0.0296,6.8605,44.2194,0.0024,0.0000,7.8570,0.5000,0.0093,0.5000, 0.230, 0.05, 1400]
 #x0 = [98611.0351,9469.4850,0.2111,2.7892,38.0725,0.0015,0.0000,145.3966,42.0000,0.0566,-0.0112,0.1975,0.001,1400]
 #x0 = [88262.3366,9353.4956,0.1980,2.6622,38.7615,0.0015,0.0000,143.6135,-35.0000,0.0571,-0.0113,0.1985,0.005,8000]
@@ -214,7 +217,7 @@ for paramIDX, param in enumerate(x0):
 	r.setParameter(paramIDX, param)
 
 f = r.functionLocal(tPoints)
-plt.plot(tPoints,f,'r.-',label='Calculated from X0')
+#plt.plot(tPoints,f,'r.-',label='Calculated from X0')
 plt.legend(loc='best')
 
 #Finally, print the parameters
