@@ -211,6 +211,7 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaksws):
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 print(exc_type, fname, exc_tb.tb_lineno)
+            mtd.remove('MDbox_'+str(run)+'_'+str(i))
 			
     return peaks_ws
 
@@ -226,7 +227,8 @@ UBFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Mono
 '''
 #Si - 2016A
 sampleRuns = range(15647,15670)
-peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/15647_Niggli.integrate'
+peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.integrate'
+#peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/15647_Niggli.integrate'
 #peaksFile = '/SNS/users/vel/Dropbox (ORNL)/first62.peaks'
 UBFile =  '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/15647_Niggli.mat'
 
