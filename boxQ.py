@@ -130,7 +130,7 @@ def getSample(run,  UBFile,  DetCalFile,  workDir,  loadDir):
       MinValues = '-25, -25, -25', Maxvalues = '25, 25, 25')
     return MDdata
 
-def integrateSample(run, MDdata, sizeBox, gridBox, peaksws):
+def integrateSample(run, MDdata, sizeBox, gridBox, peaksws, paramList):
 
     #getting box for each peak
     p = range(peaks_ws.getNumberPeaks())
@@ -156,11 +156,13 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaksws):
                 #Do background removal and construct the TOF workspace for fitting
                 tofWS, hBG = getTOFWS(Box)
 
+		# Fitting starts here
                 #Integrate the peak
                 totalCounts = np.sum(tofWS.readY(0)) 
                 tPointsPadded = tofWS.readX(0)
                 tPoints = tofWS.readX(0)
                 dt = np.abs(tPoints[1]-tPoints[0]) #assumes uniform time binning
+
 
                 fICC = ICC.IkedaCarpenterConvoluted()
                 fICC.init()
@@ -202,8 +204,11 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaksws):
                 plt.savefig('integration_method_comparison_figs/mantid_'+str(peak.getRunNumber())+'_'+str(i)+'.png')
 
                 #Set the intensity before moving on to the next peak
-                peak.setIntensity(np.sum(r.readY(1)))
-                peak.setSigmaIntensity(np.sqrt(np.sum(r.readY(1))))
+		icProfile = r.readY(1)
+		icProfile = icProfile - mtd['fit_Parameters'].row(6)['Value'] #subtract background
+                peak.setIntensity(np.sum(icProfile))
+                peak.setSigmaIntensity(np.sqrt(np.sum(icProfile)))
+		paramList.append([energy] + [mtd['fit_Parameters'].row(i)['Value'] for i in range(mtd['fit_parameters'].rowCount())])
             except:
                 peak.setIntensity(0)
                 peak.setSigmaIntensity(1)
@@ -211,9 +216,8 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaksws):
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 print(exc_type, fname, exc_tb.tb_lineno)
-            mtd.remove('MDbox_'+str(run)+'_'+str(i))
-			
-    return peaks_ws
+    	mtd.remove('MDbox_'+str(run)+'_'+str(i))
+    return peaks_ws, paramList
 
 
 sizeBox = 0.5
@@ -227,6 +231,7 @@ UBFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Mono
 '''
 #Si - 2016A
 sampleRuns = range(15647,15670)
+sampleRuns = range(15662,15670)
 peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.integrate'
 #peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/15647_Niggli.integrate'
 #peaksFile = '/SNS/users/vel/Dropbox (ORNL)/first62.peaks'
@@ -237,6 +242,8 @@ workDir = '/SNS/users/ntv/dropbox/'
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 peaks_ws = LoadIsawPeaks(Filename = peaksFile)
 for sampleRun in sampleRuns: 
+    paramList = list()
     MDdata = getSample(sampleRun, UBFile, DetCalFile, workDir, loadDir)
-    peaks_ws= integrateSample(sampleRun, MDdata, sizeBox, gridBox, peaks_ws)
-    SaveIsawPeaks(InputWorkspace='peaks_ws', Filename='peaks_%i.integrate'%(sampleRun))
+    peaks_ws,paramList= integrateSample(sampleRun, MDdata, sizeBox, gridBox, peaks_ws,paramList)
+    SaveIsawPeaks(InputWorkspace='peaks_ws', Filename='peaks_%i_removeBG.integrate'%(sampleRun))
+    np.savetxt('params_%i_removeBG.dat'%sampleRun, np.array(paramList))
