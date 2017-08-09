@@ -13,6 +13,15 @@ from mantid.api._api import IFunction1D
 
 class IkedaCarpenterConvoluted(IFunction1D):
         def init(self):
+                self.declareParameter("A") #c[0]//C1
+                self.declareParameter("B") #c[1]//C2
+                self.declareParameter("R") #c[2]//C3
+                self.declareParameter("T0") #c[2]//C3
+		self.declareParameter("scale") #scale factor
+                self.declareParameter("hatWidth") #c[2]//C3
+                self.declareParameter("k_conv") #c[2]//C3
+		self.declareParameter("bg") #scale factor
+		'''
                 self.declareParameter("Alpha") #c[0]//C1
                 self.declareParameter("Beta") #c[1]//C2
                 self.declareParameter("R") #c[2]//C3
@@ -22,14 +31,50 @@ class IkedaCarpenterConvoluted(IFunction1D):
                 self.declareParameter("Td") #c[6]//C7
                 self.declareParameter("gc_alpha") #c[7]//C8
                 self.declareParameter("pp_width") #c[8]//C9
-		'''self.addConstraints('0<=R<=1')
-		self.addConstraints('Alpha>0')
-		self.addConstraints('Beta>0')
-		self.addConstraints('Ta>0,Tb>0,Tc>0,Td>0')
-		self.addConstraints('gc_alpha>0,pp_width>0')
 		'''
 	#Evaluate the function
-        def function1D(self, t_prim_n):
+	def function1D(self, t):
+		A  = self.getParamValue(0) 
+		B  = self.getParamValue(1) 
+		R  = self.getParamValue(2) 
+		T0 = self.getParamValue(3)
+		scale = self.getParamValue(4) 
+		hatWidth  = self.getParamValue(5) 
+		k_conv  = self.getParamValue(6) 
+		bg = self.getParamValue(7)
+		
+		f_int = scale*A/2*( (1-R)*np.power((A*(t-T0)),2)*
+			np.exp(-A*(t-T0))+2*R*A**2*B/np.power((A-B),3) *
+			(np.exp(-B*(t-T0))-np.exp(-A*(t-T0))*(1+(A-B)*(t-T0)+0.5*np.power((A-B),2)*np.power((t-T0),2)) ) )
+		
+		f_int[t<0] = 0
+                mid_point_hat = len(f_int)//2
+                gc_x = np.array(range(len(f_int))).astype(float)
+                ppd = 0.0*gc_x
+                lowIDX  = np.max([mid_point_hat-np.abs(hatWidth),0])
+                highIDX = np.min([mid_point_hat+np.abs(hatWidth),len(gc_x)])
+                #print lowIDX, highIDX
+		#print c, lowIDX, highIDX
+		ppd[lowIDX:highIDX] = 1.0;
+		ppd = ppd/sum(ppd);
+
+                gc_x = np.array(range(len(f_int))).astype(float)
+                gc_x = 2*(gc_x-np.min(gc_x))/(np.max(gc_x)-np.min(gc_x))-1;
+                gc_f = np.exp(-k_conv*np.power(gc_x,2));
+                gc_f = gc_f/np.sum(gc_f);
+
+                #For compatability with Rick's code, we'll have to do a full
+                # convolution and select the elements we want.
+                npad = len(f_int) - 1
+                first = npad - npad//2
+                f_int = np.convolve(f_int,ppd,'full')[first:first+len(f_int)];
+                f_int = np.convolve(f_int,gc_f,'full')[first:first+len(f_int)];
+                f_int = f_int+bg;
+
+
+ 		return f_int
+        ''' #This is the original version, not related to the actual xscale
+	def function1D(self, t_prim_n):
 		singleFlag = False
 		if len(t_prim_n) == 1:
 			t_prim_n = np.array(range(20))+1
@@ -71,7 +116,7 @@ class IkedaCarpenterConvoluted(IFunction1D):
                 if singleFlag:
 			return np.array(np.max(f_int))
 		return f_int
-
+	'''
 	#Evaluate the function for a differnt set of paremeters (trialc)
 	def function1DDiffParams(self, xvals, trialc):
 		#First, grab the original parameters and set to trialc

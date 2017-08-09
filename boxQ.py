@@ -10,12 +10,8 @@ import ICConvoluted as ICC
 reload(ICC)
 FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 
-def pade(c,x):
-     return np.log10(c[0]*x**c[1]*(1+c[2]*x+c[3]*x**2+(x/c[4])**c[5])/(1+c[6]*x+c[7]*x**2+(x/c[8])**c[9]))
-
-def pade2011(c,x):
-    	return c[0]*x**c[1]*(1+c[2]*x+c[3]*x**2+(x/c[4])**c[5])/(1+c[6]*x+c[7]*x**2+(x/c[8])**c[9])
-	#return c[0]*(x**c[1])*(1+c[2]*x+c[3]*x**2+(c[4]/c[5])**c[6])/(1+c[7]*x+c[8]*x**2+(c[9]/c[10])**c[11])
+def pade(c,x): #c are coefficients, x is the energy in eV
+     return c[0]*x**c[1]*(1+c[2]*x+c[3]*x**2+(x/c[4])**c[5])/(1+c[6]*x+c[7]*x**2+(x/c[8])**c[9])
 
 def poisson(k,lam):
         return (lam**k)*(np.exp(-lam)/factorial(k))
@@ -25,7 +21,7 @@ def normPoiss(k,lam,eventHist):
         pp_n = np.dot(pp_dist,eventHist)/np.dot(pp_dist,pp_dist)
         return pp_dist*pp_n
 
-def getTOFWS(box, nBins=20):
+def getTOFWS(box, flightPath, scatteringHalfAngle, nBins=20):
 	#Pull the number of events
 	n_events = box.getNumEventsArray()
 
@@ -74,7 +70,9 @@ def getTOFWS(box, nBins=20):
 	#Create our TOF distribution from bg corrected data
 	useIDX = realNeutronIDX.transpose()
 	bgIDX = backgroundIDX.transpose()
-	tList = 1/np.sqrt(np.power(qx[useIDX[0]],2)+np.power(qy[useIDX[1]],2)+np.power(qz[useIDX[2]],2))
+	tList = 1/np.sqrt(np.power(qx[useIDX[0]],2)+np.power(qy[useIDX[1]],2)+np.power(qz[useIDX[2]],2)) #1/|q|
+	tList = 3176.507 * flightPath * np.sin(scatteringHalfAngle) * tList
+	tList = tList - np.min(tList)
 	bgList = 1/np.sqrt(np.power(qx[bgIDX[0]],2)+np.power(qy[bgIDX[1]],2)+np.power(qz[bgIDX[2]],2)) 
 	tMin = np.min(tList)
 	tMax = np.max(tList)
@@ -94,9 +92,24 @@ def getTOFWS(box, nBins=20):
 	return tofWS, hBG
 
 #Returns intial parameters for fitting based on a few quickly derived TOF profile parameters
-def getInitialGuess(tofWS, paramNames):
+def getInitialGuess(tofWS, paramNames, energy):
 	x0 = np.zeros(len(paramNames))
 	y = tofWS.readY(0)
+	franzCoeff = list()
+	franzCoeff.append([121.589384271076, 0.810023477482879, 2.6472470527418, 20278.9841066641, 0.000122668075600656, 1.68157845080583, -84.8598732886308, 15903.4011384698, 5.05509989155325e-05, 1.99732564937083])
+	franzCoeff.append([0.0852522484075364, 0.463613094284145, -39.890703844218, 438.080722418418, 0.0200866047920943, -88.5200439215893, -28.2058014872526, 249.628780977559, 0.0218095681648157, -88.0548527180181])
+	franzCoeff.append([0.000173294401015949,  0.0, 5502.17688451783,  44311.7900549361,  0.0211087412796991,  -92.12364298736,  3.07133940226443,  34.8657659038993,  0.0217699376583704, -92.12364298736])
+	franzCoeff.append([30.838010830493,  0.015616308796326,  -4854.14796435711,  39473.6647918935,  0.00014255433182369,  0.955627865605097, 22311.000613891,  138.895395806703,  0.00155257873919149,  2.48432323742575])
+	franzCoeff = np.asarray(franzCoeff)
+	for i in range(len(franzCoeff)):
+		x0[i] = pade(franzCoeff[i], energy)
+	x0[4] = np.max(y)
+	x0[5] = 0.5 #hat width
+	x0[6] = 0.0 #Exponential decay rate for convolution
+	x0[7] = 0.0 #Background constant
+	return x0	
+
+	'''
 	maxCounts = np.max(y)
 	maxIDX = np.argmax(y)
 	#Potential issue - if max value is first or last value
@@ -119,7 +132,7 @@ def getInitialGuess(tofWS, paramNames):
 		else:
 			x0 =[2.6754e+02,3.6010e+00,1.4239e-15,9.5552e+00,3.6145e+01,2.4258e-01,0.0000e+00,4.0584e+00,5.0000e-01]	
 	return x0
-
+	'''
 def getSample(run,  UBFile,  DetCalFile,  workDir,  loadDir):
     #data
     print 'Loading file', loadDir+'TOPAZ_'+str(run)+'_event.nxs'
@@ -149,12 +162,14 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaksws, paramList):
                 
             tof = peak.getTOF() #in units?
             wavelength = peak.getWavelength() #in Angstrom
-            energy = 81.804 / wavelength**2 #in meV
+            energy = 81.804 / wavelength**2 / 1000.0 #in eV
+            flightPath = peak.getL1() + peak.getL2() #in m
+            scatteringHalfAngle = 0.5*peak.getScattering()
             print '---fitting peak ' + str(i) + '  Num events: ' + str(Box.getNEvents()), ' ', peak.getHKL()
             print energy,'meV'
-            try:#for abcd in ['doesntmatter']:#try:
+            try:#for abcd in ['x']:#try:
                 #Do background removal and construct the TOF workspace for fitting
-                tofWS, hBG = getTOFWS(Box)
+                tofWS, hBG = getTOFWS(Box,flightPath, scatteringHalfAngle)
 
 		# Fitting starts here
                 #Integrate the peak
@@ -169,17 +184,17 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaksws, paramList):
                 paramNames = [fICC.getParamName(x) for x in range(fICC.numParams())]
                 xRange = [np.min(tPointsPadded)-dt/2.0,np.max(tPointsPadded)+dt/2.0]
                 peakRange = [np.min(tPoints)-dt/2.0, np.max(tPoints)+dt/2.0]
-                x0 = getInitialGuess(tofWS,paramNames)
+                x0 = getInitialGuess(tofWS,paramNames,energy)
 
                 [fICC.setParameter(iii,v) for iii,v in enumerate(x0[:fICC.numParams()])]		
                 paramString = ''.join(['%s=%4.4f, '%(fICC.getParamName(iii),x0[iii]) for iii in range(fICC.numParams())])
 
                 funcString = 'name=IkedaCarpenterConvoluted, ' + paramString
                 constraintString = ''.join(['%s > 0, '%(fICC.getParamName(iii)) for iii in range(fICC.numParams())])
-                constraintString += 'Td < 10, R < 1'
+                constraintString += 'R < 1'
                 fitStatus, chiSq, covarianceTable, paramTable, fitWorkspace = Fit(Function=funcString, InputWorkspace='tofWS', Output='fit',Constraints=constraintString)
-                r = mtd['fit_Workspace'] 
-                redChiSq = np.sum(np.power(r.readY(0) - r.readY(1),2) / r.readY(1))/(len(x0)-1) #reduced chisq
+                r = mtd['fit_Workspace']
+		redChiSq = np.sum(np.power(r.readY(0) - r.readY(1),2) / r.readY(1))/(len(x0)-1) #reduced chisq
 
                 if redChiSq > 10.0: #I'm not sure why it's stopping yet - so let's just try again using our old solution as a new one
                         print '############REFITTING###########'
@@ -195,17 +210,20 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaksws, paramList):
 
                 r = mtd['fit_Workspace'] 
                 redChiSq = np.sum(np.power(r.readY(0) - r.readY(1),2) / r.readY(1))/(len(x0)-1) #reduced chisq
+                print chiSq
+		print (np.power(r.readY(0) - r.readY(1),2) / r.readY(1))
+		print r.readY(1) 
                 plt.figure(1); plt.clf()
                 plt.plot(r.readX(0),r.readY(0),'o')
                 plt.plot(r.readX(1),r.readY(1),'.-')
-                plt.plot(r.readX(0),fICC.function1D(r.readX(0)))
+                plt.plot(r.readX(0)[2:-2],fICC.function1D(r.readX(0))[2:-2])
                 #plt.plot(r.readX(0),hBG[0])
-                plt.title('E0=%4.4f meV, redChiSq=%4.4e'%(energy,redChiSq))
-                plt.savefig('integration_method_comparison_figs/mantid_'+str(peak.getRunNumber())+'_'+str(i)+'.png')
+                plt.title('E0=%4.4f meV, redChiSq=%4.4e'%(energy*1000,redChiSq))
+                plt.savefig('tof_integration_figs/mantid_'+str(peak.getRunNumber())+'_'+str(i)+'.png')
 
                 #Set the intensity before moving on to the next peak
 		icProfile = r.readY(1)
-		icProfile = icProfile - mtd['fit_Parameters'].row(6)['Value'] #subtract background
+		#icProfile = icProfile - mtd['fit_Parameters'].row(6)['Value'] #subtract background
                 peak.setIntensity(np.sum(icProfile))
                 peak.setSigmaIntensity(np.sqrt(np.sum(icProfile)))
 		paramList.append([energy] + [mtd['fit_Parameters'].row(i)['Value'] for i in range(mtd['fit_parameters'].rowCount())])
@@ -216,6 +234,7 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaksws, paramList):
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 print(exc_type, fname, exc_tb.tb_lineno)
+           
     	mtd.remove('MDbox_'+str(run)+'_'+str(i))
     return peaks_ws, paramList
 
@@ -231,7 +250,7 @@ UBFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Mono
 '''
 #Si - 2016A
 sampleRuns = range(15647,15670)
-sampleRuns = range(15662,15670)
+#sampleRuns = range(15662,15670)
 peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.integrate'
 #peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/15647_Niggli.integrate'
 #peaksFile = '/SNS/users/vel/Dropbox (ORNL)/first62.peaks'
