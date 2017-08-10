@@ -21,7 +21,7 @@ def normPoiss(k,lam,eventHist):
         pp_n = np.dot(pp_dist,eventHist)/np.dot(pp_dist,pp_dist)
         return pp_dist*pp_n
 
-def getTOFWS(box, flightPath, scatteringHalfAngle, nBins=20):
+def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, nBins=20):
 	#Pull the number of events
 	n_events = box.getNumEventsArray()
 
@@ -72,11 +72,20 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, nBins=20):
 	bgIDX = backgroundIDX.transpose()
 	tList = 1/np.sqrt(np.power(qx[useIDX[0]],2)+np.power(qy[useIDX[1]],2)+np.power(qz[useIDX[2]],2)) #1/|q|
 	tList = 3176.507 * flightPath * np.sin(scatteringHalfAngle) * tList
-	tList = tList - np.min(tList)
+	dt = 30 #time in us on either side of the peak position to consider
+	tShift = np.min(tList) - dt//2
+	tList = tList - tShift
 	bgList = 1/np.sqrt(np.power(qx[bgIDX[0]],2)+np.power(qy[bgIDX[1]],2)+np.power(qz[bgIDX[2]],2)) 
 	tMin = np.min(tList)
 	tMax = np.max(tList)
 	tmpv = (tMax-tMin)/(nBins)
+
+	#This section selects only a small region (~100us) around the center TOF
+	tMin = tofPeak - dt - tShift
+	tMax = tofPeak + dt - tShift
+	
+	tShift = np.min(tList)	
+
 	tMin = tMin - tmpv
 	tMax = tMax + tmpv
 	tBins = np.linspace(tMin, tMax, nBins+1)
@@ -104,8 +113,8 @@ def getInitialGuess(tofWS, paramNames, energy):
 	for i in range(len(franzCoeff)):
 		x0[i] = pade(franzCoeff[i], energy)
 	x0[4] = np.max(y)
-	x0[5] = 0.5 #hat width
-	x0[6] = 0.0 #Exponential decay rate for convolution
+	x0[5] = 0.5 #hat width in IDX units
+	x0[6] = 30.0 #Exponential decay rate for convolution
 	x0[7] = 0.0 #Background constant
 	return x0	
 
@@ -160,16 +169,16 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaksws, paramList):
                 AlignedDim2='Q_sample_z,'+str(Qz-sizeBox)+','+str(Qz+sizeBox)+','+str(gridBox),
                 OutputWorkspace = 'MDbox_'+str(run)+'_'+str(i))
                 
-            tof = peak.getTOF() #in units?
+            tof = peak.getTOF() #in us
             wavelength = peak.getWavelength() #in Angstrom
             energy = 81.804 / wavelength**2 / 1000.0 #in eV
             flightPath = peak.getL1() + peak.getL2() #in m
             scatteringHalfAngle = 0.5*peak.getScattering()
             print '---fitting peak ' + str(i) + '  Num events: ' + str(Box.getNEvents()), ' ', peak.getHKL()
-            print energy,'meV'
+            print energy*1000.0,'meV'
             try:#for abcd in ['x']:#try:
                 #Do background removal and construct the TOF workspace for fitting
-                tofWS, hBG = getTOFWS(Box,flightPath, scatteringHalfAngle)
+                tofWS, hBG = getTOFWS(Box,flightPath, scatteringHalfAngle, tof)
 
 		# Fitting starts here
                 #Integrate the peak
@@ -210,23 +219,28 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaksws, paramList):
 
                 r = mtd['fit_Workspace'] 
                 redChiSq = np.sum(np.power(r.readY(0) - r.readY(1),2) / r.readY(1))/(len(x0)-1) #reduced chisq
-                print chiSq
-		print (np.power(r.readY(0) - r.readY(1),2) / r.readY(1))
-		print r.readY(1) 
                 plt.figure(1); plt.clf()
                 plt.plot(r.readX(0),r.readY(0),'o')
                 plt.plot(r.readX(1),r.readY(1),'.-')
-                plt.plot(r.readX(0)[2:-2],fICC.function1D(r.readX(0))[2:-2])
+
+		#set up a nice, smooth IC plot
+		p = mtd['fit_Parameters']
+		x = r.readX(1)
+		xSmooth = np.linspace(np.min(x), np.max(x),200)
+		for parami in range(fICC.numParams()):
+			fICC.setParameter(parami, p.row(parami)['Value'])
+		#plt.plot(xSmooth,fICC.function1D(xSmooth),'.-')
+                #plt.plot(r.readX(0)[2:-2],fICC.function1D(r.readX(0))[2:-2])
                 #plt.plot(r.readX(0),hBG[0])
                 plt.title('E0=%4.4f meV, redChiSq=%4.4e'%(energy*1000,redChiSq))
                 plt.savefig('tof_integration_figs/mantid_'+str(peak.getRunNumber())+'_'+str(i)+'.png')
 
                 #Set the intensity before moving on to the next peak
 		icProfile = r.readY(1)
-		#icProfile = icProfile - mtd['fit_Parameters'].row(6)['Value'] #subtract background
+		icProfile = icProfile - mtd['fit_Parameters'].row(7)['Value'] #subtract background
                 peak.setIntensity(np.sum(icProfile))
                 peak.setSigmaIntensity(np.sqrt(np.sum(icProfile)))
-		paramList.append([energy] + [mtd['fit_Parameters'].row(i)['Value'] for i in range(mtd['fit_parameters'].rowCount())])
+		paramList.append([energy, np.sum(icProfile), redChiSq,chiSq] + [mtd['fit_Parameters'].row(i)['Value'] for i in range(mtd['fit_parameters'].rowCount())])
             except:
                 peak.setIntensity(0)
                 peak.setSigmaIntensity(1)
@@ -235,7 +249,7 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaksws, paramList):
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 print(exc_type, fname, exc_tb.tb_lineno)
            
-    	mtd.remove('MDbox_'+str(run)+'_'+str(i))
+    	    mtd.remove('MDbox_'+str(run)+'_'+str(i))
     return peaks_ws, paramList
 
 

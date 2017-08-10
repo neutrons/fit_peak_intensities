@@ -13,14 +13,14 @@ from mantid.api._api import IFunction1D
 
 class IkedaCarpenterConvoluted(IFunction1D):
         def init(self):
-                self.declareParameter("A") #c[0]//C1
-                self.declareParameter("B") #c[1]//C2
-                self.declareParameter("R") #c[2]//C3
-                self.declareParameter("T0") #c[2]//C3
-		self.declareParameter("scale") #scale factor
-                self.declareParameter("hatWidth") #c[2]//C3
-                self.declareParameter("k_conv") #c[2]//C3
-		self.declareParameter("bg") #scale factor
+                self.declareParameter("A") #c[0]
+                self.declareParameter("B") #c[1]
+                self.declareParameter("R") #c[2]
+                self.declareParameter("T0") #c[3]
+		self.declareParameter("scale") #c[4]
+                self.declareParameter("hatWidth") #c[5]
+                self.declareParameter("k_conv") #c[6]
+		self.declareParameter("bg") #c[7]
 		'''
                 self.declareParameter("Alpha") #c[0]//C1
                 self.declareParameter("Beta") #c[1]//C2
@@ -46,9 +46,9 @@ class IkedaCarpenterConvoluted(IFunction1D):
 		f_int = scale*A/2*( (1-R)*np.power((A*(t-T0)),2)*
 			np.exp(-A*(t-T0))+2*R*A**2*B/np.power((A-B),3) *
 			(np.exp(-B*(t-T0))-np.exp(-A*(t-T0))*(1+(A-B)*(t-T0)+0.5*np.power((A-B),2)*np.power((t-T0),2)) ) )
-		
-		f_int[t<0] = 0
-                mid_point_hat = len(f_int)//2
+		f_int[t<T0] = 0
+                
+		mid_point_hat = len(f_int)//2
                 gc_x = np.array(range(len(f_int))).astype(float)
                 ppd = 0.0*gc_x
                 lowIDX  = np.max([mid_point_hat-np.abs(hatWidth),0])
@@ -70,7 +70,7 @@ class IkedaCarpenterConvoluted(IFunction1D):
                 f_int = np.convolve(f_int,ppd,'full')[first:first+len(f_int)];
                 f_int = np.convolve(f_int,gc_f,'full')[first:first+len(f_int)];
                 f_int = f_int+bg;
-
+		
 
  		return f_int
         ''' #This is the original version, not related to the actual xscale
@@ -134,7 +134,7 @@ class IkedaCarpenterConvoluted(IFunction1D):
 		return f_trial
 
 	#Construction the Jacobian (df) for the function	
-	def functionDeriv1D(self, xvals, jacobian, eps=1.e-6):
+	def functionDeriv1D(self, xvals, jacobian, eps=1.e-3):
 		f_int = self.function1D(xvals)
 		#Fetch parameters into array c
                 c = np.zeros(self.numParams())
