@@ -32,7 +32,6 @@ class IkedaCarpenterConvoluted(IFunction1D):
 		hatWidth  = self.getParamValue(5) 
 		k_conv  = self.getParamValue(6) 
 		bg = self.getParamValue(7)
-		
 		f_int = scale*A/2*( (1-R)*np.power((A*(t-T0)),2)*
 			np.exp(-A*(t-T0))+2*R*A**2*B/np.power((A-B),3) *
 			(np.exp(-B*(t-T0))-np.exp(-A*(t-T0))*(1+(A-B)*(t-T0)+0.5*np.power((A-B),2)*np.power((t-T0),2)) ) )
@@ -52,7 +51,7 @@ class IkedaCarpenterConvoluted(IFunction1D):
                 gc_x = 2*(gc_x-np.min(gc_x))/(np.max(gc_x)-np.min(gc_x))-1;
                 gc_f = np.exp(-k_conv*np.power(gc_x,2));
                 gc_f = gc_f/np.sum(gc_f);
-
+		#print gc_f
                 #For compatability with Rick's code, we'll have to do a full
                 # convolution and select the elements we want.
                 npad = len(f_int) - 1
@@ -63,8 +62,8 @@ class IkedaCarpenterConvoluted(IFunction1D):
 		
 
  		return f_int
-      
- 	#Evaluate the function for a differnt set of paremeters (trialc)
+	
+	#Evaluate the function for a differnt set of paremeters (trialc)
 	def function1DDiffParams(self, xvals, trialc):
 		#First, grab the original parameters and set to trialc
                 c = np.zeros(self.numParams())

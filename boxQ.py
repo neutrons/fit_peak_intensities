@@ -72,7 +72,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, nBins=20):
 	bgIDX = backgroundIDX.transpose()
 	tList = 1/np.sqrt(np.power(qx[useIDX[0]],2)+np.power(qy[useIDX[1]],2)+np.power(qz[useIDX[2]],2)) #1/|q|
 	tList = 3176.507 * flightPath * np.sin(scatteringHalfAngle) * tList
-	dt = 30 #time in us on either side of the peak position to consider
+	dt = 35 #time in us on either side of the peak position to consider
 	tList = tList
 	bgList = 1/np.sqrt(np.power(qx[bgIDX[0]],2)+np.power(qy[bgIDX[1]],2)+np.power(qz[bgIDX[2]],2)) 
 	tMin = np.min(tList)
@@ -84,8 +84,8 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, nBins=20):
 	tMax = tofPeak + dt
 	
 
-	tMin = tMin - tmpv
-	tMax = tMax + tmpv
+	#tMin = tMin - tmpv
+	#tMax = tMax + tmpv
 	tBins = np.linspace(tMin, tMax, nBins+1)
 	weightList = n_events[useIDX.transpose()[:,0],useIDX.transpose()[:,1],useIDX.transpose()[:,2]]
 	weightListBG = n_events[bgIDX.transpose()[:,0],bgIDX.transpose()[:,1],bgIDX.transpose()[:,2]]
@@ -122,11 +122,12 @@ def getInitialGuess(tofWS, paramNames, energy, flightPath):
 	#x0[3] = x[np.argmax(y)] #t0 - this just uses the max value as initial guess
 	#TODO: This can be calculated once and absorbed into the coefficients.
 	x0[3] += getT0Shift(energy, flightPath) #Franz simulates at moderator exit, we are ~18m downstream, this adjusts for that time.
-	print x0[3]
-	x0[4] = np.max(y) #Amplitude
+	x0[7] = np.mean(y[-2:] + y[:2])/2.0 #Background constant
+	print 'x07',x0[7]
+	x0[4] = (np.max(y)-x0[7])/x0[0]*2*2.5  #Amplitude
 	x0[5] = 0.5 #hat width in IDX units
+	#x0[5] = 3.0 #hat width in us
 	x0[6] = 30.0 #Exponential decay rate for convolution
-	x0[7] = 0.0 #Background constant
 	return x0	
 
 	'''
@@ -189,7 +190,7 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaks_ws, paramList):
             print energy*1000.0,'meV'
             try:#for abcd in ['x']:#try:
                 #Do background removal and construct the TOF workspace for fitting
-                tofWS, hBG = getTOFWS(Box,flightPath, scatteringHalfAngle, tof)
+                tofWS, hBG = getTOFWS(Box,flightPath, scatteringHalfAngle, tof,nBins=20)
 
 		# Fitting starts here
                 #Integrate the peak
@@ -231,19 +232,21 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaks_ws, paramList):
                 r = mtd['fit_Workspace'] 
                 redChiSq = np.sum(np.power(r.readY(0) - r.readY(1),2) / r.readY(1))/(len(x0)-1) #reduced chisq
                 plt.figure(1); plt.clf()
-                plt.plot(r.readX(0),r.readY(0),'o')
-                plt.plot(r.readX(1),r.readY(1),'.-')
+                plt.plot(r.readX(0),r.readY(0),'o',label='Data')
+		plt.plot(tofWS.readX(0), fICC.function1D(tofWS.readX(0)),'b',label='Initial Guess')
+                plt.plot(r.readX(1),r.readY(1),'.-',label='Fit')
 
 		#set up a nice, smooth IC plot
 		p = mtd['fit_Parameters']
-		x = r.readX(1)
-		xSmooth = np.linspace(np.min(x), np.max(x),200)
+		x = r.readX(0)
+		xSmooth = np.linspace(np.min(x), np.max(x),400)
 		for parami in range(fICC.numParams()):
 			fICC.setParameter(parami, p.row(parami)['Value'])
-		#plt.plot(xSmooth,fICC.function1D(xSmooth),'.-')
+		plt.plot(xSmooth,fICC.function1D(xSmooth+1.40*np.mean(np.diff(x))),label='Fit')
                 #plt.plot(r.readX(0)[2:-2],fICC.function1D(r.readX(0))[2:-2])
                 #plt.plot(r.readX(0),hBG[0])
                 plt.title('E0=%4.4f meV, redChiSq=%4.4e'%(energy*1000,redChiSq))
+		plt.legend(loc='best')
                 plt.savefig('tof_integration_figs/mantid_'+str(peak.getRunNumber())+'_'+str(i)+'.png')
 
                 #Set the intensity before moving on to the next peak
@@ -255,6 +258,7 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaks_ws, paramList):
             except:
                 peak.setIntensity(0)
                 peak.setSigmaIntensity(1)
+		paramList.append([i, energy, np.sum(icProfile), redChiSq,chiSq] + [0 for i in range(mtd['fit_parameters'].rowCount())])
                 print 'Error with peak ' + str(i)
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -289,7 +293,7 @@ for sampleRun in sampleRuns:
     paramList = list()
     MDdata = getSample(sampleRun, UBFile, DetCalFile, workDir, loadDir)
     peaks_ws,paramList= integrateSample(sampleRun, MDdata, sizeBox, gridBox, peaks_ws,paramList)
-    SaveIsawPeaks(InputWorkspace='peaks_ws', Filename='peaks_%i_removeBG.integrate'%(sampleRun))
+    SaveIsawPeaks(InputWorkspace='peaks_ws', Filename='peaks_%i_removeBG_includeBadPeaks.integrate'%(sampleRun))
     np.savetxt('params_%i_removeBG.dat'%sampleRun, np.array(paramList))
     wsList = mtd.getObjectNames()
     for ws in wsList:
