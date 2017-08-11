@@ -98,8 +98,16 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, nBins=20):
 	tofWS = CreateWorkspace(OutputWorkspace='tofWS', DataX=tPoints, DataY=h[0])
 	return tofWS, hBG
 
+def getT0Shift(E,L):
+	#E is energy in eV, L is flight path in m
+	mn = 1.674929e-27 #neutron mass, kg
+	E = E * 1.60218e-19 #convert eV to J
+	t0Shift = L*np.sqrt(mn/2/E) #units = s
+	t0Shift = t0Shift * 1.0e6 #units =us
+	return t0Shift
+
 #Returns intial parameters for fitting based on a few quickly derived TOF profile parameters
-def getInitialGuess(tofWS, paramNames, energy):
+def getInitialGuess(tofWS, paramNames, energy, flightPath):
 	x0 = np.zeros(len(paramNames))
 	x = tofWS.readX(0)
 	y = tofWS.readY(0)
@@ -111,8 +119,11 @@ def getInitialGuess(tofWS, paramNames, energy):
 	franzCoeff = np.asarray(franzCoeff)
 	for i in range(len(franzCoeff)):
 		x0[i] = pade(franzCoeff[i], energy)
-	x0[3] = x[np.argmax(y)]
-	x0[4] = np.max(y)
+	#x0[3] = x[np.argmax(y)] #t0 - this just uses the max value as initial guess
+	#TODO: This can be calculated once and absorbed into the coefficients.
+	x0[3] += getT0Shift(energy, flightPath) #Franz simulates at moderator exit, we are ~18m downstream, this adjusts for that time.
+	print x0[3]
+	x0[4] = np.max(y) #Amplitude
 	x0[5] = 0.5 #hat width in IDX units
 	x0[6] = 30.0 #Exponential decay rate for convolution
 	x0[7] = 0.0 #Background constant
@@ -193,7 +204,7 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaks_ws, paramList):
                 paramNames = [fICC.getParamName(x) for x in range(fICC.numParams())]
                 xRange = [np.min(tPointsPadded)-dt/2.0,np.max(tPointsPadded)+dt/2.0]
                 peakRange = [np.min(tPoints)-dt/2.0, np.max(tPoints)+dt/2.0]
-                x0 = getInitialGuess(tofWS,paramNames,energy)
+                x0 = getInitialGuess(tofWS,paramNames,energy,flightPath)
 
                 [fICC.setParameter(iii,v) for iii,v in enumerate(x0[:fICC.numParams()])]		
                 paramString = ''.join(['%s=%4.4f, '%(fICC.getParamName(iii),x0[iii]) for iii in range(fICC.numParams())])
@@ -264,7 +275,7 @@ UBFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Mono
 '''
 #Si - 2016A
 sampleRuns = range(15647,15670)
-sampleRuns = range(15657,15670)
+#sampleRuns = range(15657,15670)
 peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.integrate'
 #peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/15647_Niggli.integrate'
 #peaksFile = '/SNS/users/vel/Dropbox (ORNL)/first62.peaks'
