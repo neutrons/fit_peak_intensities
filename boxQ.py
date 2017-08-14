@@ -40,24 +40,26 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, nBins=20):
 
 	#Set up some things to remove bad pixels
 	N = np.shape(n_events)[0]
-	neigh_length_m = 1
+	neigh_length_m = 0 #Set to zero for "this pixel only" mode - can be made faster if using this mode
 	maxBin = np.shape(n_events)
 	boxMean = np.zeros(len(hasEventsIDX[0]))
 	boxMeanIDX = list()
-	#A more pythonic version
+	#Determine which pixels we want by considering the surrounding box
 	for i,idx in enumerate(np.array(hasEventsIDX).transpose()):
 			dataBox = n_events[max(idx[0] - neigh_length_m,0):min(idx[0] + neigh_length_m+1, maxBin[0]),
 							   max(idx[1] - neigh_length_m,0):min(idx[1] + neigh_length_m+1, maxBin[1]),
 							   max(idx[2] - neigh_length_m,0):min(idx[2] + neigh_length_m+1, maxBin[2])]
 			boxMean[i] = np.mean(dataBox)
+			boxMean[i] = n_events[idx[0],idx[1],idx[2]]
 			boxMeanIDX.append(idx)
-
+	
 	boxMeanIDX = np.asarray(boxMeanIDX)
-	signalIDX = np.where(boxMean > pp_lambda+1.65*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
-	backgrIDX = np.where(boxMean <= pp_lambda)
+	#signalIDX = np.where(boxMean > pp_lambda+1.65*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
+	signalIDX = np.where(boxMean > 0)
+	#print some info - note that shape signalIDX != num_events if pixels have more than one event
 	print pp_lambda, pp_lambda+1.65*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3), np.shape(signalIDX) 
 	realNeutronIDX = boxMeanIDX[signalIDX].astype(int)
-	backgroundIDX = boxMeanIDX[backgrIDX].astype(int)
+	
 	#Setup our axes -- ask if there is a way to just get this
 	xaxis = box.getXDimension()
 	qx = np.linspace(xaxis.getMinimum(), xaxis.getMaximum(), xaxis.getNBins())
@@ -69,12 +71,10 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, nBins=20):
 
 	#Create our TOF distribution from bg corrected data
 	useIDX = realNeutronIDX.transpose()
-	bgIDX = backgroundIDX.transpose()
 	tList = 1/np.sqrt(np.power(qx[useIDX[0]],2)+np.power(qy[useIDX[1]],2)+np.power(qz[useIDX[2]],2)) #1/|q|
 	tList = 3176.507 * flightPath * np.sin(scatteringHalfAngle) * tList
 	dt = 35 #time in us on either side of the peak position to consider
 	tList = tList
-	bgList = 1/np.sqrt(np.power(qx[bgIDX[0]],2)+np.power(qy[bgIDX[1]],2)+np.power(qz[bgIDX[2]],2)) 
 	tMin = np.min(tList)
 	tMax = np.max(tList)
 	tmpv = (tMax-tMin)/(nBins)
@@ -88,15 +88,12 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, nBins=20):
 	#tMax = tMax + tmpv
 	tBins = np.linspace(tMin, tMax, nBins+1)
 	weightList = n_events[useIDX.transpose()[:,0],useIDX.transpose()[:,1],useIDX.transpose()[:,2]]
-	weightListBG = n_events[bgIDX.transpose()[:,0],bgIDX.transpose()[:,1],bgIDX.transpose()[:,2]]
 	#For and plot the TOF distribution
 	h = plt.hist(tList,tBins,weights=weightList);
-	#hBG = np.sum(normPoiss(range(max(weightList)),pp_lambda,np.histogram(weightList,np.array(range(max(weightList)))+0.5)))
-	hBG = plt.hist(bgList,tBins,weights=weightListBG);
 	tPoints = 0.5*(h[1][1:] + h[1][:-1])
 	dt = np.abs(tPoints[1]-tPoints[0]) #assumes uniform time binning
 	tofWS = CreateWorkspace(OutputWorkspace='tofWS', DataX=tPoints, DataY=h[0])
-	return tofWS, hBG
+	return tofWS
 
 def getT0Shift(E,L):
 	#E is energy in eV, L is flight path in m
@@ -123,37 +120,12 @@ def getInitialGuess(tofWS, paramNames, energy, flightPath):
 	#TODO: This can be calculated once and absorbed into the coefficients.
 	x0[3] += getT0Shift(energy, flightPath) #Franz simulates at moderator exit, we are ~18m downstream, this adjusts for that time.
 	x0[7] = np.mean(y[-2:] + y[:2])/2.0 #Background constant
-	print 'x07',x0[7]
 	x0[4] = (np.max(y)-x0[7])/x0[0]*2*2.5  #Amplitude
 	x0[5] = 0.5 #hat width in IDX units
 	#x0[5] = 3.0 #hat width in us
 	x0[6] = 30.0 #Exponential decay rate for convolution
 	return x0	
 
-	'''
-	maxCounts = np.max(y)
-	maxIDX = np.argmax(y)
-	#Potential issue - if max value is first or last value
-	if ((y[maxIDX-1]/y[maxIDX] > 0.50) and (y[maxIDX+1]/y[maxIDX] > 0.50) and (maxCounts > 8)): #This is a sharp peak
-		if maxCounts > 100:
-			if maxIDX < 7:x0 = [4.0599e+04,6.2156e+03,2.1305e-01,2.8399e+00,1.7260e+01,1.1451e-03,0.0000e+00,1.2244e+02,5.0000e-01]
-			else:         x0 = [2.4472e+04,0.0000e+00,0.0000e+00,7.9248e+00,1.8618e+01,1.3615e-03,0.0000e+00,2.0311e+04,5.0000e-01]
-		else: x0 = [5.2327e+02,8.4743e-01,9.0309e-01,1.2439e+00,6.7153e+01,9.2673e-01,0.0000e+00,5.2968e+02,5.0000e-01]
-			
-	else: #Not a very sharp peak
-		if maxCounts > 1000:
-			if maxIDX < 7:
-				x0 = [4.0599e+04,6.2156e+03,2.1305e-01,2.8399e+00,1.7260e+01,1.1451e-03,0.0000e+00,1.2244e+02,5.0000e-01]
-			else:
-				x0 = [2.4472e+04,0.0000e+00,0.0000e+00,7.9248e+00,1.8618e+01,1.3615e-03,0.0000e+00,2.0311e+04,5.0000e-01]
-		elif maxCounts > 600:
-			x0 =[8.3851e+03,1.1386e+02,0.0000e+00,1.0199e+01,4.4895e+01,9.6696e-03,0.0000e+00,6.2012e+00,5.0000e-01]
-		elif maxCounts > 200:
-			x0 = [1.8172e+04,3.4136e+02,0.0000e+00,9.0390e+00,4.5982e+01,2.2817e-03,0.0000e+00,3.0412e+00,5.0000e-01]
-		else:
-			x0 =[2.6754e+02,3.6010e+00,1.4239e-15,9.5552e+00,3.6145e+01,2.4258e-01,0.0000e+00,4.0584e+00,5.0000e-01]	
-	return x0
-	'''
 def getSample(run,  UBFile,  DetCalFile,  workDir,  loadDir):
     #data
     print 'Loading file', loadDir+'TOPAZ_'+str(run)+'_event.nxs'
@@ -190,7 +162,7 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaks_ws, paramList):
             print energy*1000.0,'meV'
             try:#for abcd in ['x']:#try:
                 #Do background removal and construct the TOF workspace for fitting
-                tofWS, hBG = getTOFWS(Box,flightPath, scatteringHalfAngle, tof,nBins=20)
+                tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof,nBins=20)
 
 		# Fitting starts here
                 #Integrate the peak
@@ -244,10 +216,9 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaks_ws, paramList):
 			fICC.setParameter(parami, p.row(parami)['Value'])
 		plt.plot(xSmooth,fICC.function1D(xSmooth+1.40*np.mean(np.diff(x))),label='Fit')
                 #plt.plot(r.readX(0)[2:-2],fICC.function1D(r.readX(0))[2:-2])
-                #plt.plot(r.readX(0),hBG[0])
                 plt.title('E0=%4.4f meV, redChiSq=%4.4e'%(energy*1000,redChiSq))
 		plt.legend(loc='best')
-                plt.savefig('tof_integration_figs/mantid_'+str(peak.getRunNumber())+'_'+str(i)+'.png')
+                plt.savefig('tof_integration_figs_withBG/mantid_'+str(peak.getRunNumber())+'_'+str(i)+'.png')
 
                 #Set the intensity before moving on to the next peak
 		icProfile = r.readY(1)
@@ -258,11 +229,11 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaks_ws, paramList):
             except:
                 peak.setIntensity(0)
                 peak.setSigmaIntensity(1)
-		paramList.append([i, energy, np.sum(icProfile), redChiSq,chiSq] + [0 for i in range(mtd['fit_parameters'].rowCount())])
                 print 'Error with peak ' + str(i)
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 print(exc_type, fname, exc_tb.tb_lineno)
+		paramList.append([i, energy, 0.0, 1.0e10,1.0e10] + [0 for i in range(mtd['fit_parameters'].rowCount())])
            
     	    mtd.remove('MDbox_'+str(run)+'_'+str(i))
     return peaks_ws, paramList
@@ -279,8 +250,9 @@ UBFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Mono
 '''
 #Si - 2016A
 sampleRuns = range(15647,15670)
-#sampleRuns = range(15657,15670)
+sampleRuns = range(15666,15670)
 peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.integrate'
+peaksFile = 'peaks_15665_removeBG_keepBGForHist_includeBadPeaks.integrate'
 #peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/15647_Niggli.integrate'
 #peaksFile = '/SNS/users/vel/Dropbox (ORNL)/first62.peaks'
 UBFile =  '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/15647_Niggli.mat'
@@ -293,8 +265,8 @@ for sampleRun in sampleRuns:
     paramList = list()
     MDdata = getSample(sampleRun, UBFile, DetCalFile, workDir, loadDir)
     peaks_ws,paramList= integrateSample(sampleRun, MDdata, sizeBox, gridBox, peaks_ws,paramList)
-    SaveIsawPeaks(InputWorkspace='peaks_ws', Filename='peaks_%i_removeBG_includeBadPeaks.integrate'%(sampleRun))
-    np.savetxt('params_%i_removeBG.dat'%sampleRun, np.array(paramList))
+    SaveIsawPeaks(InputWorkspace='peaks_ws', Filename='peaks_%i_removeBG_keepBGForHist_includeBadPeaks.integrate'%(sampleRun))
+    np.savetxt('params_%i_removeBG_keepBGForHist.dat'%sampleRun, np.array(paramList))
     wsList = mtd.getObjectNames()
     for ws in wsList:
         if 'MDbox_' in ws:
