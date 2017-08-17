@@ -41,7 +41,7 @@ def normPoiss(k,lam,eventHist):
         pp_n = np.dot(pp_dist,eventHist)/np.dot(pp_dist,pp_dist)
         return pp_dist*pp_n
 
-def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, nBins=20):
+def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, dtBinWidth=2):
 	#Pull the number of events
 	n_events = box.getNumEventsArray()
 
@@ -100,7 +100,8 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, nBins=20):
 	dt = tofPeak*0.03 #time in us on either side of the peak position to consider
 	tMin = tofPeak - dt 
 	tMax = tofPeak + dt
-	tBins = np.linspace(tMin, tMax, nBins+1)
+	#tBins = np.linspace(tMin, tMax, nBins+1)
+	tBins = np.arange(tMin, tMax, dtBinWidth)
 	weightList = n_events[useIDX.transpose()[:,0],useIDX.transpose()[:,1],useIDX.transpose()[:,2]]
 
 	#For and plot the TOF distribution
@@ -176,9 +177,12 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
             scatteringHalfAngle = 0.5*peak.getScattering()
             print '---fitting peak ' + str(i) + '  Num events: ' + str(Box.getNEvents()), ' ', peak.getHKL()
             print energy*1000.0,'meV'
+            if Box.getNEvents() < 1:
+                print "Peak %i has 0 events. Skipping!"
+                continue
             for abcd in ['x']:#try:
                 #Do background removal and construct the TOF workspace for fitting
-                tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof,nBins=35)
+                tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof,dtBinWidth=2)
 
 		# Fitting starts here
                 #Integrate the peak
@@ -230,7 +234,7 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
 		xSmooth = np.linspace(np.min(x), np.max(x),400)
 		for parami in range(fICC.numParams()):
 			fICC.setParameter(parami, p.row(parami)['Value'])
-		plt.plot(xSmooth,fICC.function1D(xSmooth+1.40*np.mean(np.diff(x))),label='Fit')
+		#plt.plot(xSmooth,fICC.function1D(xSmooth+1.40*np.mean(np.diff(x))),label='Fit')
                 #plt.plot(r.readX(0)[2:-2],fICC.function1D(r.readX(0))[2:-2])
                 plt.title('E0=%4.4f meV, redChiSq=%4.4e'%(energy*1000,redChiSq))
 		plt.legend(loc='best')
