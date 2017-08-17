@@ -134,9 +134,10 @@ def getInitialGuess(tofWS, paramNames, energy, flightPath):
 		x0[i] = pade(franzCoeff[i], energy)
 	#x0[3] = x[np.argmax(y)] #t0 - this just uses the max value as initial guess
 	#TODO: This can be calculated once and absorbed into the coefficients.
+	x0[0] /= 1.2
 	x0[3] += getT0Shift(energy, flightPath) #Franz simulates at moderator exit, we are ~18m downstream, this adjusts for that time.
 	x0[7] = np.mean(y[-2:] + y[:2])/2.0 #Background constant
-	x0[4] = (np.max(y)-x0[7])/x0[0]*2*2.5  #Amplitude
+	x0[4] = (np.max(y)-x0[7])/x0[0]*2*2.5*2  #Amplitude
 	x0[5] = 0.5 #hat width in IDX units
 	#x0[5] = 3.0 #hat width in us
 	x0[6] = 30.0 #Exponential decay rate for convolution
@@ -209,7 +210,8 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
                 r = mtd['fit_Workspace']
 		redChiSq = np.sum(np.power(r.readY(0) - r.readY(1),2) / r.readY(1))/(len(x0)-1) #reduced chisq
 
-                if redChiSq > 10.0: #I'm not sure why it's stopping yet - so let's just try again using our old solution as a new one
+		
+                if chiSq > 10.0: #I'm not sure why it's stopping yet - so let's just try again using our old solution as a new one
                         print '############REFITTING###########'
                         paramWS = mtd['fit_parameters']
                         paramString = ''.join(['%s=%4.4f, '%(fICC.getParamName(iii),paramWS.cell(iii,1)) for iii in range(paramWS.rowCount()-1)])
@@ -222,6 +224,7 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
 
 
                 r = mtd['fit_Workspace'] 
+		
                 redChiSq = np.sum(np.power(r.readY(0) - r.readY(1),2) / r.readY(1))/(len(x0)-1) #reduced chisq
                 plt.figure(1); plt.clf()
                 plt.plot(r.readX(0),r.readY(0),'o',label='Data')
@@ -236,7 +239,7 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
 			fICC.setParameter(parami, p.row(parami)['Value'])
 		#plt.plot(xSmooth,fICC.function1D(xSmooth+1.40*np.mean(np.diff(x))),label='Fit')
                 #plt.plot(r.readX(0)[2:-2],fICC.function1D(r.readX(0))[2:-2])
-                plt.title('E0=%4.4f meV, redChiSq=%4.4e'%(energy*1000,redChiSq))
+                plt.title('E0=%4.4f meV, redChiSq=%4.4e'%(energy*1000,chiSq))
 		plt.legend(loc='best')
                 plt.savefig('tof_integration_dynamic_binning/mantid_'+str(peak.getRunNumber())+'_'+str(i)+'.png')
                 #plt.savefig('tof_integration_figs_withBG_scolecite/mantid_'+str(peak.getRunNumber())+'_'+str(i)+'.png')
