@@ -10,6 +10,26 @@ import ICConvoluted as ICC
 reload(ICC)
 FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 
+#getDQ determines the q spacing required to make an MDBox 
+# extending from [-hkl+0.5,hkl-0.5].  Inputs are a peak 
+# object and a vector containing lattice spacings. Returns
+# a 3x2 numpy array containing dQ for hkl on the low 
+# and high side.
+def getDQ(peak, latticeSpacing, crystalSystem):
+	dQ = np.zeros((3,2))
+	if crystalSystem == 'cubic':
+		q0 = peak.getQSampleFrame()
+		hkl = peak.getHKL()
+		cubicConstant = 2*np.pi/latticeSpacing[0]
+		for i in range(3):
+			dhkl = np.zeros(np.shape(hkl))
+			dhkl[i] = 0.5
+			dQ[i,0] = cubicConstant*(np.linalg.norm(hkl - dhkl) - np.linalg.norm(hkl))
+			dQ[i,1] = cubicConstant*(np.linalg.norm(hkl + dhkl) - np.linalg.norm(hkl))
+
+	return dQ
+
+
 def pade(c,x): #c are coefficients, x is the energy in eV
      return c[0]*x**c[1]*(1+c[2]*x+c[3]*x**2+(x/c[4])**c[5])/(1+c[6]*x+c[7]*x**2+(x/c[8])**c[9])
 
@@ -21,7 +41,7 @@ def normPoiss(k,lam,eventHist):
         pp_n = np.dot(pp_dist,eventHist)/np.dot(pp_dist,pp_dist)
         return pp_dist*pp_n
 
-def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, nBins=20):
+def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, dtBinWidth=2):
 	#Pull the number of events
 	n_events = box.getNumEventsArray()
 
@@ -73,21 +93,17 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, nBins=20):
 	useIDX = realNeutronIDX.transpose()
 	tList = 1/np.sqrt(np.power(qx[useIDX[0]],2)+np.power(qy[useIDX[1]],2)+np.power(qz[useIDX[2]],2)) #1/|q|
 	tList = 3176.507 * flightPath * np.sin(scatteringHalfAngle) * tList
-	dt = 35 #time in us on either side of the peak position to consider
-	tList = tList
 	tMin = np.min(tList)
 	tMax = np.max(tList)
-	tmpv = (tMax-tMin)/(nBins)
 
-	#This section selects only a small region (~100us) around the center TOF
+	#Set up our bins for histogramming
+	dt = tofPeak*0.03 #time in us on either side of the peak position to consider
 	tMin = tofPeak - dt 
 	tMax = tofPeak + dt
-	
-
-	#tMin = tMin - tmpv
-	#tMax = tMax + tmpv
-	tBins = np.linspace(tMin, tMax, nBins+1)
+	#tBins = np.linspace(tMin, tMax, nBins+1)
+	tBins = np.arange(tMin, tMax, dtBinWidth)
 	weightList = n_events[useIDX.transpose()[:,0],useIDX.transpose()[:,1],useIDX.transpose()[:,2]]
+
 	#For and plot the TOF distribution
 	h = plt.hist(tList,tBins,weights=weightList);
 	tPoints = 0.5*(h[1][1:] + h[1][:-1])
@@ -136,7 +152,7 @@ def getSample(run,  UBFile,  DetCalFile,  workDir,  loadDir):
       MinValues = '-25, -25, -25', Maxvalues = '25, 25, 25')
     return MDdata
 
-def integrateSample(run, MDdata, sizeBox, gridBox, peaks_ws, paramList):
+def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_ws, paramList):
 
     #getting box for each peak
     p = range(peaks_ws.getNumberPeaks())
@@ -147,10 +163,11 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaks_ws, paramList):
             Qx = QSample[0]
             Qy = QSample[1]
             Qz = QSample[2]
+            dQ = np.abs(getDQ(peak, latticeConstants, crystalSystem))
             Box = BinMD(InputWorkspace = 'MDdata', 
-                AlignedDim0='Q_sample_x,'+str(Qx-sizeBox)+','+str(Qx+sizeBox)+','+str(gridBox),
-                AlignedDim1='Q_sample_y,'+str(Qy-sizeBox)+','+str(Qy+sizeBox)+','+str(gridBox),
-                AlignedDim2='Q_sample_z,'+str(Qz-sizeBox)+','+str(Qz+sizeBox)+','+str(gridBox),
+                AlignedDim0='Q_sample_x,'+str(Qx-dQ[0,0])+','+str(Qx+dQ[0,1])+','+str(gridBox),
+                AlignedDim1='Q_sample_y,'+str(Qy-dQ[1,0])+','+str(Qy+dQ[1,1])+','+str(gridBox),
+                AlignedDim2='Q_sample_z,'+str(Qz-dQ[2,0])+','+str(Qz+dQ[2,1])+','+str(gridBox),
                 OutputWorkspace = 'MDbox_'+str(run)+'_'+str(i))
                 
             tof = peak.getTOF() #in us
@@ -160,9 +177,12 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaks_ws, paramList):
             scatteringHalfAngle = 0.5*peak.getScattering()
             print '---fitting peak ' + str(i) + '  Num events: ' + str(Box.getNEvents()), ' ', peak.getHKL()
             print energy*1000.0,'meV'
-            try:#for abcd in ['x']:#try:
+            if Box.getNEvents() < 1:
+                print "Peak %i has 0 events. Skipping!%i"
+                continue
+            for abcd in ['x']:#try:
                 #Do background removal and construct the TOF workspace for fitting
-                tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof,nBins=20)
+                tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof,dtBinWidth=2)
 
 		# Fitting starts here
                 #Integrate the peak
@@ -214,11 +234,12 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaks_ws, paramList):
 		xSmooth = np.linspace(np.min(x), np.max(x),400)
 		for parami in range(fICC.numParams()):
 			fICC.setParameter(parami, p.row(parami)['Value'])
-		plt.plot(xSmooth,fICC.function1D(xSmooth+1.40*np.mean(np.diff(x))),label='Fit')
+		#plt.plot(xSmooth,fICC.function1D(xSmooth+1.40*np.mean(np.diff(x))),label='Fit')
                 #plt.plot(r.readX(0)[2:-2],fICC.function1D(r.readX(0))[2:-2])
                 plt.title('E0=%4.4f meV, redChiSq=%4.4e'%(energy*1000,redChiSq))
 		plt.legend(loc='best')
-                plt.savefig('tof_integration_figs_withBG/mantid_'+str(peak.getRunNumber())+'_'+str(i)+'.png')
+                plt.savefig('tof_integration_dynamic_binning/mantid_'+str(peak.getRunNumber())+'_'+str(i)+'.png')
+                #plt.savefig('tof_integration_figs_withBG_scolecite/mantid_'+str(peak.getRunNumber())+'_'+str(i)+'.png')
 
                 #Set the intensity before moving on to the next peak
 		icProfile = r.readY(1)
@@ -226,7 +247,7 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaks_ws, paramList):
                 peak.setIntensity(np.sum(icProfile))
                 peak.setSigmaIntensity(np.sqrt(np.sum(icProfile)))
 		paramList.append([i, energy, np.sum(icProfile), redChiSq,chiSq] + [mtd['fit_Parameters'].row(i)['Value'] for i in range(mtd['fit_parameters'].rowCount())])
-            except:
+            '''except:
                 peak.setIntensity(0)
                 peak.setSigmaIntensity(1)
                 print 'Error with peak ' + str(i)
@@ -234,28 +255,28 @@ def integrateSample(run, MDdata, sizeBox, gridBox, peaks_ws, paramList):
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 print(exc_type, fname, exc_tb.tb_lineno)
 		paramList.append([i, energy, 0.0, 1.0e10,1.0e10] + [0 for i in range(mtd['fit_parameters'].rowCount())])
-           
+           '''
     	    mtd.remove('MDbox_'+str(run)+'_'+str(i))
     return peaks_ws, paramList
 
 
 sizeBox = 0.5
 gridBox = 201
-
-
-'''#Scolecite - 2016A
-sampleRuns = range(15629,  15630)
+'''
+#Scolecite - 2016A
+sampleRuns = range(15629,  15644)
 peaksFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Monoclinic_C.integrate'
 UBFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Monoclinic_C.mat'
 '''
 #Si - 2016A
 sampleRuns = range(15647,15670)
-sampleRuns = range(15666,15670)
+#sampleRuns = range(15666,15670)
 peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.integrate'
-peaksFile = 'peaks_15665_removeBG_keepBGForHist_includeBadPeaks.integrate'
 #peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/15647_Niggli.integrate'
 #peaksFile = '/SNS/users/vel/Dropbox (ORNL)/first62.peaks'
 UBFile =  '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/15647_Niggli.mat'
+crystalSystem ='cubic'
+latticeConstants = [5.43071] #Since it's cubic, this we only need a (in angstrom)
 
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
 workDir = '/SNS/users/ntv/dropbox/'
@@ -264,9 +285,9 @@ peaks_ws = LoadIsawPeaks(Filename = peaksFile)
 for sampleRun in sampleRuns: 
     paramList = list()
     MDdata = getSample(sampleRun, UBFile, DetCalFile, workDir, loadDir)
-    peaks_ws,paramList= integrateSample(sampleRun, MDdata, sizeBox, gridBox, peaks_ws,paramList)
-    SaveIsawPeaks(InputWorkspace='peaks_ws', Filename='peaks_%i_removeBG_keepBGForHist_includeBadPeaks.integrate'%(sampleRun))
-    np.savetxt('params_%i_removeBG_keepBGForHist.dat'%sampleRun, np.array(paramList))
+    peaks_ws,paramList= integrateSample(sampleRun, MDdata, latticeConstants,crystalSystem, gridBox, peaks_ws,paramList)
+    SaveIsawPeaks(InputWorkspace='peaks_ws', Filename='peaks_%i_dynamic_binning.integrate'%(sampleRun))
+    np.savetxt('params_%i_dynamic_binning.dat'%sampleRun, np.array(paramList))
     wsList = mtd.getObjectNames()
     for ws in wsList:
         if 'MDbox_' in ws:
