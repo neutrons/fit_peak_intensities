@@ -178,7 +178,7 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
             print '---fitting peak ' + str(i) + '  Num events: ' + str(Box.getNEvents()), ' ', peak.getHKL()
             print energy*1000.0,'meV'
             if Box.getNEvents() < 1:
-                print "Peak %i has 0 events. Skipping!"
+                print "Peak %i has 0 events. Skipping!%i"
                 continue
             for abcd in ['x']:#try:
                 #Do background removal and construct the TOF workspace for fitting
