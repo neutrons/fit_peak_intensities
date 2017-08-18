@@ -262,6 +262,9 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
             print energy*1000.0,'meV'
             if Box.getNEvents() < 1:
                 print "Peak %i has 0 events. Skipping!"%i
+                peak.setIntensity(0)
+                peak.setSigmaIntensity(1)
+                paramList.append([i, energy, 0.0, 1.0e10,1.0e10] + [0 for i in range(mtd['fit_parameters'].rowCount())])
                 continue
             for ppppp in [3]:#try:
                 #Do background removal (optionally) and construct the TOF workspace for fitting
