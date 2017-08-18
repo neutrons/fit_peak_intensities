@@ -20,7 +20,6 @@ class IkedaCarpenterConvoluted(IFunction1D):
 		self.declareParameter("scale") #c[4]
                 self.declareParameter("hatWidth") #c[5]
                 self.declareParameter("k_conv") #c[6]
-		self.declareParameter("bg") #c[7]
 	
 	#Evaluate the function
 	def function1D(self, t):
@@ -31,7 +30,6 @@ class IkedaCarpenterConvoluted(IFunction1D):
 		scale = self.getParamValue(4) 
 		hatWidth  = self.getParamValue(5) 
 		k_conv  = self.getParamValue(6) 
-		bg = self.getParamValue(7)
 		f_int = scale*A/2*( (1-R)*np.power((A*(t-T0)),2)*
 			np.exp(-A*(t-T0))+2*R*A**2*B/np.power((A-B),3) *
 			(np.exp(-B*(t-T0))-np.exp(-A*(t-T0))*(1+(A-B)*(t-T0)+0.5*np.power((A-B),2)*np.power((t-T0),2)) ) )
@@ -58,7 +56,6 @@ class IkedaCarpenterConvoluted(IFunction1D):
                 first = npad - npad//2
                 f_int = np.convolve(f_int,ppd,'full')[first:first+len(f_int)];
                 f_int = np.convolve(f_int,gc_f,'full')[first:first+len(f_int)];
-                f_int = f_int+bg;
 		
 
  		return f_int

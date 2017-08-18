@@ -178,8 +178,7 @@ def getInitialGuess(tofWS, paramNames, energy, flightPath):
     x0[0] /= 1.2
     #TODO: This can be calculated once and absorbed into the coefficients.
     x0[3] += getT0Shift(energy, flightPath) #Franz simulates at moderator exit, we are ~18m downstream, this adjusts for that time.
-    x0[7] = np.mean(y[-2:] + y[:2])/2.0 #Background constant
-    x0[4] = (np.max(y)-x0[7])/x0[0]*2*2.5*2  #Amplitude
+    x0[4] = (np.max(y))/x0[0]*2*2.5*2  #Amplitude
     x0[5] = 0.5 #hat width in IDX units
     #x0[5] = 3.0 #hat width in us
     x0[6] = 30.0 #Exponential decay rate for convolution
@@ -240,7 +239,7 @@ def getBoxHalfHKL(peak, MDdata, latticeConstants,crystalSystem,gridBox,peakNumbe
     return Box
 
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
-def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_ws, paramList, figsFormat=None):
+def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_ws, paramList, figsFormat=None, nBG=10):
 
     p = range(peaks_ws.getNumberPeaks())
     for i in p:
@@ -267,32 +266,41 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
                 paramNames = [fICC.getParamName(x) for x in range(fICC.numParams())]
                 x0 = getInitialGuess(tofWS,paramNames,energy,flightPath)
                 [fICC.setParameter(iii,v) for iii,v in enumerate(x0[:fICC.numParams()])]
+                x = tofWS.readX(0)
+                y = tofWS.readY(0)
+		bgx0 = np.polyfit(x[np.r_[0:nBG]], y[np.r_[-nBG:0]], 1)
 
 		#Form the strings for fitting and do the fit
                 #TODO: test if '4.4f' is accurate enough
                 paramString = ''.join(['%s=%4.4f, '%(fICC.getParamName(iii),x0[iii]) for iii in range(fICC.numParams())])
                 funcString = 'name=IkedaCarpenterConvoluted, ' + paramString
-                constraintString = ''.join(['%s > 0, '%(fICC.getParamName(iii)) for iii in range(fICC.numParams())])
-                constraintString += 'R < 1'
-                fitStatus, chiSq, covarianceTable, paramTable, fitWorkspace = Fit(Function=funcString, InputWorkspace='tofWS', Output='fit',Constraints=constraintString)
+                funcString = funcString[:-2] #Remove last comma so we can append with BG
+		bgString = '; name=LinearBackground,A0=%4.4f,A1=%4.4f'%(bgx0[0],bgx0[1])
+                print funcString+bgString
+                constraintString = ''.join(['f0.%s > 0, '%(fICC.getParamName(iii)) for iii in range(fICC.numParams())])
+                constraintString += 'f0.R < 1'
+                fitStatus, chiSq, covarianceTable, paramTable, fitWorkspace = Fit(Function=funcString+bgString, InputWorkspace='tofWS', Output='fit',Constraints=constraintString)
 
                 if chiSq > 10.0: #The initial fit isn't great - let's see if we can do better
                         print '############REFITTING###########'
                         paramWS = mtd['fit_parameters']
-                        paramString = ''.join(['%s=%4.4f, '%(fICC.getParamName(iii),paramWS.cell(iii,1)) for iii in range(paramWS.rowCount()-1)])
+                        paramString = ''.join(['%s=%4.4f, '%(fICC.getParamName(iii),paramWS.cell(iii,1)) for iii in range(fICC.numParams()-1)])
                         funcString = 'name=IkedaCarpenterConvoluted, ' + paramString[:-2]
+		        bgString = '; name=LinearBackground,A0=%4.4f,A1=%4.4f'%(paramWS.cell(iii+1,1),paramWS.cell(iii+2,1))
                         try:
-                                fitStatus, chiSq, covarianceTable, paramTable, fitWorkspace = Fit(Function=funcString, InputWorkspace='tofWS', Output='fit',Constraints=constraintString,Minimizer='Trust Region')
+                                fitStatus, chiSq, covarianceTable, paramTable, fitWorkspace = Fit(Function=funcString+bgString, InputWorkspace='tofWS', Output='fit',Constraints=constraintString,Minimizer='Trust Region')
                         except:
                                 print 'CANNOT DO SECOND FIT, GOING BACK TO FIRST!'
 
 
                 r = mtd['fit_Workspace']
+                param = mtd['fit_Parameters']
                 if figsFormat is not None:
                     plotFit(figsFormat, r,tofWS,fICC,peak.getRunNumber(), i, energy, chiSq)
                 #Set the intensity before moving on to the next peak
                 icProfile = r.readY(1)
-                icProfile = icProfile - mtd['fit_Parameters'].row(7)['Value'] #subtract background
+                bgCoefficients = [param.row(7)['Value'], param.row(8)['Value']]
+                icProfile = icProfile - np.polyval(bgCoefficients, r.readX(1)) #subtract background
                 peak.setIntensity(np.sum(icProfile))
                 peak.setSigmaIntensity(np.sqrt(np.sum(icProfile)))
                 paramList.append([i, energy, np.sum(icProfile), 0.0,chiSq] + [mtd['fit_Parameters'].row(i)['Value'] for i in range(mtd['fit_parameters'].rowCount())])
