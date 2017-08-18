@@ -137,6 +137,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, dtBinWidth=2, zBG=-1
     h = np.histogram(tList,tBins,weights=weightList);
     tPoints = 0.5*(h[1][1:] + h[1][:-1])
     tofWS = CreateWorkspace(OutputWorkspace='tofWS', DataX=tPoints, DataY=h[0], DataE=np.sqrt(h[0]))
+    #tofWS = CreateWorkspace(OutputWorkspace='tofWS', DataX=tPoints, DataY=h[0])
     return tofWS
 
 #Determines the T0 shift for comparing moderator simulations (done at L=0)
@@ -176,12 +177,13 @@ def getInitialGuess(tofWS, paramNames, energy, flightPath):
 
     #These are still phenomenological
     x0[0] /= 1.2
+    x0[2] += 0.05
     #TODO: This can be calculated once and absorbed into the coefficients.
     x0[3] += getT0Shift(energy, flightPath) #Franz simulates at moderator exit, we are ~18m downstream, this adjusts for that time.
-    x0[4] = (np.max(y))/x0[0]*2*2.5*2  #Amplitude
+    x0[4] = (np.max(y))/x0[0]*2*2.5  #Amplitude
     x0[5] = 0.5 #hat width in IDX units
     #x0[5] = 3.0 #hat width in us
-    x0[6] = 30.0 #Exponential decay rate for convolution
+    x0[6] = 120.0 #Exponential decay rate for convolution
     return x0
 
 #Get sample loads the NeXus evnts file and converts from detector space to
@@ -276,24 +278,27 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
 		bgx0 = np.polyfit(x[np.r_[0:nBG,-nBG:0]], y[np.r_[0:nBG,-nBG:0]], 1)
                 bgx0[0] = 0.0
                 bgx0[1] = np.mean(y[np.r_[0:nBG,-nBG:0]])
-
+                #TODO: make this permanent, but this will tweak our background
+                scaleFactor = np.max(y)/np.max(fICC.function1D(x)+bgx0[1])
+                x0[4] = x0[4]*scaleFactor
+                fICC.setParameter(4,x0[4])
 		#Form the strings for fitting and do the fit
                 #TODO: test if '4.4f' is accurate enough
-                paramString = ''.join(['%s=%4.4f, '%(fICC.getParamName(iii),x0[iii]) for iii in range(fICC.numParams())])
+                paramString = ''.join(['%s=%4.8f, '%(fICC.getParamName(iii),x0[iii]) for iii in range(fICC.numParams())])
                 funcString = 'name=IkedaCarpenterConvoluted, ' + paramString
                 funcString = funcString[:-2] #Remove last comma so we can append with BG
-		bgString = '; name=LinearBackground,A0=%4.4f,A1=%4.4f'%(bgx0[1],bgx0[0]) #A0=const, A1=slope
+		bgString = '; name=LinearBackground,A0=%4.8f,A1=%4.8f'%(bgx0[1],bgx0[0]) #A0=const, A1=slope
                 constraintString = ''.join(['f0.%s > 0, '%(fICC.getParamName(iii)) for iii in range(fICC.numParams())])
                 constraintString += 'f0.R < 1'
-                constraintString += ', f1.A1 < 0.01, f1.A0<%4.4f'%np.max(y)
+                constraintString += ', f1.A1 < 0.01, f1.A0<%4.8f'%np.max(y)
                 fitStatus, chiSq, covarianceTable, paramTable, fitWorkspace = Fit(Function=funcString+bgString, InputWorkspace='tofWS', Output='fit',Constraints=constraintString)
 
                 if chiSq > 10.0: #The initial fit isn't great - let's see if we can do better
                         print '############REFITTING###########'
                         paramWS = mtd['fit_parameters']
-                        paramString = ''.join(['%s=%4.4f, '%(fICC.getParamName(iii),paramWS.cell(iii,1)) for iii in range(fICC.numParams()-1)])
+                        paramString = ''.join(['%s=%4.8f, '%(fICC.getParamName(iii),paramWS.cell(iii,1)) for iii in range(fICC.numParams()-1)])
                         funcString = 'name=IkedaCarpenterConvoluted, ' + paramString[:-2]
-		        bgString = '; name=LinearBackground,A0=%4.4f,A1=%4.4f'%(paramWS.cell(iii+2,1),paramWS.cell(iii+1,1))
+		        bgString = '; name=LinearBackground,A0=%4.8f,A1=%4.8f'%(paramWS.cell(iii+2,1),paramWS.cell(iii+1,1))
                         try:
                                 fitStatus, chiSq, covarianceTable, paramTable, fitWorkspace = Fit(Function=funcString+bgString, InputWorkspace='tofWS', Output='fit',Constraints=constraintString,Minimizer='Trust Region')
                         except:
