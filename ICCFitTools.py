@@ -285,7 +285,7 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
 		bgString = '; name=LinearBackground,A0=%4.4f,A1=%4.4f'%(bgx0[1],bgx0[0]) #A0=const, A1=slope
                 constraintString = ''.join(['f0.%s > 0, '%(fICC.getParamName(iii)) for iii in range(fICC.numParams())])
                 constraintString += 'f0.R < 1'
-                constraintString += ', f1.A1 < 0.01, f1.A0<%4.4f'%npmax(y)
+                constraintString += ', f1.A1 < 0.01, f1.A0<%4.4f'%np.max(y)
                 fitStatus, chiSq, covarianceTable, paramTable, fitWorkspace = Fit(Function=funcString+bgString, InputWorkspace='tofWS', Output='fit',Constraints=constraintString)
 
                 if chiSq > 10.0: #The initial fit isn't great - let's see if we can do better
