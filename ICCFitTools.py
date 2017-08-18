@@ -136,7 +136,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, dtBinWidth=2, zBG=-1
     #For and plot the TOF distribution
     h = np.histogram(tList,tBins,weights=weightList);
     tPoints = 0.5*(h[1][1:] + h[1][:-1])
-    tofWS = CreateWorkspace(OutputWorkspace='tofWS', DataX=tPoints, DataY=h[0])
+    tofWS = CreateWorkspace(OutputWorkspace='tofWS', DataX=tPoints, DataY=h[0], DataE=np.sqrt(h[0]))
     return tofWS
 
 #Determines the T0 shift for comparing moderator simulations (done at L=0)
