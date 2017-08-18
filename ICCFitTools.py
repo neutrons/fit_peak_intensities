@@ -201,11 +201,16 @@ def getSample(run,  UBFile,  DetCalFile,  workDir,  loadDir):
       MinValues = '-25, -25, -25', Maxvalues = '25, 25, 25')
     return MDdata
 
-#Function to make and save plots of the fits. 
-def plotFit(filenameFormat, r,tofWS,fICC,runNumber, peakNumber, energy, chiSq):
+#Function to make and save plots of the fits. bgx0=polynomial coefficients (polyfit order)
+# for the initial guess
+def plotFit(filenameFormat, r,tofWS,fICC,runNumber, peakNumber, energy, chiSq,bgx0=None):
     plt.figure(1); plt.clf()
     plt.plot(r.readX(0),r.readY(0),'o',label='Data')
-    plt.plot(tofWS.readX(0), fICC.function1D(tofWS.readX(0)),'b',label='Initial Guess')
+    if bgx0 is not None:
+    	plt.plot(tofWS.readX(0), fICC.function1D(tofWS.readX(0))+np.polyval(bgx0, tofWS.readX(0)),'b',label='Initial Guess')
+    else:
+    	plt.plot(tofWS.readX(0), fICC.function1D(tofWS.readX(0)),'b',label='Initial Guess')
+        
     plt.plot(r.readX(1),r.readY(1),'.-',label='Fit')
 
     plt.title('E0=%4.4f meV, redChiSq=%4.4e'%(energy*1000,chiSq))
@@ -239,7 +244,7 @@ def getBoxHalfHKL(peak, MDdata, latticeConstants,crystalSystem,gridBox,peakNumbe
     return Box
 
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
-def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_ws, paramList, figsFormat=None, nBG=10):
+def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_ws, paramList, figsFormat=None, nBG=15):
 
     p = range(peaks_ws.getNumberPeaks())
     for i in p:
@@ -268,17 +273,19 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
                 [fICC.setParameter(iii,v) for iii,v in enumerate(x0[:fICC.numParams()])]
                 x = tofWS.readX(0)
                 y = tofWS.readY(0)
-		bgx0 = np.polyfit(x[np.r_[0:nBG]], y[np.r_[-nBG:0]], 1)
+		bgx0 = np.polyfit(x[np.r_[0:nBG,-nBG:0]], y[np.r_[0:nBG,-nBG:0]], 1)
+                bgx0[0] = 0.0
+                bgx0[1] = np.mean(y[np.r_[0:nBG,-nBG:0]])
 
 		#Form the strings for fitting and do the fit
                 #TODO: test if '4.4f' is accurate enough
                 paramString = ''.join(['%s=%4.4f, '%(fICC.getParamName(iii),x0[iii]) for iii in range(fICC.numParams())])
                 funcString = 'name=IkedaCarpenterConvoluted, ' + paramString
                 funcString = funcString[:-2] #Remove last comma so we can append with BG
-		bgString = '; name=LinearBackground,A0=%4.4f,A1=%4.4f'%(bgx0[0],bgx0[1])
-                print funcString+bgString
+		bgString = '; name=LinearBackground,A0=%4.4f,A1=%4.4f'%(bgx0[1],bgx0[0]) #A0=const, A1=slope
                 constraintString = ''.join(['f0.%s > 0, '%(fICC.getParamName(iii)) for iii in range(fICC.numParams())])
                 constraintString += 'f0.R < 1'
+                constraintString += ', f1.A1 < 0.01, f1.A0<%4.4f'%npmax(y)
                 fitStatus, chiSq, covarianceTable, paramTable, fitWorkspace = Fit(Function=funcString+bgString, InputWorkspace='tofWS', Output='fit',Constraints=constraintString)
 
                 if chiSq > 10.0: #The initial fit isn't great - let's see if we can do better
@@ -286,7 +293,7 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
                         paramWS = mtd['fit_parameters']
                         paramString = ''.join(['%s=%4.4f, '%(fICC.getParamName(iii),paramWS.cell(iii,1)) for iii in range(fICC.numParams()-1)])
                         funcString = 'name=IkedaCarpenterConvoluted, ' + paramString[:-2]
-		        bgString = '; name=LinearBackground,A0=%4.4f,A1=%4.4f'%(paramWS.cell(iii+1,1),paramWS.cell(iii+2,1))
+		        bgString = '; name=LinearBackground,A0=%4.4f,A1=%4.4f'%(paramWS.cell(iii+2,1),paramWS.cell(iii+1,1))
                         try:
                                 fitStatus, chiSq, covarianceTable, paramTable, fitWorkspace = Fit(Function=funcString+bgString, InputWorkspace='tofWS', Output='fit',Constraints=constraintString,Minimizer='Trust Region')
                         except:
@@ -296,7 +303,7 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
                 r = mtd['fit_Workspace']
                 param = mtd['fit_Parameters']
                 if figsFormat is not None:
-                    plotFit(figsFormat, r,tofWS,fICC,peak.getRunNumber(), i, energy, chiSq)
+                    plotFit(figsFormat, r,tofWS,fICC,peak.getRunNumber(), i, energy, chiSq,bgx0)
                 #Set the intensity before moving on to the next peak
                 icProfile = r.readY(1)
                 bgCoefficients = [param.row(7)['Value'], param.row(8)['Value']]
