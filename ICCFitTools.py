@@ -27,7 +27,22 @@ def getDQ(peak, latticeSpacing, crystalSystem):
                     dQ[i,0] = cubicConstant*(np.linalg.norm(hkl - dhkl) - np.linalg.norm(hkl))
                     dQ[i,1] = cubicConstant*(np.linalg.norm(hkl + dhkl) - np.linalg.norm(hkl))
 
+    if crystalSystem == 'monoclinic':
+		a = latticeSpacing[0]; b = latticeSpacing[1]; c = latticeSpacing[2];
+		alpha = latticeSpacing[3]; beta = latticeSpacing[4]; 
+		hkl = peak.getHKL()
+		def monoclinic(hkl):
+			tmp = (((hkl[0])/(a*np.sin(beta/180.*np.pi)))**2 + (hkl[1]/b)**2 + (hkl[2]/c*np.sin(beta/180*np.pi))**2 + 
+							(2*hkl[0]*hkl[2]*np.cos(beta/180.*np.pi)/(a*c*np.sin(beta/180.*np.pi)**2))  )
+			return 2*np.pi/np.sqrt(tmp)
+
+		for i in range(3):
+			dhkl = np.zeros(np.shape(hkl))
+			dhkl[i] = 0.5
+			dQ[i,0] = monoclinic(hkl-dhkl) - monoclinic(hkl)
+			dQ[i,1] = monoclinic(hkl+dhkl) - monoclinic(hkl)
     return dQ
+
 
 #Standard Pade function used for getting initial guesses
 def pade(c,x): #c are coefficients, x is the energy in eV
@@ -74,7 +89,7 @@ def get_pp_lambda(n_events, hasEventsIDX ):
 #Output:
 #    tofWS: a Workspace2D containing the TOF profile.  X-axis is TOF (units: us) and
 #           Y-axis is the number of events.
-def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, dtBinWidth=2, zBG=-1.0, dtSpread = 0.03):
+def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, dtBinWidth=2, zBG=-1.0, dtSpread = 0.02):
     #Pull the number of events
     n_events = box.getNumEventsArray()
     hasEventsIDX = np.where((n_events>0) & ~np.isnan(n_events))
@@ -136,7 +151,17 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, dtBinWidth=2, zBG=-1
     #For and plot the TOF distribution
     h = np.histogram(tList,tBins,weights=weightList);
     tPoints = 0.5*(h[1][1:] + h[1][:-1])
-    tofWS = CreateWorkspace(OutputWorkspace='tofWS', DataX=tPoints, DataY=h[0], DataE=np.sqrt(h[0]))
+    yPoints = h[0]
+    #If there are too many zeros on the outside, let's crop them so as to not bias our fit to the bg
+    zeroLocations = np.where(h[0] == 0)[0]
+    numZeros = np.sum(zeroLocations)
+    if numZeros > 20:
+        #trim the left side
+        lowIDX = max(np.max(zeroLocations[zeroLocations<1.0/3.0*len(yPoints)]) - 10, 0)
+        highIDX = min(np.min(zeroLocations[zeroLocations>2.0/3.0*len(yPoints)]) + 10, len(yPoints)-1)
+        tPoints = tPoints[lowIDX:highIDX]
+        yPoints = yPoints[lowIDX:highIDX]
+    tofWS = CreateWorkspace(OutputWorkspace='tofWS', DataX=tPoints, DataY=yPoints, DataE=np.sqrt(yPoints))
     #tofWS = CreateWorkspace(OutputWorkspace='tofWS', DataX=tPoints, DataY=h[0])
     return tofWS
 
@@ -180,6 +205,7 @@ def getInitialGuess(tofWS, paramNames, energy, flightPath):
     x0[2] += 0.05
     #TODO: This can be calculated once and absorbed into the coefficients.
     x0[3] += getT0Shift(energy, flightPath) #Franz simulates at moderator exit, we are ~18m downstream, this adjusts for that time.
+    x0[3] -= 10 #This is lazy - we can do it detector-by-detector
     x0[4] = (np.max(y))/x0[0]*2*2.5  #Amplitude
     x0[5] = 0.5 #hat width in IDX units
     #x0[5] = 3.0 #hat width in us
@@ -205,7 +231,7 @@ def getSample(run,  UBFile,  DetCalFile,  workDir,  loadDir):
 
 #Function to make and save plots of the fits. bgx0=polynomial coefficients (polyfit order)
 # for the initial guess
-def plotFit(filenameFormat, r,tofWS,fICC,runNumber, peakNumber, energy, chiSq,bgx0=None):
+def plotFit(filenameFormat, r,tofWS,fICC,runNumber, peakNumber, energy, chiSq,bgFinal, bgx0=None):
     plt.figure(1); plt.clf()
     plt.plot(r.readX(0),r.readY(0),'o',label='Data')
     if bgx0 is not None:
@@ -214,6 +240,7 @@ def plotFit(filenameFormat, r,tofWS,fICC,runNumber, peakNumber, energy, chiSq,bg
     	plt.plot(tofWS.readX(0), fICC.function1D(tofWS.readX(0)),'b',label='Initial Guess')
         
     plt.plot(r.readX(1),r.readY(1),'.-',label='Fit')
+    plt.plot(r.readX(1), np.polyval(bgFinal, r.readX(1)),'r',label='Background')
 
     plt.title('E0=%4.4f meV, redChiSq=%4.4e'%(energy*1000,chiSq))
     plt.legend(loc='best')
@@ -249,24 +276,25 @@ def getBoxHalfHKL(peak, MDdata, latticeConstants,crystalSystem,gridBox,peakNumbe
 def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_ws, paramList, figsFormat=None, nBG=15):
 
     p = range(peaks_ws.getNumberPeaks())
-    for i in p:
+    for i in [579]:#p:
         peak = peaks_ws.getPeak(i)
+        #TODO: does not work if hkl = (0,0,0) - getDQ returns Inf
         if peak.getRunNumber() == run:
-            Box = getBoxHalfHKL(peak, MDdata, latticeConstants, crystalSystem, gridBox, i)
-            tof = peak.getTOF() #in us
-            wavelength = peak.getWavelength() #in Angstrom
-            energy = 81.804 / wavelength**2 / 1000.0 #in eV
-            flightPath = peak.getL1() + peak.getL2() #in m
-            scatteringHalfAngle = 0.5*peak.getScattering()
-            print '---fitting peak ' + str(i) + '  Num events: ' + str(Box.getNEvents()), ' ', peak.getHKL()
-            print energy*1000.0,'meV'
-            if Box.getNEvents() < 1:
-                print "Peak %i has 0 events. Skipping!"%i
-                peak.setIntensity(0)
-                peak.setSigmaIntensity(1)
-                paramList.append([i, energy, 0.0, 1.0e10,1.0e10] + [0 for i in range(mtd['fit_parameters'].rowCount())])
-                continue
-            for ppppp in [3]:#try:
+            try:#for ppppp in [3]:#try:
+                tof = peak.getTOF() #in us
+                wavelength = peak.getWavelength() #in Angstrom
+                energy = 81.804 / wavelength**2 / 1000.0 #in eV
+                flightPath = peak.getL1() + peak.getL2() #in m
+                scatteringHalfAngle = 0.5*peak.getScattering()
+                Box = getBoxHalfHKL(peak, MDdata, latticeConstants, crystalSystem, gridBox, i)
+                print '---fitting peak ' + str(i) + '  Num events: ' + str(Box.getNEvents()), ' ', peak.getHKL()
+                print energy*1000.0,'meV'
+                if Box.getNEvents() < 1:
+                    print "Peak %i has 0 events. Skipping!"%i
+                    peak.setIntensity(0)
+                    peak.setSigmaIntensity(1)
+                    paramList.append([i, energy, 0.0, 1.0e10,1.0e10] + [0 for i in range(mtd['fit_parameters'].rowCount())])
+                    continue
                 #Do background removal (optionally) and construct the TOF workspace for fitting
                 tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof,dtBinWidth=2)
 
@@ -278,7 +306,7 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
                 [fICC.setParameter(iii,v) for iii,v in enumerate(x0[:fICC.numParams()])]
                 x = tofWS.readX(0)
                 y = tofWS.readY(0)
-		bgx0 = np.polyfit(x[np.r_[0:nBG,-nBG:0]], y[np.r_[0:nBG,-nBG:0]], 1)
+                bgx0 = np.polyfit(x[np.r_[0:nBG,-nBG:0]], y[np.r_[0:nBG,-nBG:0]], 1)
                 bgx0[0] = 0.0
                 bgx0[1] = np.mean(y[np.r_[0:nBG,-nBG:0]])
                 #TODO: make this permanent, but this will tweak our background
@@ -286,7 +314,7 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
                 x0[4] = x0[4]*scaleFactor
                 fICC.setParameter(4,x0[4])
 		#Form the strings for fitting and do the fit
-                #TODO: test if '4.4f' is accurate enough
+                
                 paramString = ''.join(['%s=%4.8f, '%(fICC.getParamName(iii),x0[iii]) for iii in range(fICC.numParams())])
                 funcString = 'name=IkedaCarpenterConvoluted, ' + paramString
                 funcString = funcString[:-2] #Remove last comma so we can append with BG
@@ -310,8 +338,9 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
 
                 r = mtd['fit_Workspace']
                 param = mtd['fit_Parameters']
+		fitBG = [param.cell(iii+2,1),param.cell(iii+1,1)]
                 if figsFormat is not None:
-                    plotFit(figsFormat, r,tofWS,fICC,peak.getRunNumber(), i, energy, chiSq,bgx0)
+                    plotFit(figsFormat, r,tofWS,fICC,peak.getRunNumber(), i, energy, chiSq,fitBG, bgx0)
                 #Set the intensity before moving on to the next peak
                 icProfile = r.readY(1)
                 bgCoefficients = [param.row(7)['Value'], param.row(8)['Value']]
@@ -320,7 +349,7 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
                 peak.setSigmaIntensity(np.sqrt(np.sum(icProfile)))
                 paramList.append([i, energy, np.sum(icProfile), 0.0,chiSq] + [mtd['fit_Parameters'].row(i)['Value'] for i in range(mtd['fit_parameters'].rowCount())])
 
-            '''except: #Error with fitting
+            except: #Error with fitting
                 peak.setIntensity(0)
                 peak.setSigmaIntensity(1)
                 print 'Error with peak ' + str(i)
@@ -328,7 +357,7 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 print(exc_type, fname, exc_tb.tb_lineno)
                 paramList.append([i, energy, 0.0, 1.0e10,1.0e10] + [0 for i in range(mtd['fit_parameters'].rowCount())])
-           '''
+           
             mtd.remove('MDbox_'+str(run)+'_'+str(i))
     return peaks_ws, paramList
 
