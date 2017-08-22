@@ -276,7 +276,7 @@ def getBoxHalfHKL(peak, MDdata, latticeConstants,crystalSystem,gridBox,peakNumbe
 def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_ws, paramList, figsFormat=None, nBG=15):
 
     p = range(peaks_ws.getNumberPeaks())
-    for i in [579]:#p:
+    for i in p:
         peak = peaks_ws.getPeak(i)
         #TODO: does not work if hkl = (0,0,0) - getDQ returns Inf
         if peak.getRunNumber() == run:
@@ -343,7 +343,7 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
                     plotFit(figsFormat, r,tofWS,fICC,peak.getRunNumber(), i, energy, chiSq,fitBG, bgx0)
                 #Set the intensity before moving on to the next peak
                 icProfile = r.readY(1)
-                bgCoefficients = [param.row(7)['Value'], param.row(8)['Value']]
+                bgCoefficients = fitBG
                 icProfile = icProfile - np.polyval(bgCoefficients, r.readX(1)) #subtract background
                 peak.setIntensity(np.sum(icProfile))
                 peak.setSigmaIntensity(np.sqrt(np.sum(icProfile)))
