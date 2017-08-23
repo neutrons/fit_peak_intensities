@@ -152,6 +152,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, dtBinWidth=2, zBG=-1
     h = np.histogram(tList,tBins,weights=weightList);
     tPoints = 0.5*(h[1][1:] + h[1][:-1])
     yPoints = h[0]
+    '''
     #If there are too many zeros on the outside, let's crop them so as to not bias our fit to the bg
     zeroLocations = np.where(h[0] == 0)[0]
     numZeros = np.sum(zeroLocations)
@@ -161,6 +162,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, dtBinWidth=2, zBG=-1
         highIDX = min(np.min(zeroLocations[zeroLocations>2.0/3.0*len(yPoints)]) + 10, len(yPoints)-1)
         tPoints = tPoints[lowIDX:highIDX]
         yPoints = yPoints[lowIDX:highIDX]
+    '''
     tofWS = CreateWorkspace(OutputWorkspace='tofWS', DataX=tPoints, DataY=yPoints, DataE=np.sqrt(yPoints))
     #tofWS = CreateWorkspace(OutputWorkspace='tofWS', DataX=tPoints, DataY=h[0])
     return tofWS
@@ -273,7 +275,7 @@ def getBoxHalfHKL(peak, MDdata, latticeConstants,crystalSystem,gridBox,peakNumbe
     return Box
 
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
-def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_ws, paramList, figsFormat=None, nBG=15):
+def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_ws, paramList, figsFormat=None, nBG=15, dtSpread=0.02):
 
     p = range(peaks_ws.getNumberPeaks())
     for i in p:
@@ -296,7 +298,7 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
                     paramList.append([i, energy, 0.0, 1.0e10,1.0e10] + [0 for i in range(mtd['fit_parameters'].rowCount())])
                     continue
                 #Do background removal (optionally) and construct the TOF workspace for fitting
-                tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof,dtBinWidth=2)
+                tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof,dtBinWidth=2,dtSpread=dtSpread)
 
                 #Set up our inital guess
                 fICC = ICC.IkedaCarpenterConvoluted()
