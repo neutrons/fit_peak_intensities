@@ -282,7 +282,7 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
         peak = peaks_ws.getPeak(i)
         #TODO: does not work if hkl = (0,0,0) - getDQ returns Inf
         if peak.getRunNumber() == run:
-            try:#for ppppp in [3]:#try:
+            for ppppp in [3]:#try:
                 tof = peak.getTOF() #in us
                 wavelength = peak.getWavelength() #in Angstrom
                 energy = 81.804 / wavelength**2 / 1000.0 #in eV
@@ -318,14 +318,16 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
 		#Form the strings for fitting and do the fit
                 
                 paramString = ''.join(['%s=%4.8f, '%(fICC.getParamName(iii),x0[iii]) for iii in range(fICC.numParams())])
-                funcString = 'name=IkedaCarpenterConvoluted, ' + paramString
-                funcString = funcString[:-2] #Remove last comma so we can append with BG
-		bgString = '; name=LinearBackground,A0=%4.8f,A1=%4.8f'%(bgx0[1],bgx0[0]) #A0=const, A1=slope
-                constraintString = ''.join(['f0.%s > 0, '%(fICC.getParamName(iii)) for iii in range(fICC.numParams())])
-                constraintString += 'f0.R < 1'
-                constraintString += ', f1.A1 < 0.01, f1.A0<%4.8f'%np.max(y)
-                fitStatus, chiSq, covarianceTable, paramTable, fitWorkspace = Fit(Function=funcString+bgString, InputWorkspace='tofWS', Output='fit',Constraints=constraintString)
-
+                funcString1 = 'name=IkedaCarpenterConvoluted, ' + paramString
+                constraintString1 = ''.join(['%s > 0, '%(fICC.getParamName(iii)) for iii in range(fICC.numParams())])
+                constraintString1 += 'R < 1'
+		
+		bgString= '; name=LinearBackground,A0=%4.8f,A1=%4.8f'%(bgx0[1],bgx0[0]) #A0=const, A1=slope
+                #constraintString2 = ', constraints=(-1.0e-6 < A1 < 1.0e-6, A0<%4.8f)'%np.max(y)
+		constraintString2 = ', ties=(A1=0.0)'
+                
+		functionString = funcString1 + 'constraints=('+constraintString1+')' + bgString + constraintString2  
+		fitStatus, chiSq, covarianceTable, paramTable, fitWorkspace = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit')
                 if chiSq > 10.0: #The initial fit isn't great - let's see if we can do better
                         print '############REFITTING###########'
                         paramWS = mtd['fit_parameters']
@@ -351,7 +353,7 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
                 peak.setSigmaIntensity(np.sqrt(np.sum(icProfile)))
                 paramList.append([i, energy, np.sum(icProfile), 0.0,chiSq] + [mtd['fit_Parameters'].row(i)['Value'] for i in range(mtd['fit_parameters'].rowCount())])
 
-            except: #Error with fitting
+            '''except: #Error with fitting
                 peak.setIntensity(0)
                 peak.setSigmaIntensity(1)
                 print 'Error with peak ' + str(i)
@@ -359,7 +361,7 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 print(exc_type, fname, exc_tb.tb_lineno)
                 paramList.append([i, energy, 0.0, 1.0e10,1.0e10] + [0 for i in range(mtd['fit_parameters'].rowCount())])
-           
+           '''
             mtd.remove('MDbox_'+str(run)+'_'+str(i))
     return peaks_ws, paramList
 

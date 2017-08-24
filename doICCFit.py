@@ -30,11 +30,11 @@ latticeConstants = [5.43071] #Since it's cubic, this we only need a (in angstrom
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
-descriptor = 'nocrop_dtspread0p02' #Does not end with '/'
+descriptor = 'nocrop_dtspread0p03_constrainBGLine' #Does not end with '/'
 
 
 # Other parameters
-dtSpread = 0.02 #how far we look on either side of the nominal peak
+dtSpread = 0.03 #how far we look on either side of the nominal peak
 
 if os.path.isdir(workDir + descriptor):
     inp = raw_input('!!!!!! WARNING: PATH %s ALREADY EXIST!!!!! CONTINUE? (Y/<n>):'%(workDir + descriptor))
@@ -50,7 +50,7 @@ else:
 
 figsFormat = workDir + descriptor+'/figs/mantid_%i_%i.png'
 peaks_ws = LoadIsawPeaks(Filename = peaksFile)
-for sampleRun in sampleRuns:
+for sampleRun in sampleRuns[:1]:
     paramList = list()
     MDdata = ICCFT.getSample(sampleRun, UBFile, DetCalFile, workDir, loadDir)
     peaks_ws,paramList= ICCFT.integrateSample(sampleRun, MDdata, latticeConstants,crystalSystem, gridBox, peaks_ws,paramList,figsFormat=figsFormat,dtSpread=dtSpread)
