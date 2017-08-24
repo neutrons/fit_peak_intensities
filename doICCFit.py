@@ -30,7 +30,7 @@ latticeConstants = [5.43071] #Since it's cubic, this we only need a (in angstrom
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
-descriptor = 'nocrop_dtspread0p02' #Does not end with '/'
+descriptor = 'dt0p02_noslope' #Does not end with '/'
 
 
 # Other parameters
@@ -54,8 +54,8 @@ for sampleRun in sampleRuns:
     paramList = list()
     MDdata = ICCFT.getSample(sampleRun, UBFile, DetCalFile, workDir, loadDir)
     peaks_ws,paramList= ICCFT.integrateSample(sampleRun, MDdata, latticeConstants,crystalSystem, gridBox, peaks_ws,paramList,figsFormat=figsFormat,dtSpread=dtSpread)
-    SaveIsawPeaks(InputWorkspace='peaks_ws', Filename=workDir+descriptor+'/peaks_%i_scolecite.integrate'%(sampleRun))
-    np.savetxt(workDir+descriptor+'/params_%i_scolecite.dat'%sampleRun, np.array(paramList))
+    SaveIsawPeaks(InputWorkspace='peaks_ws', Filename=workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))
+    np.savetxt(workDir+descriptor+'/params_%i_%s.dat'%(sampleRun,descriptor), np.array(paramList))
     wsList = mtd.getObjectNames()
     for ws in wsList:
         if 'MDbox_' in ws:
