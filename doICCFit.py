@@ -24,13 +24,13 @@ figsFormat = 'scolecite_igs/mantid_%i_%i.png'
 #Si - 2016A
 sampleRuns = range(15647,15670)
 peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.integrate'
-UBFile =  '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/15647_Niggli.mat'
+UBFile =  '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.mat'
 crystalSystem ='cubic'
 latticeConstants = [5.43071] #Since it's cubic, this we only need a (in angstrom)
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
-descriptor = 'nocrop_dtspread0p02' #Does not end with '/'
+descriptor = 'hklhalf_dtspread0p02' #Does not end with '/'
 
 
 # Other parameters
@@ -50,10 +50,12 @@ else:
 
 figsFormat = workDir + descriptor+'/figs/mantid_%i_%i.png'
 peaks_ws = LoadIsawPeaks(Filename = peaksFile)
+LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFile)
+UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
 for sampleRun in sampleRuns:
     paramList = list()
     MDdata = ICCFT.getSample(sampleRun, UBFile, DetCalFile, workDir, loadDir)
-    peaks_ws,paramList= ICCFT.integrateSample(sampleRun, MDdata, latticeConstants,crystalSystem, gridBox, peaks_ws,paramList,figsFormat=figsFormat,dtSpread=dtSpread)
+    peaks_ws,paramList= ICCFT.integrateSample(sampleRun, MDdata, latticeConstants,crystalSystem, gridBox, peaks_ws,paramList,UBMatrix, figsFormat=figsFormat,dtSpread=dtSpread)
     SaveIsawPeaks(InputWorkspace='peaks_ws', Filename=workDir+descriptor+'/peaks_%i_scolecite.integrate'%(sampleRun))
     np.savetxt(workDir+descriptor+'/params_%i_scolecite.dat'%sampleRun, np.array(paramList))
     wsList = mtd.getObjectNames()
