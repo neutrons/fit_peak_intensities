@@ -31,7 +31,7 @@ DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 
-descriptor = 'hklhalf_dtspread0p02' #Does not end with '/'
+descriptor = 'hklhalf_dtspread0p02_noslope' #Does not end with '/'
 
 
 
@@ -59,8 +59,8 @@ for sampleRun in sampleRuns:
     MDdata = ICCFT.getSample(sampleRun, UBFile, DetCalFile, workDir, loadDir)
 
     peaks_ws,paramList= ICCFT.integrateSample(sampleRun, MDdata, latticeConstants,crystalSystem, gridBox, peaks_ws,paramList,UBMatrix, figsFormat=figsFormat,dtSpread=dtSpread)
-    SaveIsawPeaks(InputWorkspace='peaks_ws', Filename=workDir+descriptor+'/peaks_%i_scolecite.integrate'%(sampleRun))
-    np.savetxt(workDir+descriptor+'/params_%i_scolecite.dat'%sampleRun, np.array(paramList))
+    SaveIsawPeaks(InputWorkspace='peaks_ws', Filename=workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,desciptor))
+    np.savetxt(workDir+descriptor+'/params_%i_%s.dat'%(sampleRun, descriptor), np.array(paramList))
 
     wsList = mtd.getObjectNames()
     for ws in wsList:
