@@ -43,7 +43,21 @@ def getDQ(peak, latticeSpacing, crystalSystem):
 			dQ[i,1] = monoclinic(hkl+dhkl) - monoclinic(hkl)
     return dQ
 
-
+# UB = UBmatrix as loaded by LoadIsawUB().  Only works in the
+#    Qsample frame right now
+def getDQHalfHKL(peak, UB):
+    dQ = np.zeros((3,2))
+    hkl = peak.getHKL()
+    if np.all(hkl == np.array([0,0,0])):
+        return 0.5*np.ones((3,2))
+    q0 = peak.getQSampleFrame()
+    #dhkl = np.zeros(3)
+    dhkl = np.array([0.5, 0.5, 0.5])
+    qPlus = UB.dot(hkl+dhkl)*2*np.pi
+    qMinus = UB.dot(hkl-dhkl)*2*np.pi
+    dQ[:,0] = qMinus - q0
+    dQ[:,1] = qPlus - q0
+    return dQ
 #Standard Pade function used for getting initial guesses
 def pade(c,x): #c are coefficients, x is the energy in eV
     return c[0]*x**c[1]*(1+c[2]*x+c[3]*x**2+(x/c[4])**c[5])/(1+c[6]*x+c[7]*x**2+(x/c[8])**c[9])
@@ -248,6 +262,8 @@ def plotFit(filenameFormat, r,tofWS,fICC,runNumber, peakNumber, energy, chiSq,bg
     plt.legend(loc='best')
     plt.savefig(filenameFormat%(runNumber, peakNumber))
 
+
+
 #getBoxHalfHKL returns the binned MDbox ranging from (hkl-0.5)-(hkl+0.5) (i.e. half integers 
 # in hkl space) in q space.  
 # Inputs:
@@ -260,13 +276,14 @@ def plotFit(filenameFormat, r,tofWS,fICC,runNumber, peakNumber, energy, chiSq,bg
 #    peakNumber: integer peak number within a  dataset - basically an index
 #  Returns:
 #  Box, an MDWorkspace with histogrammed events around the peak
-def getBoxHalfHKL(peak, MDdata, latticeConstants,crystalSystem,gridBox,peakNumber):
+def getBoxHalfHKL(peak, peaks_ws, MDdata, UBMatrix, latticeConstants,crystalSystem,gridBox,peakNumber):
     run = peak.getRunNumber()
     QSample = peak.getQSampleFrame()
     Qx = QSample[0]
     Qy = QSample[1]
     Qz = QSample[2]
-    dQ = np.abs(getDQ(peak, latticeConstants, crystalSystem))
+    #dQ = np.abs(getDQ(peak, latticeConstants, crystalSystem))
+    dQ = np.abs(getDQHalfHKL(peak, UBMatrix))
     Box = BinMD(InputWorkspace = 'MDdata',
         AlignedDim0='Q_sample_x,'+str(Qx-dQ[0,0])+','+str(Qx+dQ[0,1])+','+str(gridBox),
         AlignedDim1='Q_sample_y,'+str(Qy-dQ[1,0])+','+str(Qy+dQ[1,1])+','+str(gridBox),
@@ -275,7 +292,7 @@ def getBoxHalfHKL(peak, MDdata, latticeConstants,crystalSystem,gridBox,peakNumbe
     return Box
 
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
-def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_ws, paramList, figsFormat=None, nBG=15, dtSpread=0.02):
+def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_ws, paramList, UBMatrix, figsFormat=None, nBG=15, dtSpread=0.02):
 
     p = range(peaks_ws.getNumberPeaks())
     for i in p:
@@ -288,7 +305,7 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
                 energy = 81.804 / wavelength**2 / 1000.0 #in eV
                 flightPath = peak.getL1() + peak.getL2() #in m
                 scatteringHalfAngle = 0.5*peak.getScattering()
-                Box = getBoxHalfHKL(peak, MDdata, latticeConstants, crystalSystem, gridBox, i)
+                Box = getBoxHalfHKL(peak, peaks_ws, MDdata, UBMatrix, latticeConstants, crystalSystem, gridBox, i)
                 print '---fitting peak ' + str(i) + '  Num events: ' + str(Box.getNEvents()), ' ', peak.getHKL()
                 print energy*1000.0,'meV'
                 if Box.getNEvents() < 1:
