@@ -6,6 +6,8 @@ from scipy.misc import factorial
 from scipy.optimize import curve_fit
 sys.path.append("/opt/mantidnightly/bin")
 from mantid.simpleapi import *
+import pickle
+from scipy import interpolate
 import ICConvoluted as ICC
 reload(ICC)
 
@@ -58,9 +60,22 @@ def getDQHalfHKL(peak, UB):
     dQ[:,0] = qMinus - q0
     dQ[:,1] = qPlus - q0
     return dQ
+
+#Wrapper for pade with parametres as separate arguments for compatability with scipy.optimize.curve_fit
+def padeWrapper(x,a,b,c,d,f,g,h,i,j,k):
+    #print a,b,c,d,f,g,h,i,j,k
+    pArr = np.zeros(10)
+    pArr[0] = a; pArr[1] = b; pArr[2] = c; pArr[3] = d; pArr[4] = f; 
+    pArr[5] = g; pArr[6] = h; pArr[7] = i; pArr[8] = j; pArr[9] = k;
+    return pade(pArr,x)
+
 #Standard Pade function used for getting initial guesses
 def pade(c,x): #c are coefficients, x is the energy in eV
     return c[0]*x**c[1]*(1+c[2]*x+c[3]*x**2+(x/c[4])**c[5])/(1+c[6]*x+c[7]*x**2+(x/c[8])**c[9])
+
+def getSigma(x, y, bg):
+    sigma = np.sqrt(np.sum(y+bg))
+    return sigma
 
 #Poission distribution
 def poisson(k,lam):
@@ -201,6 +216,25 @@ def getModeratorCoefficients(fileName):
     d['T0'] = r[3]
     return d
 
+def getInitialGuessSpline(tofWS, paramNames, energy, flightPath):
+    x0 = np.zeros(len(paramNames))
+    x = tofWS.readX(0)
+    y = tofWS.readY(0)
+    splineDict = pickle.load(open('get_franz_coefficients/splineDict.pkl','rb'))
+    for i, param in enumerate(['A','B','R','T0']):
+        x0[i] = interpolate.splev(energy, splineDict[param])
+    x0[3] += getT0Shift(energy, flightPath) #Simulates at L~=0, we are ~18m downstream, this adjusts for that time.
+    x0[4] = (np.max(y))/x0[0]*2*2.5  #Amplitude
+    x0[5] = 0.5 #hat width in IDX units
+    x0[6] = interpolate.splev(energy, splineDict['k_conv']) #Exponential decay rate for convolution
+
+    #Phenomenology
+    x0[0] /= 1.2
+    x0[2] += 0.05
+    x0[3] -= 10 #This is lazy - we can do it detector-by-detector
+
+    return x0 
+
 #Returns intial parameters for fitting based on a few quickly derived TOF
 # profile parameters.  tofWS is a worskapce containng the TOF profile,
 # paramNames is the list of parameter names
@@ -288,7 +322,8 @@ def getBoxHalfHKL(peak, peaks_ws, MDdata, UBMatrix, latticeConstants,crystalSyst
         AlignedDim0='Q_sample_x,'+str(Qx-dQ[0,0])+','+str(Qx+dQ[0,1])+','+str(gridBox),
         AlignedDim1='Q_sample_y,'+str(Qy-dQ[1,0])+','+str(Qy+dQ[1,1])+','+str(gridBox),
         AlignedDim2='Q_sample_z,'+str(Qz-dQ[2,0])+','+str(Qz+dQ[2,1])+','+str(gridBox),
-        OutputWorkspace = 'MDbox_'+str(run)+'_'+str(peakNumber))
+        OutputWorkspace = 'MDbox')
+        #OutputWorkspace = 'MDbox_'+str(run)+'_'+str(peakNumber))
     return Box
 
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
@@ -307,12 +342,12 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
                 scatteringHalfAngle = 0.5*peak.getScattering()
                 Box = getBoxHalfHKL(peak, peaks_ws, MDdata, UBMatrix, latticeConstants, crystalSystem, gridBox, i)
                 print '---fitting peak ' + str(i) + '  Num events: ' + str(Box.getNEvents()), ' ', peak.getHKL()
-                print energy*1000.0,'meV'
                 if Box.getNEvents() < 1:
                     print "Peak %i has 0 events. Skipping!"%i
                     peak.setIntensity(0)
                     peak.setSigmaIntensity(1)
                     paramList.append([i, energy, 0.0, 1.0e10,1.0e10] + [0 for i in range(mtd['fit_parameters'].rowCount())])
+                    mtd.remove('MDbox_'+str(run)+'_'+str(i))
                     continue
                 #Do background removal (optionally) and construct the TOF workspace for fitting
                 tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof,dtBinWidth=2,dtSpread=dtSpread)
@@ -321,7 +356,8 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
                 fICC = ICC.IkedaCarpenterConvoluted()
                 fICC.init()
                 paramNames = [fICC.getParamName(x) for x in range(fICC.numParams())]
-                x0 = getInitialGuess(tofWS,paramNames,energy,flightPath)
+                x0 = getInitialGuessSpline(tofWS,paramNames,energy,flightPath)
+                #x0 = getInitialGuess(tofWS,paramNames,energy,flightPath)
                 [fICC.setParameter(iii,v) for iii,v in enumerate(x0[:fICC.numParams()])]
                 x = tofWS.readX(0)
                 y = tofWS.readY(0)
@@ -340,8 +376,8 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
                 constraintString1 += 'R < 1'
 		
 		bgString= '; name=LinearBackground,A0=%4.8f,A1=%4.8f'%(bgx0[1],bgx0[0]) #A0=const, A1=slope
-                #constraintString2 = ', constraints=(-1.0e-6 < A1 < 1.0e-6, A0<%4.8f)'%np.max(y)
-		constraintString2 = ', ties=(A1=0.0)'
+                constraintString2 = ', constraints=(-1.0e-1 < A1 < 1.0e-1, A0<%4.8f)'%np.max(y)
+		#constraintString2 = ', ties=(A1=0.0)'
                 
 		functionString = funcString1 + 'constraints=('+constraintString1+')' + bgString + constraintString2  
 		fitStatus, chiSq, covarianceTable, paramTable, fitWorkspace = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit')
@@ -367,8 +403,10 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
                 bgCoefficients = fitBG
                 icProfile = icProfile - np.polyval(bgCoefficients, r.readX(1)) #subtract background
                 peak.setIntensity(np.sum(icProfile))
-                peak.setSigmaIntensity(np.sqrt(np.sum(icProfile)))
+                #peak.setSigmaIntensity(np.sqrt(np.sum(icProfile)))
+                peak.setSigmaIntensity(getSigma(r.readX(0), icProfile, np.polyval(bgCoefficients, r.readX(1))))
                 paramList.append([i, energy, np.sum(icProfile), 0.0,chiSq] + [mtd['fit_Parameters'].row(i)['Value'] for i in range(mtd['fit_parameters'].rowCount())])
+                mtd.remove('MDbox_'+str(run)+'_'+str(i))
 
             '''except: #Error with fitting
                 peak.setIntensity(0)
@@ -379,7 +417,7 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
                 print(exc_type, fname, exc_tb.tb_lineno)
                 paramList.append([i, energy, 0.0, 1.0e10,1.0e10] + [0 for i in range(mtd['fit_parameters'].rowCount())])
            '''
-            mtd.remove('MDbox_'+str(run)+'_'+str(i))
+        mtd.remove('MDbox_'+str(run)+'_'+str(i))
     return peaks_ws, paramList
 
 
