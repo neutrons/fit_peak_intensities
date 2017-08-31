@@ -73,9 +73,19 @@ def padeWrapper(x,a,b,c,d,f,g,h,i,j,k):
 def pade(c,x): #c are coefficients, x is the energy in eV
     return c[0]*x**c[1]*(1+c[2]*x+c[3]*x**2+(x/c[4])**c[5])/(1+c[6]*x+c[7]*x**2+(x/c[8])**c[9])
 
-def getSigma(x, y, bg):
-    sigma = np.sqrt(np.sum(y+bg))
-    return sigma
+def getSigma(x, y, bg,t0, fracStop = 0.01):
+    try:
+        iStart = np.min(np.where((y-bg)/bg>fracStop))
+    except:
+        iStart = 0
+    xStart = x[iStart]
+    try:
+        iStop = np.min(np.where(np.logical_and(x>t0,(y-bg)/bg<fracStop)))
+    except:
+        iStop = len(x)-1 #TODO: Probably need to go further out
+    xStop = x[iStop]
+    sigma = np.sqrt(np.sum(y[iStart:iStop]+bg[iStart:iStop]))
+    return sigma, xStart, xStop
 
 #Poission distribution
 def poisson(k,lam):
@@ -281,7 +291,7 @@ def getSample(run,  UBFile,  DetCalFile,  workDir,  loadDir):
 
 #Function to make and save plots of the fits. bgx0=polynomial coefficients (polyfit order)
 # for the initial guess
-def plotFit(filenameFormat, r,tofWS,fICC,runNumber, peakNumber, energy, chiSq,bgFinal, bgx0=None):
+def plotFit(filenameFormat, r,tofWS,fICC,runNumber, peakNumber, energy, chiSq,bgFinal, xStart, xStop, bgx0=None):
     plt.figure(1); plt.clf()
     plt.plot(r.readX(0),r.readY(0),'o',label='Data')
     if bgx0 is not None:
@@ -291,7 +301,9 @@ def plotFit(filenameFormat, r,tofWS,fICC,runNumber, peakNumber, energy, chiSq,bg
         
     plt.plot(r.readX(1),r.readY(1),'.-',label='Fit')
     plt.plot(r.readX(1), np.polyval(bgFinal, r.readX(1)),'r',label='Background')
-
+    yLims = plt.ylim()
+    plt.plot([xStart, xStart], yLims, 'k')
+    plt.plot([xStop, xStop], yLims, 'k')
     plt.title('E0=%4.4f meV, redChiSq=%4.4e'%(energy*1000,chiSq))
     plt.legend(loc='best')
     plt.savefig(filenameFormat%(runNumber, peakNumber))
@@ -395,16 +407,18 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
 
                 r = mtd['fit_Workspace']
                 param = mtd['fit_Parameters']
-		fitBG = [param.cell(iii+2,1),param.cell(iii+1,1)]
-                if figsFormat is not None:
-                    plotFit(figsFormat, r,tofWS,fICC,peak.getRunNumber(), i, energy, chiSq,fitBG, bgx0)
+                fitBG = [param.cell(iii+2,1),param.cell(iii+1,1)]
                 #Set the intensity before moving on to the next peak
                 icProfile = r.readY(1)
                 bgCoefficients = fitBG
+                #peak.setSigmaIntensity(np.sqrt(np.sum(icProfile)))i
+                t0 = param.row(3)['Value']
+                sigma, xStart, xStop = getSigma(r.readX(0), icProfile, np.polyval(bgCoefficients, r.readX(1)),t0)
                 icProfile = icProfile - np.polyval(bgCoefficients, r.readX(1)) #subtract background
                 peak.setIntensity(np.sum(icProfile))
-                #peak.setSigmaIntensity(np.sqrt(np.sum(icProfile)))
-                peak.setSigmaIntensity(getSigma(r.readX(0), icProfile, np.polyval(bgCoefficients, r.readX(1))))
+                peak.setSigmaIntensity(sigma)
+                if figsFormat is not None:
+                    plotFit(figsFormat, r,tofWS,fICC,peak.getRunNumber(), i, energy, chiSq,fitBG, xStart, xStop, bgx0)
                 paramList.append([i, energy, np.sum(icProfile), 0.0,chiSq] + [mtd['fit_Parameters'].row(i)['Value'] for i in range(mtd['fit_parameters'].rowCount())])
                 mtd.remove('MDbox_'+str(run)+'_'+str(i))
 
