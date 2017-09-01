@@ -8,6 +8,7 @@ import ICConvoluted as ICC
 reload(ICC)
 import os 
 import sys
+from parsePeaksFile import getPeaks
 FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 
 
@@ -33,7 +34,7 @@ UBFile =  '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2
 crystalSystem ='cubic'
 latticeConstants = [5.43071] #Since it's cubic, this we only need a (in angstrom)
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
-descriptor = 'si_newSigma_0p05' #Does not end with '/'
+descriptor = 'si_detCal_0p05' #Does not end with '/'
 
 
 
@@ -52,13 +53,21 @@ else:
 
 figsFormat = workDir + descriptor+'/figs/mantid_%i_%i.png'
 peaks_ws = LoadIsawPeaks(Filename = peaksFile)
+
+#Get detector bank for each peak
+peakList = getPeaks(peaksFile)
+detBankList = np.zeros(len(peakList))
+for i, peak in enumerate(peakList):
+    detBankList[i] = peak.detnum
+
+
 LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFile)
 UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
 for sampleRun in sampleRuns:
     paramList = list()
     MDdata = ICCFT.getSample(sampleRun, UBFile, DetCalFile, workDir, loadDir)
 
-    peaks_ws,paramList= ICCFT.integrateSample(sampleRun, MDdata, latticeConstants,crystalSystem, gridBox, peaks_ws,paramList,UBMatrix, figsFormat=figsFormat,dtSpread=dtSpread)
+    peaks_ws,paramList= ICCFT.integrateSample(sampleRun, MDdata, latticeConstants,crystalSystem, gridBox, peaks_ws,paramList,detBankList, UBMatrix, figsFormat=figsFormat,dtSpread=dtSpread)
     SaveIsawPeaks(InputWorkspace='peaks_ws', Filename=workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))
     np.savetxt(workDir+descriptor+'/params_%i_%s.dat'%(sampleRun, descriptor), np.array(paramList))
 

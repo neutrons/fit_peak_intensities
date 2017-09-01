@@ -226,6 +226,24 @@ def getModeratorCoefficients(fileName):
     d['T0'] = r[3]
     return d
 
+def oneOverXSquared(x, A, bg):
+    return A/np.sqrt(x) + bg
+
+# d = calibration dictionary
+def getInitialGuessByDetector(tofWS, paramNames, energy, flightPath, detNumber):
+    x0 = np.zeros(len(paramNames))
+    x = tofWS.readX(0)
+    y = tofWS.readY(0)
+    d = pickle.load(open('det_calibration/calibration_dictionary.pkl','rb'))
+    x0[0] = np.polyval(d['det_%i'%detNumber]['A'],energy)
+    x0[1] = np.polyval(d['det_%i'%detNumber]['B'],energy)
+    x0[2] = np.polyval(d['det_%i'%detNumber]['R'],energy)
+    x0[3] = oneOverXSquared(energy, d['det_%i'%detNumber]['T0'][0], d['det_%i'%detNumber]['T0'][1])
+    x0[4] = (np.max(y))/x0[0]*2*2.5 
+    x0[5] = 0.5
+    x0[6] = 200
+    return x0
+
 def getInitialGuessSpline(tofWS, paramNames, energy, flightPath):
     x0 = np.zeros(len(paramNames))
     x = tofWS.readX(0)
@@ -339,7 +357,7 @@ def getBoxHalfHKL(peak, peaks_ws, MDdata, UBMatrix, latticeConstants,crystalSyst
     return Box
 
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
-def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_ws, paramList, UBMatrix, figsFormat=None, nBG=15, dtSpread=0.02):
+def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_ws, paramList, detBankList, UBMatrix, figsFormat=None, nBG=15, dtSpread=0.02):
 
     p = range(peaks_ws.getNumberPeaks())
     for i in p:
@@ -352,6 +370,7 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
                 energy = 81.804 / wavelength**2 / 1000.0 #in eV
                 flightPath = peak.getL1() + peak.getL2() #in m
                 scatteringHalfAngle = 0.5*peak.getScattering()
+                detNumber = detBankList[i]
                 Box = getBoxHalfHKL(peak, peaks_ws, MDdata, UBMatrix, latticeConstants, crystalSystem, gridBox, i)
                 print '---fitting peak ' + str(i) + '  Num events: ' + str(Box.getNEvents()), ' ', peak.getHKL()
                 if Box.getNEvents() < 1:
@@ -368,7 +387,8 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
                 fICC = ICC.IkedaCarpenterConvoluted()
                 fICC.init()
                 paramNames = [fICC.getParamName(x) for x in range(fICC.numParams())]
-                x0 = getInitialGuessSpline(tofWS,paramNames,energy,flightPath)
+                x0 = getInitialGuessByDetector(tofWS,paramNames,energy,flightPath, detNumber)
+                #x0 = getInitialGuessSpline(tofWS,paramNames,energy,flightPath)
                 #x0 = getInitialGuess(tofWS,paramNames,energy,flightPath)
                 [fICC.setParameter(iii,v) for iii,v in enumerate(x0[:fICC.numParams()])]
                 x = tofWS.readX(0)
