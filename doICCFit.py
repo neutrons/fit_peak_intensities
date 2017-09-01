@@ -12,7 +12,7 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 
 
 # Some parameters
-dtSpread = 0.03 #how far we look on either side of the nominal peak
+dtSpread = 0.05 #how far we look on either side of the nominal peak
 gridBox = 201 #Number of points for peak MDBoxes
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
@@ -33,7 +33,7 @@ UBFile =  '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2
 crystalSystem ='cubic'
 latticeConstants = [5.43071] #Since it's cubic, this we only need a (in angstrom)
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
-descriptor = 'si_newParams_0p03' #Does not end with '/'
+descriptor = 'si_newSigma_0p05' #Does not end with '/'
 
 
 
