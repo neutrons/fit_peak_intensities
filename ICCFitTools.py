@@ -30,19 +30,19 @@ def getDQ(peak, latticeSpacing, crystalSystem):
                     dQ[i,1] = cubicConstant*(np.linalg.norm(hkl + dhkl) - np.linalg.norm(hkl))
 
     if crystalSystem == 'monoclinic':
-		a = latticeSpacing[0]; b = latticeSpacing[1]; c = latticeSpacing[2];
-		alpha = latticeSpacing[3]; beta = latticeSpacing[4]; 
-		hkl = peak.getHKL()
-		def monoclinic(hkl):
-			tmp = (((hkl[0])/(a*np.sin(beta/180.*np.pi)))**2 + (hkl[1]/b)**2 + (hkl[2]/c*np.sin(beta/180*np.pi))**2 + 
-							(2*hkl[0]*hkl[2]*np.cos(beta/180.*np.pi)/(a*c*np.sin(beta/180.*np.pi)**2))  )
-			return 2*np.pi/np.sqrt(tmp)
+        a = latticeSpacing[0]; b = latticeSpacing[1]; c = latticeSpacing[2];
+        alpha = latticeSpacing[3]; beta = latticeSpacing[4]; 
+        hkl = peak.getHKL()
+        def monoclinic(hkl):
+            tmp = (((hkl[0])/(a*np.sin(beta/180.*np.pi)))**2 + (hkl[1]/b)**2 + (hkl[2]/c*np.sin(beta/180*np.pi))**2 + 
+                            (2*hkl[0]*hkl[2]*np.cos(beta/180.*np.pi)/(a*c*np.sin(beta/180.*np.pi)**2))  )
+            return 2*np.pi/np.sqrt(tmp)
 
-		for i in range(3):
-			dhkl = np.zeros(np.shape(hkl))
-			dhkl[i] = 0.5
-			dQ[i,0] = monoclinic(hkl-dhkl) - monoclinic(hkl)
-			dQ[i,1] = monoclinic(hkl+dhkl) - monoclinic(hkl)
+        for i in range(3):
+            dhkl = np.zeros(np.shape(hkl))
+            dhkl[i] = 0.5
+            dQ[i,0] = monoclinic(hkl-dhkl) - monoclinic(hkl)
+            dQ[i,1] = monoclinic(hkl+dhkl) - monoclinic(hkl)
     return dQ
 
 # UB = UBmatrix as loaded by LoadIsawUB().  Only works in the
@@ -313,9 +313,9 @@ def plotFit(filenameFormat, r,tofWS,fICC,runNumber, peakNumber, energy, chiSq,bg
     plt.figure(1); plt.clf()
     plt.plot(r.readX(0),r.readY(0),'o',label='Data')
     if bgx0 is not None:
-    	plt.plot(tofWS.readX(0), fICC.function1D(tofWS.readX(0))+np.polyval(bgx0, tofWS.readX(0)),'b',label='Initial Guess')
+        plt.plot(tofWS.readX(0), fICC.function1D(tofWS.readX(0))+np.polyval(bgx0, tofWS.readX(0)),'b',label='Initial Guess')
     else:
-    	plt.plot(tofWS.readX(0), fICC.function1D(tofWS.readX(0)),'b',label='Initial Guess')
+        plt.plot(tofWS.readX(0), fICC.function1D(tofWS.readX(0)),'b',label='Initial Guess')
         
     plt.plot(r.readX(1),r.readY(1),'.-',label='Fit')
     plt.plot(r.readX(1), np.polyval(bgFinal, r.readX(1)),'r',label='Background')
@@ -373,8 +373,8 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
                 detNumber = detBankList[i]
                 Box = getBoxHalfHKL(peak, peaks_ws, MDdata, UBMatrix, latticeConstants, crystalSystem, gridBox, i)
                 print '---fitting peak ' + str(i) + '  Num events: ' + str(Box.getNEvents()), ' ', peak.getHKL()
-                if Box.getNEvents() < 1:
-                    print "Peak %i has 0 events. Skipping!"%i
+                if Box.getNEvents() < 1 or np.all(peak.getHKL()==0):
+                    print "Peak %i has 0 events or is HKL=000. Skipping!"%i
                     peak.setIntensity(0)
                     peak.setSigmaIntensity(1)
                     paramList.append([i, energy, 0.0, 1.0e10,1.0e10] + [0 for i in range(mtd['fit_parameters'].rowCount())])
@@ -387,9 +387,9 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
                 fICC = ICC.IkedaCarpenterConvoluted()
                 fICC.init()
                 paramNames = [fICC.getParamName(x) for x in range(fICC.numParams())]
-                x0 = getInitialGuessByDetector(tofWS,paramNames,energy,flightPath, detNumber)
+                #x0 = getInitialGuessByDetector(tofWS,paramNames,energy,flightPath, detNumber)
                 #x0 = getInitialGuessSpline(tofWS,paramNames,energy,flightPath)
-                #x0 = getInitialGuess(tofWS,paramNames,energy,flightPath)
+                x0 = getInitialGuess(tofWS,paramNames,energy,flightPath)
                 [fICC.setParameter(iii,v) for iii,v in enumerate(x0[:fICC.numParams()])]
                 x = tofWS.readX(0)
                 y = tofWS.readY(0)
@@ -398,35 +398,46 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
                 bgx0[1] = np.mean(y[np.r_[0:nBG,-nBG:0]])
                 #TODO: make this permanent, but this will tweak our background
                 scaleFactor = np.max(y)/np.max(fICC.function1D(x)+bgx0[1])
+                #scaleFactor = np.max(y)/np.max(fICC.function1D(x))
                 x0[4] = x0[4]*scaleFactor
                 fICC.setParameter(4,x0[4])
-		#Form the strings for fitting and do the fit
+        #Form the strings for fitting and do the fit
                 
                 paramString = ''.join(['%s=%4.8f, '%(fICC.getParamName(iii),x0[iii]) for iii in range(fICC.numParams())])
                 funcString1 = 'name=IkedaCarpenterConvoluted, ' + paramString
                 constraintString1 = ''.join(['%s > 0, '%(fICC.getParamName(iii)) for iii in range(fICC.numParams())])
                 constraintString1 += 'R < 1'
-		
-		bgString= '; name=LinearBackground,A0=%4.8f,A1=%4.8f'%(bgx0[1],bgx0[0]) #A0=const, A1=slope
-                constraintString2 = ', constraints=(-1.0e-1 < A1 < 1.0e-1, A0<%4.8f)'%np.max(y)
-		#constraintString2 = ', ties=(A1=0.0)'
+                #constraintString1 += '100< k_conv < 500'
                 
-		functionString = funcString1 + 'constraints=('+constraintString1+')' + bgString + constraintString2  
-		fitStatus, chiSq, covarianceTable, paramTable, fitWorkspace = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit')
-                if chiSq > 10.0: #The initial fit isn't great - let's see if we can do better
-                        print '############REFITTING###########'
-                        paramWS = mtd['fit_parameters']
-                        paramString = ''.join(['%s=%4.8f, '%(fICC.getParamName(iii),paramWS.cell(iii,1)) for iii in range(fICC.numParams()-1)])
-                        funcString = 'name=IkedaCarpenterConvoluted, ' + paramString[:-2]
-		        bgString = '; name=LinearBackground,A0=%4.8f,A1=%4.8f'%(paramWS.cell(iii+2,1),paramWS.cell(iii+1,1))
-                        try:
-                                fitStatus, chiSq, covarianceTable, paramTable, fitWorkspace = Fit(Function=funcString+bgString, InputWorkspace='tofWS', Output='fit',Constraints=constraintString,Minimizer='Trust Region')
-                        except:
-                                print 'CANNOT DO SECOND FIT, GOING BACK TO FIRST!'
+                bgString= '; name=LinearBackground,A0=%4.8f,A1=%4.8f'%(bgx0[1],bgx0[0]) #A0=const, A1=slope
+                constraintString2 = ', constraints=(-1.0e-1 < A1 < 1.0e-1, A0<%4.8f)'%np.max(y)
+                #constraintString2 = ', ties=(A1=0.0)'
+                
+                functionString = funcString1 + 'constraints=('+constraintString1+')' + bgString + constraintString2  
+                fitStatus, chiSq, covarianceTable, paramTable, fitWorkspace = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit')
+                chiSq2  = 1.0e99
+                if chiSq > 2.0: #The initial fit isn't great - let's see if we can do better
+                    print '############REFITTING########### on %4.4f'%chiSq
+                    #x0 = getInitialGuess(tofWS,paramNames,energy,flightPath)
+                    x0 = getInitialGuessByDetector(tofWS,paramNames,energy,flightPath, detNumber)
+                    paramWS = mtd['fit_parameters']
+                    paramString = ''.join(['%s=%4.8f, '%(fICC.getParamName(iii),x0[iii]) for iii in range(fICC.numParams())])
+                    funcString1 = 'name=IkedaCarpenterConvoluted, ' + paramString[:-2]
+                    functionString = funcString1 + ', constraints=('+constraintString1+')' + bgString + constraintString2 
+                    print functionString 
+                    try:
+                            fitStatus, chiSq2, covarianceTable, paramTable, fitWorkspace = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit2')
+                    except:
+                            print 'CANNOT DO SECOND FIT, GOING BACK TO FIRST!'
+                
+                if(chiSq < chiSq2):
+                    r = mtd['fit_Workspace']
+                    param = mtd['fit_Parameters']
+                else:
+                    r = mtd['fit2_Workspace']
+                    param = mtd['fit2_Parameters']
+                    chiSq = chiSq2
 
-
-                r = mtd['fit_Workspace']
-                param = mtd['fit_Parameters']
                 fitBG = [param.cell(iii+2,1),param.cell(iii+1,1)]
                 #Set the intensity before moving on to the next peak
                 icProfile = r.readY(1)
