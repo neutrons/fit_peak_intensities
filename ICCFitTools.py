@@ -464,10 +464,9 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                 x = tofWS.readX(0)
                 y = tofWS.readY(0)
                 bgx0 = np.polyfit(x[np.r_[0:nBG,-nBG:0]], y[np.r_[0:nBG,-nBG:0]], 1)
-                bgx0[0] = 0.0
-                bgx0[1] = np.mean(y[np.r_[0:nBG,-nBG:0]])
+                
                 #TODO: make this permanent, but this will tweak our background
-                scaleFactor = np.max(y)/np.max(fICC.function1D(x)+bgx0[1])
+                scaleFactor = np.max(y)/np.max(fICC.function1D(x) + np.polyval(bgx0,x))
                 #scaleFactor = np.max(y)/np.max(fICC.function1D(x))
                 x0[4] = x0[4]*scaleFactor
                 fICC.setParameter(4,x0[4])
