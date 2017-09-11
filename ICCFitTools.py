@@ -191,8 +191,8 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, dtBinWidth=2, zBG=-1
 
     #Set up our bins for histogramming
     dt = tofPeak*dtSpread #time in us on either side of the peak position to consider
-    tMin = tofPeak - dt
-    tMax = tofPeak + dt
+    tMin = max(tMin, tofPeak - dt)
+    tMax = min(tMax, tofPeak + dt)
     #tBins = np.linspace(tMin, tMax, nBins+1)
     tBins = np.arange(tMin, tMax, dtBinWidth)
     weightList = n_events[useIDX.transpose()[:,0],useIDX.transpose()[:,1],useIDX.transpose()[:,2]]
