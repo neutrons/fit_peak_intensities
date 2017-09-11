@@ -380,7 +380,7 @@ def getRefinedCenter(peak, MDdata, UBMatrix, dQPixel,nPtsQ, neigh_length_m = 5, 
     return np.array([qx[peakIDX[0]], qy[peakIDX[1]], qz[peakIDX[2]]])
 
 
-#getBoxHalfHKL returns the binned MDbox ranging from (hkl-0.5)-(hkl+0.5) (i.e. half integers 
+#getBoxFracHKL returns the binned MDbox ranging from (hkl-0.5)-(hkl+0.5) (i.e. half integers 
 # in hkl space) in q space.  
 # Inputs:
 #    peak: peak object to be analyzed.  HKL and peak centers must be defined
@@ -392,13 +392,13 @@ def getRefinedCenter(peak, MDdata, UBMatrix, dQPixel,nPtsQ, neigh_length_m = 5, 
 #    peakNumber: integer peak number within a  dataset - basically an index
 #  Returns:
 #  Box, an MDWorkspace with histogrammed events around the peak
-def getBoxHalfHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQPixel=0.005,refineCenter=False):
+def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQPixel=0.005,fracHKL = 0.5, refineCenter=False, fracHKLRefine = 0.2):
     runNumber = peak.getRunNumber()
     QSample = peak.getQSampleFrame()
     Qx = QSample[0]
     Qy = QSample[1]
     Qz = QSample[2]
-    dQ = np.abs(getDQFracHKL(peak, UBMatrix))
+    dQ = np.abs(getDQFracHKL(peak, UBMatrix, frac = fracHKL))
     #TODO: This can be vectorized if we change the box construction to match
     #for qq in dQ:
     #    idx = np.argmin(qq)
@@ -408,7 +408,7 @@ def getBoxHalfHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQPixel=0.005,re
     if refineCenter: #Find better center by flattining the cube in each direction and fitting a Gaussian
 
         #Get the new centers and new Box
-        Qxr,Qyr,Qzr = getRefinedCenter(peak, MDdata, UBMatrix, dQPixel,nPtsQ, neigh_length_m = 5, fracHKLSearch = 0.2)
+        Qxr,Qyr,Qzr = getRefinedCenter(peak, MDdata, UBMatrix, dQPixel,nPtsQ, neigh_length_m = 5, fracHKLSearch = fracHKLRefine)
 
         Box = BinMD(InputWorkspace = 'MDdata',
             AlignedDim0='Q_sample_x,'+str(Qxr-dQ[0,0])+','+str(Qxr+dQ[0,1])+','+str(nPtsQ[0]),
@@ -427,7 +427,7 @@ def getBoxHalfHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQPixel=0.005,re
     return Box
 
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
-def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, figsFormat=None, nBG=15, dtSpread=0.02, refineCenter=False):
+def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, figsFormat=None, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False):
 
     p = range(peaks_ws.getNumberPeaks())
     for i in p:
@@ -435,7 +435,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
         #TODO: does not work if hkl = (0,0,0) - getDQ returns Inf
         if peak.getRunNumber() == run:
             for ppppp in [3]:#try:
-                Box = getBoxHalfHKL(peak, peaks_ws, MDdata, UBMatrix, i, refineCenter = refineCenter)
+                Box = getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, fracHKL = fracHKL, refineCenter = refineCenter)
                 tof = peak.getTOF() #in us
                 wavelength = peak.getWavelength() #in Angstrom
                 energy = 81.804 / wavelength**2 / 1000.0 #in eV
