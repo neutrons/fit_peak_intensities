@@ -47,18 +47,28 @@ def getDQ(peak, latticeSpacing, crystalSystem):
 
 # UB = UBmatrix as loaded by LoadIsawUB().  Only works in the
 #    Qsample frame right now
-def getDQHalfHKL(peak, UB):
+def getDQFracHKL(peak, UB, frac=0.5):
     dQ = np.zeros((3,2))
     hkl = peak.getHKL()
     if np.all(hkl == np.array([0,0,0])):
         return 0.5*np.ones((3,2))
     q0 = peak.getQSampleFrame()
-    #dhkl = np.zeros(3)
-    dhkl = np.array([0.5, 0.5, 0.5])
+    dhkl = np.array([frac, frac, frac])
     qPlus = UB.dot(hkl+dhkl)*2*np.pi
     qMinus = UB.dot(hkl-dhkl)*2*np.pi
     dQ[:,0] = qMinus - q0
-    dQ[:,1] = qPlus - q0
+    dQ[:,1] = qPlus - q0    
+    '''
+    for hklIDX in range(3):
+        dhkl = np.zeros(3)
+        dhkl[hklIDX]=0.5
+        #dhkl = np.array([0.5, 0.5, 0.5])
+        qPlus = UB.dot(hkl+dhkl)*2*np.pi
+        qMinus = UB.dot(hkl-dhkl)*2*np.pi
+        print qMinus[hklIDX] - q0[hklIDX]
+        dQ[int(hklIDX),0] = qMinus[hklIDX] - q0[hklIDX]
+        dQ[int(hklIDX),1] = qPlus[hklIDX] - q0[hklIDX]
+    '''
     return dQ
 
 #Wrapper for pade with parametres as separate arguments for compatability with scipy.optimize.curve_fit
@@ -170,7 +180,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, dtBinWidth=2, zBG=-1
     qy = np.linspace(yaxis.getMinimum(), yaxis.getMaximum(), yaxis.getNBins())
     zaxis = box.getZDimension()
     qz = np.linspace(zaxis.getMinimum(), zaxis.getMaximum(), zaxis.getNBins())
-    qSq = np.vstack([np.power(qx,2), np.power(qy,2), np.power(qz,2)]).transpose()
+    #qSq = np.vstack([np.power(qx,2), np.power(qy,2), np.power(qz,2)]).transpose()
 
     #Create our TOF distribution from bg corrected data
     useIDX = realNeutronIDX.transpose()
@@ -181,8 +191,8 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, dtBinWidth=2, zBG=-1
 
     #Set up our bins for histogramming
     dt = tofPeak*dtSpread #time in us on either side of the peak position to consider
-    tMin = tofPeak - dt
-    tMax = tofPeak + dt
+    tMin = max(tMin, tofPeak - dt)
+    tMax = min(tMax, tofPeak + dt)
     #tBins = np.linspace(tMin, tMax, nBins+1)
     tBins = np.arange(tMin, tMax, dtBinWidth)
     weightList = n_events[useIDX.transpose()[:,0],useIDX.transpose()[:,1],useIDX.transpose()[:,2]]
@@ -327,8 +337,50 @@ def plotFit(filenameFormat, r,tofWS,fICC,runNumber, peakNumber, energy, chiSq,bg
     plt.savefig(filenameFormat%(runNumber, peakNumber))
 
 
+def getRefinedCenter(peak, MDdata, UBMatrix, dQPixel,nPtsQ, neigh_length_m = 5, fracHKLSearch = 0.2):
+    from mantid.kernel._kernel import V3D
+    QSample = peak.getQSampleFrame()
+    print QSample
+    Qx = QSample[0]
+    Qy = QSample[1]
+    Qz = QSample[2]
+    dQ = np.abs(getDQFracHKL(peak, UBMatrix,frac=fracHKLSearch))
+    oldWavelength = peak.getWavelength()
+    Box = BinMD(InputWorkspace = 'MDdata',
+        AlignedDim0='Q_sample_x,'+str(Qx-dQ[0,0])+','+str(Qx+dQ[0,1])+','+str(nPtsQ[0]),
+        AlignedDim1='Q_sample_y,'+str(Qy-dQ[1,0])+','+str(Qy+dQ[1,1])+','+str(nPtsQ[1]),
+        AlignedDim2='Q_sample_z,'+str(Qz-dQ[2,0])+','+str(Qz+dQ[2,1])+','+str(nPtsQ[2]),
+        OutputWorkspace = 'MDbox')
+    n_events = Box.getNumEventsArray()
+    xaxis = Box.getXDimension()
+    qx = np.linspace(xaxis.getMinimum(), xaxis.getMaximum(), xaxis.getNBins())
+    yaxis = Box.getYDimension()
+    qy = np.linspace(yaxis.getMinimum(), yaxis.getMaximum(), yaxis.getNBins())
+    zaxis = Box.getZDimension()
+    qz = np.linspace(zaxis.getMinimum(), zaxis.getMaximum(), zaxis.getNBins())
+    meanList = list()
+    neigh_length_m = 3
+    maxBin = np.shape(n_events)
+    hasEventsIDX = np.array(np.where((n_events>0) & ~np.isnan(n_events))).transpose()
+    for i,idx in enumerate(hasEventsIDX):
+        dataBox = n_events[max(idx[0] - neigh_length_m,0):min(idx[0] + neigh_length_m+1, maxBin[0]),
+               max(idx[1] - neigh_length_m,0):min(idx[1] + neigh_length_m+1, maxBin[1]),
+               max(idx[2] - neigh_length_m,0):min(idx[2] + neigh_length_m+1, maxBin[2])]
+        meanList.append(np.mean(dataBox))
+    peakIDX = hasEventsIDX[np.argmax(meanList)]
+    qS = V3D()
+    qS[0] = qx[peakIDX[0]]
+    qS[1] = qy[peakIDX[1]]
+    qS[2] = qz[peakIDX[2]]
+    print qS
+    peak.setQSampleFrame(qS)
+    newWavelength = 4*np.pi*np.sin(peak.getScattering()/2.0)/np.sqrt(np.sum(np.power(peak.getQSampleFrame(),2)))
+    peak.setWavelength(newWavelength)
+    print 'Wavelength %4.4f --> %4.4f'%(oldWavelength, newWavelength)
+    return np.array([qx[peakIDX[0]], qy[peakIDX[1]], qz[peakIDX[2]]])
 
-#getBoxHalfHKL returns the binned MDbox ranging from (hkl-0.5)-(hkl+0.5) (i.e. half integers 
+
+#getBoxFracHKL returns the binned MDbox ranging from (hkl-0.5)-(hkl+0.5) (i.e. half integers 
 # in hkl space) in q space.  
 # Inputs:
 #    peak: peak object to be analyzed.  HKL and peak centers must be defined
@@ -340,24 +392,42 @@ def plotFit(filenameFormat, r,tofWS,fICC,runNumber, peakNumber, energy, chiSq,bg
 #    peakNumber: integer peak number within a  dataset - basically an index
 #  Returns:
 #  Box, an MDWorkspace with histogrammed events around the peak
-def getBoxHalfHKL(peak, peaks_ws, MDdata, UBMatrix, latticeConstants,crystalSystem,gridBox,peakNumber):
-    run = peak.getRunNumber()
+def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQPixel=0.005,fracHKL = 0.5, refineCenter=False, fracHKLRefine = 0.2):
+    runNumber = peak.getRunNumber()
     QSample = peak.getQSampleFrame()
     Qx = QSample[0]
     Qy = QSample[1]
     Qz = QSample[2]
-    #dQ = np.abs(getDQ(peak, latticeConstants, crystalSystem))
-    dQ = np.abs(getDQHalfHKL(peak, UBMatrix))
-    Box = BinMD(InputWorkspace = 'MDdata',
-        AlignedDim0='Q_sample_x,'+str(Qx-dQ[0,0])+','+str(Qx+dQ[0,1])+','+str(gridBox),
-        AlignedDim1='Q_sample_y,'+str(Qy-dQ[1,0])+','+str(Qy+dQ[1,1])+','+str(gridBox),
-        AlignedDim2='Q_sample_z,'+str(Qz-dQ[2,0])+','+str(Qz+dQ[2,1])+','+str(gridBox),
-        OutputWorkspace = 'MDbox')
-        #OutputWorkspace = 'MDbox_'+str(run)+'_'+str(peakNumber))
+    dQ = np.abs(getDQFracHKL(peak, UBMatrix, frac = fracHKL))
+    #TODO: This can be vectorized if we change the box construction to match
+    #for qq in dQ:
+    #    idx = np.argmin(qq)
+    #    qq[0] = qq[idx]; qq[1] = qq[idx]
+    print dQ
+    nPtsQ = np.round(np.sum(dQ/dQPixel,axis=1)).astype(int)
+    if refineCenter: #Find better center by flattining the cube in each direction and fitting a Gaussian
+
+        #Get the new centers and new Box
+        Qxr,Qyr,Qzr = getRefinedCenter(peak, MDdata, UBMatrix, dQPixel,nPtsQ, neigh_length_m = 5, fracHKLSearch = fracHKLRefine)
+
+        Box = BinMD(InputWorkspace = 'MDdata',
+            AlignedDim0='Q_sample_x,'+str(Qxr-dQ[0,0])+','+str(Qxr+dQ[0,1])+','+str(nPtsQ[0]),
+            AlignedDim1='Q_sample_y,'+str(Qyr-dQ[1,0])+','+str(Qyr+dQ[1,1])+','+str(nPtsQ[1]),
+            AlignedDim2='Q_sample_z,'+str(Qzr-dQ[2,0])+','+str(Qzr+dQ[2,1])+','+str(nPtsQ[2]),
+            OutputWorkspace = 'MDbox')
+    
+    else: #We'll juse use the given center
+        Box = BinMD(InputWorkspace = 'MDdata',
+            AlignedDim0='Q_sample_x,'+str(Qx-dQ[0,0])+','+str(Qx+dQ[0,1])+','+str(nPtsQ[0]),
+            AlignedDim1='Q_sample_y,'+str(Qy-dQ[1,0])+','+str(Qy+dQ[1,1])+','+str(nPtsQ[1]),
+            AlignedDim2='Q_sample_z,'+str(Qz-dQ[2,0])+','+str(Qz+dQ[2,1])+','+str(nPtsQ[2]),
+            OutputWorkspace = 'MDbox')
+            #OutputWorkspace = 'MDbox_'+str(runNumber)+'_'+str(peakNumber))
+
     return Box
 
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
-def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_ws, paramList, detBankList, UBMatrix, figsFormat=None, nBG=15, dtSpread=0.02):
+def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, figsFormat=None, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False):
 
     p = range(peaks_ws.getNumberPeaks())
     for i in p:
@@ -365,13 +435,13 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
         #TODO: does not work if hkl = (0,0,0) - getDQ returns Inf
         if peak.getRunNumber() == run:
             for ppppp in [3]:#try:
+                Box = getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, fracHKL = fracHKL, refineCenter = refineCenter)
                 tof = peak.getTOF() #in us
                 wavelength = peak.getWavelength() #in Angstrom
                 energy = 81.804 / wavelength**2 / 1000.0 #in eV
                 flightPath = peak.getL1() + peak.getL2() #in m
                 scatteringHalfAngle = 0.5*peak.getScattering()
                 detNumber = detBankList[i]
-                Box = getBoxHalfHKL(peak, peaks_ws, MDdata, UBMatrix, latticeConstants, crystalSystem, gridBox, i)
                 print '---fitting peak ' + str(i) + '  Num events: ' + str(Box.getNEvents()), ' ', peak.getHKL()
                 if Box.getNEvents() < 1 or np.all(peak.getHKL()==0):
                     print "Peak %i has 0 events or is HKL=000. Skipping!"%i
@@ -394,10 +464,9 @@ def integrateSample(run, MDdata, latticeConstants,crystalSystem, gridBox, peaks_
                 x = tofWS.readX(0)
                 y = tofWS.readY(0)
                 bgx0 = np.polyfit(x[np.r_[0:nBG,-nBG:0]], y[np.r_[0:nBG,-nBG:0]], 1)
-                bgx0[0] = 0.0
-                bgx0[1] = np.mean(y[np.r_[0:nBG,-nBG:0]])
+                
                 #TODO: make this permanent, but this will tweak our background
-                scaleFactor = np.max(y)/np.max(fICC.function1D(x)+bgx0[1])
+                scaleFactor = np.max(y)/np.max(fICC.function1D(x) + np.polyval(bgx0,x))
                 #scaleFactor = np.max(y)/np.max(fICC.function1D(x))
                 x0[4] = x0[4]*scaleFactor
                 fICC.setParameter(4,x0[4])
