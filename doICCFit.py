@@ -13,23 +13,36 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 
 
 # Some parameters
-dtSpread = 0.05 #how far we look on either side of the nominal peak
-gridBox = 201 #Number of points for peak MDBoxes
+dtSpread = 0.03 #how far we look on either side of the nominal peak
+dtBinWidth = 4
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
-loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
-
 
 #Scolecite - 2016A
+loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
+nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
 sampleRuns = range(15629,  15644)
 peaksFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Monoclinic_C.integrate'
 UBFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Monoclinic_C.mat'
 crystalSystem = 'monoclinic'
 latticeConstants = [6.5175,18.9722,9.7936,90.0000,108.9985,90.0000]
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
-descriptor = 'scolecite_refineCenter' #Does not end with '/'
+descriptor = 'scolecite_volNorm_0p5hkl' #Does not end with '/'
+
 
 '''
+#Natrolite - 2016 - MANDI
+loadDir = '/SNS/MANDI/IPTS-8776/nexus/'
+nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
+sampleRuns = [8401]
+peaksFile=None#'/SNS/MANDI/IPTS-8776/shared/Natrolite/New/8041_Niggli.integrate'
+UBFile='/SNS/MANDI/IPTS-8776/shared/Natrolite/Old/UB.mat'
+DetCalFile = '/SNS/MANDI/shared/calibration/MANDI_500.DetCal'
+descriptor = 'natrolite' #Does not end with '/'
+'''
+'''
 #Si - 2016A
+loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
+nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
 sampleRuns = range(15647,15670)
 peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.integrate'
 UBFile =  '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.mat'
@@ -55,22 +68,28 @@ else:
     os.mkdir(workDir + descriptor + '/figs/')
 
 figsFormat = workDir + descriptor+'/figs/mantid_%i_%i.png'
-peaks_ws = LoadIsawPeaks(Filename = peaksFile)
 
-#Get detector bank for each peak
-peakList = getPeaks(peaksFile)
-detBankList = np.zeros(len(peakList))
-for i, peak in enumerate(peakList):
-    detBankList[i] = peak.detnum
+if peaksFile is not None:
+    peaks_ws = LoadIsawPeaks(Filename = peaksFile)
+    #Get detector bank for each peak
+    peakList = getPeaks(peaksFile)
+    detBankList = np.zeros(len(peakList))
+    for i, peak in enumerate(peakList):
+        detBankList[i] = peak.detnum
+    LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFile)
+    UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
 
-
-LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFile)
-UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
 for sampleRun in sampleRuns:
     paramList = list()
-    MDdata = ICCFT.getSample(sampleRun, UBFile, DetCalFile, workDir, loadDir)
+    fileName = nxsTemplate%sampleRun
+    MDdata = ICCFT.getSample(sampleRun, UBFile, DetCalFile, workDir, fileName)
 
-    peaks_ws,paramList= ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, detBankList, UBMatrix, figsFormat=figsFormat,dtSpread=dtSpread, fracHKL = 0.7, refineCenter=False)
+    if peaksFile is None:
+        peaks_ws = FindPeaksMD(InputWorkspace='MDdata', PeakDistanceThreshold=1.1304000000000001, MaxPeaks=1000, DensityThresholdFactor=30, OutputWorkspace='peaks_ws')
+        LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFile)
+        UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
+
+    peaks_ws,paramList= ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, detBankList, UBMatrix, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = 0.5, refineCenter=False, doVolumeNormalization=True, minFracPixels=0.0075)
     SaveIsawPeaks(InputWorkspace='peaks_ws', Filename=workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))
     np.savetxt(workDir+descriptor+'/params_%i_%s.dat'%(sampleRun, descriptor), np.array(paramList))
 

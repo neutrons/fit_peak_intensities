@@ -138,7 +138,7 @@ def get_pp_lambda(n_events, hasEventsIDX ):
 #Output:
 #    tofWS: a Workspace2D containing the TOF profile.  X-axis is TOF (units: us) and
 #           Y-axis is the number of events.
-def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, dtBinWidth=2, zBG=-1.0, dtSpread = 0.02):
+def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, dtBinWidth=2, zBG=-1.0, dtSpread = 0.02, doVolumeNormalization=False, minFracPixels = 0.005):
     #Pull the number of events
     n_events = box.getNumEventsArray()
     hasEventsIDX = np.where((n_events>0) & ~np.isnan(n_events))
@@ -191,6 +191,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, dtBinWidth=2, zBG=-1
 
     #Set up our bins for histogramming
     dt = tofPeak*dtSpread #time in us on either side of the peak position to consider
+    dt = max(dt, 100)
     tMin = max(tMin, tofPeak - dt)
     tMax = min(tMax, tofPeak + dt)
     #tBins = np.linspace(tMin, tMax, nBins+1)
@@ -201,19 +202,23 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, dtBinWidth=2, zBG=-1
     h = np.histogram(tList,tBins,weights=weightList);
     tPoints = 0.5*(h[1][1:] + h[1][:-1])
     yPoints = h[0]
-    '''
-    #If there are too many zeros on the outside, let's crop them so as to not bias our fit to the bg
-    zeroLocations = np.where(h[0] == 0)[0]
-    numZeros = np.sum(zeroLocations)
-    if numZeros > 20:
-        #trim the left side
-        lowIDX = max(np.max(zeroLocations[zeroLocations<1.0/3.0*len(yPoints)]) - 10, 0)
-        highIDX = min(np.min(zeroLocations[zeroLocations>2.0/3.0*len(yPoints)]) + 10, len(yPoints)-1)
-        tPoints = tPoints[lowIDX:highIDX]
-        yPoints = yPoints[lowIDX:highIDX]
-    '''
+
+    if doVolumeNormalization:
+        QX, QY, QZ = np.meshgrid(qx, qy, qz)
+        tofBox = 3176.507 * flightPath *np.sin(scatteringHalfAngle) * 1/np.sqrt(QX**2 + QY**2 + QZ**2)
+        numPixels = np.histogram(tofBox.flatten(), tBins)[0]
+        yPoints = yPoints / numPixels*1.0
+        useIDX = 1.0*numPixels/np.sum(numPixels) > minFracPixels
+        if np.sum(useIDX < 1): #Bad threshold, we'll juse use it all
+            useIDX = np.ones(np.size(yPoints)).astype(bool)
+        tPoints = tPoints[useIDX]
+        yPoints = yPoints[useIDX] * np.mean(numPixels)
+        #if dtSpread > 0.04:
+        #    plt.figure(8); plt.clf()
+        #    plt.plot(tBins[1:], 1.0*numPixels/np.sum(numPixels))
+        #    plt.figure(2)
+        
     tofWS = CreateWorkspace(OutputWorkspace='tofWS', DataX=tPoints, DataY=yPoints, DataE=np.sqrt(yPoints))
-    #tofWS = CreateWorkspace(OutputWorkspace='tofWS', DataX=tPoints, DataY=h[0])
     return tofWS
 
 #Determines the T0 shift for comparing moderator simulations (done at L=0)
@@ -307,10 +312,10 @@ def getInitialGuess(tofWS, paramNames, energy, flightPath):
 # DetCalFile is a string for the file containng the detector calibration
 # workDir is not used
 # loadDir is the directory to extract the data from
-def getSample(run,  UBFile,  DetCalFile,  workDir,  loadDir):
+def getSample(run,  UBFile,  DetCalFile,  workDir, fileName):
     #data
-    print 'Loading file', loadDir+'TOPAZ_'+str(run)+'_event.nxs'
-    data = Load(Filename = loadDir+'TOPAZ_'+str(run)+'_event.nxs')
+    print 'Loading file', fileName
+    data = Load(Filename = fileName)
     LoadIsawDetCal(InputWorkspace = data, Filename = DetCalFile)
     MDdata = ConvertToMD(InputWorkspace = data, QDimensions = 'Q3D', dEAnalysisMode = 'Elastic',
       Q3DFrames = 'Q_sample', QConversionScales = 'Q in A^-1',
@@ -427,14 +432,14 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQPixel=0.005,fr
     return Box
 
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
-def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, figsFormat=None, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False):
+def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, figsFormat=None, dtBinWidth = 4, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, doVolumeNormalization=False, minFracPixels=0.0):
 
     p = range(peaks_ws.getNumberPeaks())
     for i in p:
         peak = peaks_ws.getPeak(i)
         #TODO: does not work if hkl = (0,0,0) - getDQ returns Inf
         if peak.getRunNumber() == run:
-            for ppppp in [3]:#try:
+            try:#for ppppp in [3]:#try:
                 Box = getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, fracHKL = fracHKL, refineCenter = refineCenter)
                 tof = peak.getTOF() #in us
                 wavelength = peak.getWavelength() #in Angstrom
@@ -451,7 +456,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                     mtd.remove('MDbox_'+str(run)+'_'+str(i))
                     continue
                 #Do background removal (optionally) and construct the TOF workspace for fitting
-                tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof,dtBinWidth=2,dtSpread=dtSpread)
+                tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof,dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels)
 
                 #Set up our inital guess
                 fICC = ICC.IkedaCarpenterConvoluted()
@@ -465,13 +470,11 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                 y = tofWS.readY(0)
                 bgx0 = np.polyfit(x[np.r_[0:nBG,-nBG:0]], y[np.r_[0:nBG,-nBG:0]], 1)
                 
-                #TODO: make this permanent, but this will tweak our background
-                scaleFactor = np.max(y)/np.max(fICC.function1D(x) + np.polyval(bgx0,x))
-                #scaleFactor = np.max(y)/np.max(fICC.function1D(x))
+                scaleFactor = np.max(y-np.polyval(bgx0,x))/np.max(fICC.function1D(x))
                 x0[4] = x0[4]*scaleFactor
                 fICC.setParameter(4,x0[4])
-        #Form the strings for fitting and do the fit
                 
+                #Form the strings for fitting and do the fit
                 paramString = ''.join(['%s=%4.8f, '%(fICC.getParamName(iii),x0[iii]) for iii in range(fICC.numParams())])
                 funcString1 = 'name=IkedaCarpenterConvoluted, ' + paramString
                 constraintString1 = ''.join(['%s > 0, '%(fICC.getParamName(iii)) for iii in range(fICC.numParams())])
@@ -479,7 +482,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                 #constraintString1 += '100< k_conv < 500'
                 
                 bgString= '; name=LinearBackground,A0=%4.8f,A1=%4.8f'%(bgx0[1],bgx0[0]) #A0=const, A1=slope
-                constraintString2 = ', constraints=(-1.0e-1 < A1 < 1.0e-1, A0<%4.8f)'%np.max(y)
+                constraintString2 = ', constraints=(-1.0 < A1 < 1.0)'
                 #constraintString2 = ', ties=(A1=0.0)'
                 
                 functionString = funcString1 + 'constraints=('+constraintString1+')' + bgString + constraintString2  
@@ -521,8 +524,11 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                     plotFit(figsFormat, r,tofWS,fICC,peak.getRunNumber(), i, energy, chiSq,fitBG, xStart, xStop, bgx0)
                 paramList.append([i, energy, np.sum(icProfile), 0.0,chiSq] + [mtd['fit_Parameters'].row(i)['Value'] for i in range(mtd['fit_parameters'].rowCount())])
                 mtd.remove('MDbox_'+str(run)+'_'+str(i))
-
-            '''except: #Error with fitting
+            except KeyboardInterrupt:
+                print 'KeyboardInterrupt: Exiting Program!!!!!!!'
+                sys.exit()
+            except: #Error with fitting
+                raise
                 peak.setIntensity(0)
                 peak.setSigmaIntensity(1)
                 print 'Error with peak ' + str(i)
@@ -530,7 +536,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 print(exc_type, fname, exc_tb.tb_lineno)
                 paramList.append([i, energy, 0.0, 1.0e10,1.0e10] + [0 for i in range(mtd['fit_parameters'].rowCount())])
-           '''
+           
         mtd.remove('MDbox_'+str(run)+'_'+str(i))
     return peaks_ws, paramList
 
