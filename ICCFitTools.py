@@ -83,19 +83,35 @@ def padeWrapper(x,a,b,c,d,f,g,h,i,j,k):
 def pade(c,x): #c are coefficients, x is the energy in eV
     return c[0]*x**c[1]*(1+c[2]*x+c[3]*x**2+(x/c[4])**c[5])/(1+c[6]*x+c[7]*x**2+(x/c[8])**c[9])
 
-def getSigma(x, y, bg,t0, fracStop = 0.01):
+def integratePeak(x, y, bg,t0, fracStop = 0.01):
+    yScaled = (y-bg) / np.max(y-bg)
+    goodIDX = yScaled > fracStop
+    if np.sum(goodIDX) > 0:
+        iStart = np.min(np.where(goodIDX))
+        iStop = np.max(np.where(goodIDX))
+        xStart = x[iStart]
+        xStop = x[iStop]
+    else:
+        print 'THIS IS BAD - NO GOOD START/STOP POINT!!'
+        return 0.0, 1.0, x[0], x[-1]
+    '''
     try:
-        iStart = np.min(np.where((y-bg)/bg>fracStop))
+        iStart = np.min(np.where((y-bg)>ctsStop))
     except:
+        raise
         iStart = 0
     xStart = x[iStart]
     try:
-        iStop = np.min(np.where(np.logical_and(x>t0,(y-bg)/bg<fracStop)))
+        print np.min(y[x>t0]-bg[x>t0])
+        iStop = np.min(np.where(np.logical_and(x>t0,(y-bg)<ctsStop)))
     except:
+        raise
         iStop = len(x)-1 #TODO: Probably need to go further out
     xStop = x[iStop]
-    sigma = np.sqrt(np.sum(y[iStart:iStop]+bg[iStart:iStop]))
-    return sigma, xStart, xStop
+    '''
+    intensity = np.sum(y[iStart:iStop] - bg[iStart:iStop])
+    sigma = np.sqrt(np.var(y[iStart:iStop])+np.var(bg[iStart:iStop]))
+    return intensity, sigma, xStart, xStop
 
 #Poission distribution
 def poisson(k,lam):
@@ -404,11 +420,7 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQPixel=0.005,fr
     Qy = QSample[1]
     Qz = QSample[2]
     dQ = np.abs(getDQFracHKL(peak, UBMatrix, frac = fracHKL))
-    #TODO: This can be vectorized if we change the box construction to match
-    #for qq in dQ:
-    #    idx = np.argmin(qq)
-    #    qq[0] = qq[idx]; qq[1] = qq[idx]
-    print dQ
+    
     nPtsQ = np.round(np.sum(dQ/dQPixel,axis=1)).astype(int)
     if refineCenter: #Find better center by flattining the cube in each direction and fitting a Gaussian
 
@@ -432,7 +444,7 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQPixel=0.005,fr
     return Box
 
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
-def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, figsFormat=None, dtBinWidth = 4, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, doVolumeNormalization=False, minFracPixels=0.0):
+def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, figsFormat=None, dtBinWidth = 4, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, doVolumeNormalization=False, minFracPixels=0.0, fracStop = 0.01):
 
     p = range(peaks_ws.getNumberPeaks())
     for i in p:
@@ -468,6 +480,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                 [fICC.setParameter(iii,v) for iii,v in enumerate(x0[:fICC.numParams()])]
                 x = tofWS.readX(0)
                 y = tofWS.readY(0)
+                if len(y)//2 < nBG: nBG = len(y)//2
                 bgx0 = np.polyfit(x[np.r_[0:nBG,-nBG:0]], y[np.r_[0:nBG,-nBG:0]], 1)
                 
                 scaleFactor = np.max(y-np.polyval(bgx0,x))/np.max(fICC.function1D(x))
@@ -496,7 +509,6 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                     paramString = ''.join(['%s=%4.8f, '%(fICC.getParamName(iii),x0[iii]) for iii in range(fICC.numParams())])
                     funcString1 = 'name=IkedaCarpenterConvoluted, ' + paramString[:-2]
                     functionString = funcString1 + ', constraints=('+constraintString1+')' + bgString + constraintString2 
-                    print functionString 
                     try:
                             fitStatus, chiSq2, covarianceTable, paramTable, fitWorkspace = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit2')
                     except:
@@ -516,9 +528,9 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                 bgCoefficients = fitBG
                 #peak.setSigmaIntensity(np.sqrt(np.sum(icProfile)))i
                 t0 = param.row(3)['Value']
-                sigma, xStart, xStop = getSigma(r.readX(0), icProfile, np.polyval(bgCoefficients, r.readX(1)),t0)
+                intensity, sigma, xStart, xStop = integratePeak(r.readX(0), icProfile, np.polyval(bgCoefficients, r.readX(1)),t0, fracStop=fracStop)
                 icProfile = icProfile - np.polyval(bgCoefficients, r.readX(1)) #subtract background
-                peak.setIntensity(np.sum(icProfile))
+                peak.setIntensity(intensity)
                 peak.setSigmaIntensity(sigma)
                 if figsFormat is not None:
                     plotFit(figsFormat, r,tofWS,fICC,peak.getRunNumber(), i, energy, chiSq,fitBG, xStart, xStop, bgx0)
@@ -528,7 +540,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                 print 'KeyboardInterrupt: Exiting Program!!!!!!!'
                 sys.exit()
             except: #Error with fitting
-                #raise
+                raise
                 peak.setIntensity(0)
                 peak.setSigmaIntensity(1)
                 print 'Error with peak ' + str(i)

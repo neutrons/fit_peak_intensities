@@ -9,7 +9,8 @@ reload(ICC)
 import os 
 import sys
 from parsePeaksFile import getPeaks
-from ICFitLog import writeLog
+import ICFitLog
+reload(ICFitLog)
 FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 
 
@@ -17,10 +18,11 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 dtSpread = 0.03 #how far we look on either side of the nominal peak
 dtBinWidth = 4
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
-doVolumeNormalization = False #True if you want to normalize TOF profiles by volume
+doVolumeNormalization = True #True if you want to normalize TOF profiles by volume
 refineCenter = False
-fracHKL = 0.8 #Fraction of HKL to look on either side
-
+fracHKL = 0.5 #Fraction of HKL to look on either side
+fracStop = 0.01 #Fraction of max counts to include in peak selection
+'''
 #Scolecite - 2016A
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
@@ -31,7 +33,7 @@ crystalSystem = 'monoclinic'
 latticeConstants = [6.5175,18.9722,9.7936,90.0000,108.9985,90.0000]
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
 descriptor = 'scolecite_0p03' #Does not end with '/'
-
+'''
 '''
 #Natrolite - 2016 - MANDI
 loadDir = '/SNS/MANDI/IPTS-8776/nexus/'
@@ -42,7 +44,6 @@ UBFile='/SNS/MANDI/IPTS-8776/shared/Natrolite/Old/UB.mat'
 DetCalFile = '/SNS/MANDI/shared/calibration/MANDI_500.DetCal'
 descriptor = 'natrolite' #Does not end with '/'
 '''
-'''
 #Si - 2016A
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
@@ -52,8 +53,8 @@ UBFile =  '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2
 crystalSystem ='cubic'
 latticeConstants = [5.43071] #Since it's cubic, this we only need a (in angstrom)
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
-descriptor = 'si_detCal_refit' #Does not end with '/'
-'''
+descriptor = 'si_detCal_newSigma_volNorm' #Does not end with '/'
+
 figsFormat = workDir + descriptor+'/figs/mantid_%i_%i.png'
 
 if os.path.isdir(workDir + descriptor):
@@ -80,7 +81,7 @@ if peaksFile is not None:
     UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
 
 logFile = workDir + descriptor + '/log.log'
-writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, refineCenter, doVolumeNormalization, peaksFile, UBFile, DetCalFile, descriptor)
+ICFitLog.writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, fracStop, refineCenter, doVolumeNormalization, peaksFile, UBFile, DetCalFile, descriptor)
 
 
 for sampleRun in sampleRuns:
@@ -93,7 +94,7 @@ for sampleRun in sampleRuns:
         LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFile)
         UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
 
-    peaks_ws,paramList= ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, detBankList, UBMatrix, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.0075)
+    peaks_ws,paramList= ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, detBankList, UBMatrix, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.0075, fracStop=fracStop)
     SaveIsawPeaks(InputWorkspace='peaks_ws', Filename=workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))
     np.savetxt(workDir+descriptor+'/params_%i_%s.dat'%(sampleRun, descriptor), np.array(paramList))
 
