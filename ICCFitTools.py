@@ -494,7 +494,6 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                     paramString = ''.join(['%s=%4.8f, '%(fICC.getParamName(iii),x0[iii]) for iii in range(fICC.numParams())])
                     funcString1 = 'name=IkedaCarpenterConvoluted, ' + paramString[:-2]
                     functionString = funcString1 + ', constraints=('+constraintString1+')' + bgString + constraintString2 
-                    print functionString 
                     try:
                             fitStatus, chiSq2, covarianceTable, paramTable, fitWorkspace = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit2')
                     except:
