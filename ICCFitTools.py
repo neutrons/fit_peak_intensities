@@ -94,7 +94,8 @@ def getSigma(x, y, bg,t0, fracStop = 0.01):
     except:
         iStop = len(x)-1 #TODO: Probably need to go further out
     xStop = x[iStop]
-    sigma = np.sqrt(np.sum(y[iStart:iStop]+bg[iStart:iStop]))
+    
+    sigma = np.sqrt(np.var(y[iStart:iStop])+np.var(bg[iStart:iStop]))
     return sigma, xStart, xStop
 
 #Poission distribution
@@ -404,11 +405,7 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQPixel=0.005,fr
     Qy = QSample[1]
     Qz = QSample[2]
     dQ = np.abs(getDQFracHKL(peak, UBMatrix, frac = fracHKL))
-    #TODO: This can be vectorized if we change the box construction to match
-    #for qq in dQ:
-    #    idx = np.argmin(qq)
-    #    qq[0] = qq[idx]; qq[1] = qq[idx]
-    print dQ
+    
     nPtsQ = np.round(np.sum(dQ/dQPixel,axis=1)).astype(int)
     if refineCenter: #Find better center by flattining the cube in each direction and fitting a Gaussian
 
@@ -468,6 +465,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                 [fICC.setParameter(iii,v) for iii,v in enumerate(x0[:fICC.numParams()])]
                 x = tofWS.readX(0)
                 y = tofWS.readY(0)
+                if len(y)//2 < nBG: nBG = len(y)//2
                 bgx0 = np.polyfit(x[np.r_[0:nBG,-nBG:0]], y[np.r_[0:nBG,-nBG:0]], 1)
                 
                 scaleFactor = np.max(y-np.polyval(bgx0,x))/np.max(fICC.function1D(x))
