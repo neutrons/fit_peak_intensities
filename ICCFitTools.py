@@ -420,7 +420,7 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQPixel=0.005,fr
     Qy = QSample[1]
     Qz = QSample[2]
     dQ = np.abs(getDQFracHKL(peak, UBMatrix, frac = fracHKL))
-    
+    dQ[dQ > 0.5] = 0.5
     nPtsQ = np.round(np.sum(dQ/dQPixel,axis=1)).astype(int)
     if refineCenter: #Find better center by flattining the cube in each direction and fitting a Gaussian
 
@@ -540,7 +540,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                 print 'KeyboardInterrupt: Exiting Program!!!!!!!'
                 sys.exit()
             except: #Error with fitting
-                raise
+                #raise
                 peak.setIntensity(0)
                 peak.setSigmaIntensity(1)
                 print 'Error with peak ' + str(i)
