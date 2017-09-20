@@ -10,7 +10,8 @@ import pickle
 from scipy import interpolate
 import ICConvoluted as ICC
 reload(ICC)
-
+import getEdgePixels as EdgeTools
+reload(EdgeTools)
 
 #getDQ determines the q spacing required to make an MDBox 
 # extending from [-hkl+0.5,hkl-0.5].  Inputs are a peak 
@@ -154,7 +155,7 @@ def get_pp_lambda(n_events, hasEventsIDX ):
 #Output:
 #    tofWS: a Workspace2D containing the TOF profile.  X-axis is TOF (units: us) and
 #           Y-axis is the number of events.
-def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, dtBinWidth=2, zBG=-1.0, dtSpread = 0.02, doVolumeNormalization=False, minFracPixels = 0.005):
+def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, peakNumber, dtBinWidth=2, zBG=-1.0, dtSpread = 0.02, doVolumeNormalization=False, minFracPixels = 0.005, removeEdges=False):
     #Pull the number of events
     n_events = box.getNumEventsArray()
     hasEventsIDX = np.where((n_events>0) & ~np.isnan(n_events))
@@ -213,16 +214,34 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, dtBinWidth=2, zBG=-1
     #tBins = np.linspace(tMin, tMax, nBins+1)
     tBins = np.arange(tMin, tMax, dtBinWidth)
     weightList = n_events[useIDX.transpose()[:,0],useIDX.transpose()[:,1],useIDX.transpose()[:,2]]
+    if removeEdges:
+        mask = EdgeTools.getMask(peak, box, panelDict)
+        h = np.histogram(tList,tBins,weights=weightList*mask[useIDX.transpose()[:,0],useIDX.transpose()[:,1],useIDX.transpose()[:,2]]);
+        '''
+        plt.figure(2); plt.clf()
+        q = mask[:,mask.shape[1]//2,:]
+        r = n_events[:,n_events.shape[1]//2,:]
+        plt.imshow(r)
+        plt.hold('on')
+        plt.imshow(q,cmap='gray',alpha=0.2)
+        plt.savefig('/SNS/users/ntv/dropbox/si_removeEdges/maskfigs/maskfig_%i.png'%peakNumber)
+        '''
+    else:
+        h = np.histogram(tList,tBins,weights=weightList);
+
 
     #For and plot the TOF distribution
-    h = np.histogram(tList,tBins,weights=weightList);
     tPoints = 0.5*(h[1][1:] + h[1][:-1])
     yPoints = h[0]
 
     if doVolumeNormalization:
-        QX, QY, QZ = np.meshgrid(qx, qy, qz)
+        QX, QY, QZ = np.meshgrid(qx, qy, qz,indexing='ij')
         tofBox = 3176.507 * flightPath *np.sin(scatteringHalfAngle) * 1/np.sqrt(QX**2 + QY**2 + QZ**2)
-        numPixels = np.histogram(tofBox.flatten(), tBins)[0]
+        if removeEdges:
+            print 'REMOVING EDGES'
+            numPixels = np.histogram((tofBox*mask).flatten(), tBins)[0]
+        else:
+            numPixels = np.histogram(tofBox.flatten(), tBins)[0]
         yPoints = yPoints / numPixels*1.0
         useIDX = 1.0*numPixels/np.sum(numPixels) > minFracPixels
         if np.sum(useIDX < 1): #Bad threshold, we'll juse use it all
@@ -444,9 +463,10 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQPixel=0.005,fr
     return Box
 
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
-def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, figsFormat=None, dtBinWidth = 4, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, doVolumeNormalization=False, minFracPixels=0.0, fracStop = 0.01):
+def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, figsFormat=None, dtBinWidth = 4, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, doVolumeNormalization=False, minFracPixels=0.0, fracStop = 0.01, removeEdges=False):
 
     p = range(peaks_ws.getNumberPeaks())
+    panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
     for i in p:
         peak = peaks_ws.getPeak(i)
         #TODO: does not work if hkl = (0,0,0) - getDQ returns Inf
@@ -460,7 +480,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                 scatteringHalfAngle = 0.5*peak.getScattering()
                 detNumber = detBankList[i]
                 print '---fitting peak ' + str(i) + '  Num events: ' + str(Box.getNEvents()), ' ', peak.getHKL()
-                if Box.getNEvents() < 1 or np.all(peak.getHKL()==0):
+                if Box.getNEvents() < 1 or np.all(np.abs(peak.getHKL())==0):
                     print "Peak %i has 0 events or is HKL=000. Skipping!"%i
                     peak.setIntensity(0)
                     peak.setSigmaIntensity(1)
@@ -468,7 +488,10 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                     mtd.remove('MDbox_'+str(run)+'_'+str(i))
                     continue
                 #Do background removal (optionally) and construct the TOF workspace for fitting
-                tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof,dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels)
+                if peak.getRow() < 15 or peak.getRow() > 255-15 or peak.getCol() < 15 or peak.getCol() > 255-15:
+                    tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=removeEdges)
+                else:
+                    tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False)
 
                 #Set up our inital guess
                 fICC = ICC.IkedaCarpenterConvoluted()
