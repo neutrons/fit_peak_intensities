@@ -217,15 +217,13 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
     if removeEdges:
         mask = EdgeTools.getMask(peak, box, panelDict)
         h = np.histogram(tList,tBins,weights=weightList*mask[useIDX.transpose()[:,0],useIDX.transpose()[:,1],useIDX.transpose()[:,2]]);
-        '''
         plt.figure(2); plt.clf()
         q = mask[:,mask.shape[1]//2,:]
         r = n_events[:,n_events.shape[1]//2,:]
         plt.imshow(r)
         plt.hold('on')
         plt.imshow(q,cmap='gray',alpha=0.2)
-        plt.savefig('/SNS/users/ntv/dropbox/si_removeEdges/maskfigs/maskfig_%i.png'%peakNumber)
-        '''
+        plt.savefig('/SNS/users/ntv/dropbox/si_removeEdges2/maskfigs/maskfig_%i.png'%peakNumber)
     else:
         h = np.histogram(tList,tBins,weights=weightList);
 
@@ -488,7 +486,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                     mtd.remove('MDbox_'+str(run)+'_'+str(i))
                     continue
                 #Do background removal (optionally) and construct the TOF workspace for fitting
-                if peak.getRow() < 15 or peak.getRow() > 255-15 or peak.getCol() < 15 or peak.getCol() > 255-15:
+                if EdgeTools.needsEdgeRemoval(Box,panelDict,peak): 
                     tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=removeEdges)
                 else:
                     tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False)
@@ -563,7 +561,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                 print 'KeyboardInterrupt: Exiting Program!!!!!!!'
                 sys.exit()
             except: #Error with fitting
-                #raise
+                raise
                 peak.setIntensity(0)
                 peak.setSigmaIntensity(1)
                 print 'Error with peak ' + str(i)
