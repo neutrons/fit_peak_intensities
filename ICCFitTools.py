@@ -155,7 +155,7 @@ def get_pp_lambda(n_events, hasEventsIDX ):
 #Output:
 #    tofWS: a Workspace2D containing the TOF profile.  X-axis is TOF (units: us) and
 #           Y-axis is the number of events.
-def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, peakNumber, dtBinWidth=2, zBG=-1.0, dtSpread = 0.02, doVolumeNormalization=False, minFracPixels = 0.005, removeEdges=False):
+def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, peakNumber, dtBinWidth=2, zBG=-1.0, dtSpread = 0.02, doVolumeNormalization=False, minFracPixels = 0.005, removeEdges=False, edgesToCheck=None):
     #Pull the number of events
     n_events = box.getNumEventsArray()
     hasEventsIDX = np.where((n_events>0) & ~np.isnan(n_events))
@@ -215,8 +215,9 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
     tBins = np.arange(tMin, tMax, dtBinWidth)
     weightList = n_events[useIDX.transpose()[:,0],useIDX.transpose()[:,1],useIDX.transpose()[:,2]]
     if removeEdges:
-        mask = EdgeTools.getMask(peak, box, panelDict)
+        mask = EdgeTools.getMask(peak, box, panelDict,edgesToCheck=edgesToCheck)
         h = np.histogram(tList,tBins,weights=weightList*mask[useIDX.transpose()[:,0],useIDX.transpose()[:,1],useIDX.transpose()[:,2]]);
+        '''
         plt.figure(2); plt.clf()
         q = mask[:,mask.shape[1]//2,:]
         r = n_events[:,n_events.shape[1]//2,:]
@@ -224,6 +225,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
         plt.hold('on')
         plt.imshow(q,cmap='gray',alpha=0.2)
         plt.savefig('/SNS/users/ntv/dropbox/si_removeEdges2/maskfigs/maskfig_%i.png'%peakNumber)
+        '''
     else:
         h = np.histogram(tList,tBins,weights=weightList);
 
@@ -487,8 +489,9 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                     mtd.remove('MDbox_'+str(run)+'_'+str(i))
                     continue
                 #Do background removal (optionally) and construct the TOF workspace for fitting
-                if EdgeTools.needsEdgeRemoval(Box,panelDict,peak): 
-                    tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=removeEdges)
+                edgesToCheck = EdgeTools.needsEdgeRemoval(Box,panelDict,peak) 
+                if edgesToCheck != []: #At least one plane intersects so we have to fit
+                    tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=removeEdges, edgesToCheck=edgesToCheck)
                 else:
                     tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False)
 

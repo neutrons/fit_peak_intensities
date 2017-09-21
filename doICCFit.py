@@ -23,7 +23,7 @@ workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 doVolumeNormalization = True #True if you want to normalize TOF profiles by volume
 refineCenter = False
 removeEdges = True 
-fracHKL = 0.5 #Fraction of HKL to look on either side
+fracHKL = 0.8 #Fraction of HKL to look on either side
 fracStop = 0.01 #Fraction of max counts to include in peak selection
 
 
@@ -60,7 +60,7 @@ UBFile =  '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2
 crystalSystem ='cubic'
 latticeConstants = [5.43071] #Since it's cubic, this we only need a (in angstrom)
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
-descriptor = 'si_removeEdges2' #Does not end with '/'
+descriptor = 'si_removeEdges_0p8hkl' #Does not end with '/'
 
 
 figsFormat = workDir + descriptor+'/figs/mantid_%i_%i.png'
