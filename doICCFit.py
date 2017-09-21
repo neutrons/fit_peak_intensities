@@ -22,9 +22,10 @@ dtBinWidth = 4
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 doVolumeNormalization = True #True if you want to normalize TOF profiles by volume
 refineCenter = False
-removeEdges = True
+removeEdges = True 
 fracHKL = 0.5 #Fraction of HKL to look on either side
 fracStop = 0.01 #Fraction of max counts to include in peak selection
+
 
 '''
 #Scolecite - 2016A
@@ -36,11 +37,10 @@ UBFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Mono
 crystalSystem = 'monoclinic'
 latticeConstants = [6.5175,18.9722,9.7936,90.0000,108.9985,90.0000]
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
-descriptor = 'scolecite_0p5hkl' #Does not end with '/'
-peaksFile='/SNS/users/ntv/dropbox/scolecite_0p5hkl/peaks_15641_scolecite_0p5hkl.integrate'
-sampleRuns = range(15641,  15644)
-descriptor = 'scolecite_0p8hkl' #Does not end with '/'
+descriptor = 'scolecite_removeEdges' #Does not end with '/'
 '''
+
+
 '''
 #Natrolite - 2016 - MANDI
 loadDir = '/SNS/MANDI/IPTS-8776/nexus/'
@@ -61,6 +61,7 @@ crystalSystem ='cubic'
 latticeConstants = [5.43071] #Since it's cubic, this we only need a (in angstrom)
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
 descriptor = 'si_removeEdges2' #Does not end with '/'
+
 
 figsFormat = workDir + descriptor+'/figs/mantid_%i_%i.png'
 
@@ -90,8 +91,15 @@ if peaksFile is not None:
 logFile = workDir + descriptor + '/log.log'
 ICFitLog.writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, fracStop, refineCenter, removeEdges, doVolumeNormalization, peaksFile, UBFile, DetCalFile, descriptor)
 
-
 for sampleRun in sampleRuns:
+
+    if removeEdges:
+        instrumentFile = EdgeTools.getInstrumentFile(peaks_ws, peaksFile)
+        panelDict = EdgeTools.getInstrumentDict(instrumentFile, peaks_ws, sampleRun, fitOrder=2)
+    else:
+        panelDict = None
+
+
     paramList = list()
     fileName = nxsTemplate%sampleRun
     MDdata = ICCFT.getSample(sampleRun, UBFile, DetCalFile, workDir, fileName)
@@ -101,7 +109,7 @@ for sampleRun in sampleRuns:
         LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFile)
         UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
 
-    peaks_ws,paramList= ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, detBankList, UBMatrix, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.0075, fracStop=fracStop, removeEdges=removeEdges)
+    peaks_ws,paramList= ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, detBankList, UBMatrix, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.0075, fracStop=fracStop, removeEdges=removeEdges, panelDict=panelDict)
     SaveIsawPeaks(InputWorkspace='peaks_ws', Filename=workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))
     np.savetxt(workDir+descriptor+'/params_%i_%s.dat'%(sampleRun, descriptor), np.array(paramList))
 
