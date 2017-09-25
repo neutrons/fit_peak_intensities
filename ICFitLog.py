@@ -1,7 +1,7 @@
 import numpy as np
 from datetime import datetime
 
-def writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, fracStop, refineCenter, doVolumeNormalization, peaksFile, UBFile, DetCalFile, descriptor):
+def writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, fracStop, refineCenter, removeEdges, doVolumeNormalization, peaksFile, UBFile, DetCalFile, descriptor):
     with open(logFile,'w') as f:
         f.write('---Log file for %s\n'%descriptor)
         f.write('Log created: ' + datetime.now().strftime('%m/%d/%Y %H:%M:%S')+'\n')
@@ -15,6 +15,7 @@ def writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtS
         f.write('fracHKL: %4.6f\n'%fracHKL)
         f.write('fracStop: %4.6f\n'%fracStop)
         f.write('refineCenter: %i\n'%refineCenter)
+        f.write('removeEdges: %i\n'%removeEdges)
         f.write('doVolumeNormalization: %i\n'%doVolumeNormalization)
         f.write('peaksFile: %s\n'%peaksFile)
         f.write('UBFile: %s\n'%UBFile)
