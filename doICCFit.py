@@ -26,7 +26,6 @@ removeEdges = True
 fracHKL = 0.8 #Fraction of HKL to look on either side
 fracStop = 0.01 #Fraction of max counts to include in peak selection
 
-
 '''
 #Scolecite - 2016A
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
@@ -37,9 +36,8 @@ UBFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Mono
 crystalSystem = 'monoclinic'
 latticeConstants = [6.5175,18.9722,9.7936,90.0000,108.9985,90.0000]
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
-descriptor = 'scolecite_removeEdges' #Does not end with '/'
+descriptor = 'scolecite_removeEdges_0p8hkl' #Does not end with '/'
 '''
-
 
 '''
 #Natrolite - 2016 - MANDI
@@ -51,16 +49,18 @@ UBFile='/SNS/MANDI/IPTS-8776/shared/Natrolite/Old/UB.mat'
 DetCalFile = '/SNS/MANDI/shared/calibration/MANDI_500.DetCal'
 descriptor = 'natrolite' #Does not end with '/'
 '''
+
 #Si - 2016A
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
 sampleRuns = range(15647,15670)
 peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.integrate'
 UBFile =  '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.mat'
+#UBFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/%i_Niggli.mat'
 crystalSystem ='cubic'
 latticeConstants = [5.43071] #Since it's cubic, this we only need a (in angstrom)
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
-descriptor = 'si_removeEdges_0p8hkl' #Does not end with '/'
+descriptor = 'si_constraints_0p8hkl' #Does not end with '/'
 
 
 figsFormat = workDir + descriptor+'/figs/mantid_%i_%i.png'
@@ -99,6 +99,8 @@ for sampleRun in sampleRuns:
     else:
         panelDict = None
 
+    #LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFormat%sampleRun)
+    #UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
 
     paramList = list()
     fileName = nxsTemplate%sampleRun

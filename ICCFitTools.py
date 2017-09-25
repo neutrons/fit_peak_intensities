@@ -489,9 +489,12 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                     mtd.remove('MDbox_'+str(run)+'_'+str(i))
                     continue
                 #Do background removal (optionally) and construct the TOF workspace for fitting
-                edgesToCheck = EdgeTools.needsEdgeRemoval(Box,panelDict,peak) 
-                if edgesToCheck != []: #At least one plane intersects so we have to fit
-                    tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=removeEdges, edgesToCheck=edgesToCheck)
+                if removeEdges: 
+                    edgesToCheck = EdgeTools.needsEdgeRemoval(Box,panelDict,peak) 
+                    if edgesToCheck != []: #At least one plane intersects so we have to fit
+                        tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=removeEdges, edgesToCheck=edgesToCheck)
+                    else:
+                        tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False)
                 else:
                     tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False)
 
@@ -521,10 +524,14 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                 
                 bgString= '; name=LinearBackground,A0=%4.8f,A1=%4.8f'%(bgx0[1],bgx0[0]) #A0=const, A1=slope
                 constraintString2 = ', constraints=(-1.0 < A1 < 1.0)'
-                #constraintString2 = ', ties=(A1=0.0)'
                 
                 functionString = funcString1 + 'constraints=('+constraintString1+')' + bgString + constraintString2  
-                fitStatus, chiSq, covarianceTable, paramTable, fitWorkspace = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit')
+                #fitStatus, chiSq, covarianceTable, paramTable, fitWorkspace = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit') #This is antiquated as of sept 25 2017
+                fitResults = Fit(Function=functionString, InputWorkspace='tofWS', CreateOutput = True, Output='fit')
+                fitStatus = fitResults.OutputStatus
+                chiSq = fitResults.OutputChi2overDoF
+                
+    
                 chiSq2  = 1.0e99
                 if chiSq > 2.0: #The initial fit isn't great - let's see if we can do better
                     print '############REFITTING########### on %4.4f'%chiSq
@@ -535,7 +542,10 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                     funcString1 = 'name=IkedaCarpenterConvoluted, ' + paramString[:-2]
                     functionString = funcString1 + ', constraints=('+constraintString1+')' + bgString + constraintString2 
                     try:
-                            fitStatus, chiSq2, covarianceTable, paramTable, fitWorkspace = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit2')
+                            #fitStatus, chiSq2, covarianceTable, paramTable, fitWorkspace = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit2') #Antiquated, Sept 25 2017
+                        fitResults = Fit(Function=functionString, InputWorkspace='tofWS', CreateOutput=True, Output='fit2')
+                        fitStatus = fitResults.OutputStatus
+                        chiSq2 = fitResults.OutputChi2overDoF
                     except:
                             print 'CANNOT DO SECOND FIT, GOING BACK TO FIRST!'
                 
@@ -565,7 +575,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                 print 'KeyboardInterrupt: Exiting Program!!!!!!!'
                 sys.exit()
             except: #Error with fitting
-                #raise
+                raise
                 peak.setIntensity(0)
                 peak.setSigmaIntensity(1)
                 print 'Error with peak ' + str(i)
