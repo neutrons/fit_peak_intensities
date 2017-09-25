@@ -22,11 +22,7 @@ doVolumeNormalization = False #True if you want to normalize TOF profiles by vol
 refineCenter = False
 fracHKL = 0.8 #Fraction of HKL to look on either side
 fracStop = 0.01 #Fraction of max counts to include in peak selection
-<<<<<<< HEAD
 
-
-=======
->>>>>>> 3c10768e79a441a8b106f5f3725851bb9200f25d
 #Scolecite - 2016A
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
@@ -36,13 +32,11 @@ UBFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Mono
 crystalSystem = 'monoclinic'
 latticeConstants = [6.5175,18.9722,9.7936,90.0000,108.9985,90.0000]
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
-<<<<<<< HEAD
 descriptor = 'scolecite_0p5hkl' #Does not end with '/'
 peaksFile='/SNS/users/ntv/dropbox/scolecite_0p5hkl/peaks_15641_scolecite_0p5hkl.integrate'
 sampleRuns = range(15641,  15644)
-=======
-descriptor = 'scolecite_0p8hkl' #Does not end with '/'
->>>>>>> 3c10768e79a441a8b106f5f3725851bb9200f25d
+
+
 '''
 #Natrolite - 2016 - MANDI
 loadDir = '/SNS/MANDI/IPTS-8776/nexus/'
