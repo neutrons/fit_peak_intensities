@@ -527,7 +527,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                 
                 functionString = funcString1 + 'constraints=('+constraintString1+')' + bgString + constraintString2  
                 #fitStatus, chiSq, covarianceTable, paramTable, fitWorkspace = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit') #This is antiquated as of sept 25 2017
-                fitResults = Fit(Function=functionString, InputWorkspace='tofWS', CreateOutput = True, Output='fit')
+                fitResults = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit')
                 fitStatus = fitResults.OutputStatus
                 chiSq = fitResults.OutputChi2overDoF
                 
@@ -543,9 +543,9 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                     functionString = funcString1 + ', constraints=('+constraintString1+')' + bgString + constraintString2 
                     try:
                             #fitStatus, chiSq2, covarianceTable, paramTable, fitWorkspace = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit2') #Antiquated, Sept 25 2017
-                        fitResults = Fit(Function=functionString, InputWorkspace='tofWS', CreateOutput=True, Output='fit2')
-                        fitStatus = fitResults.OutputStatus
-                        chiSq2 = fitResults.OutputChi2overDoF
+                        fitResults2 = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit2')
+                        fitStatus2 = fitResults2.OutputStatus
+                        chiSq2 = fitResults2.OutputChi2overDoF
                     except:
                             print 'CANNOT DO SECOND FIT, GOING BACK TO FIRST!'
                 
