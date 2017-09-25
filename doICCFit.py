@@ -119,4 +119,3 @@ for sampleRun in sampleRuns:
     for ws in wsList:
         if 'MDbox_' in ws:
             mtd.remove(ws)
-
