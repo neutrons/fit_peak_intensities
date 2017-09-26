@@ -56,11 +56,11 @@ nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
 sampleRuns = range(15647,15670)
 peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.integrate'
 UBFile =  '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.mat'
-#UBFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/%i_Niggli.mat'
+UBFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/%i_Niggli.mat'
 crystalSystem ='cubic'
 latticeConstants = [5.43071] #Since it's cubic, this we only need a (in angstrom)
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
-descriptor = 'si_constraints_0p8hkl' #Does not end with '/'
+descriptor = 'si_newUB_0p8hkl' #Does not end with '/'
 
 
 figsFormat = workDir + descriptor+'/figs/mantid_%i_%i.png'
@@ -99,8 +99,8 @@ for sampleRun in sampleRuns:
     else:
         panelDict = None
 
-    #LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFormat%sampleRun)
-    #UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
+    LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFormat%sampleRun)
+    UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
 
     paramList = list()
     fileName = nxsTemplate%sampleRun
