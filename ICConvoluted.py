@@ -20,6 +20,11 @@ class IkedaCarpenterConvoluted(IFunction1D):
         self.declareParameter("scale") #c[4]
         self.declareParameter("hatWidth") #c[5]
         self.declareParameter("k_conv") #c[6]
+
+        self.setConstraintPenaltyFactor("A", 1.0e10)
+        self.setConstraintPenaltyFactor("B", 1.0e10)
+        self.setConstraintPenaltyFactor("R", 1.0e10)
+        self.setConstraintPenaltyFactor("T0", 1.0e10)
     
     #Evaluate the function
     def function1D(self, t):
