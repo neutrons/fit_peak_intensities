@@ -343,11 +343,10 @@ def getInitialGuess(tofWS, paramNames, energy, flightPath):
 #Get sample loads the NeXus evnts file and converts from detector space to
 # reciprocal space.
 # run is the run number.
-# UBFile is a string for the file containng the UB matrix for the crystal
 # DetCalFile is a string for the file containng the detector calibration
 # workDir is not used
 # loadDir is the directory to extract the data from
-def getSample(run,  UBFile,  DetCalFile,  workDir, fileName):
+def getSample(run, DetCalFile,  workDir, fileName):
     #data
     print 'Loading file', fileName
     data = Load(Filename = fileName)

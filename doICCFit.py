@@ -32,9 +32,7 @@ loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
 sampleRuns = range(15629,  15644)
 peaksFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Monoclinic_C.integrate'
-UBFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Monoclinic_C.mat'
-crystalSystem = 'monoclinic'
-latticeConstants = [6.5175,18.9722,9.7936,90.0000,108.9985,90.0000]
+UBFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/%i_Niggli.mat'
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
 descriptor = 'scolecite_removeEdges_0p8hkl' #Does not end with '/'
 '''
@@ -45,7 +43,6 @@ loadDir = '/SNS/MANDI/IPTS-8776/nexus/'
 nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
 sampleRuns = [8401]
 peaksFile=None#'/SNS/MANDI/IPTS-8776/shared/Natrolite/New/8041_Niggli.integrate'
-UBFile='/SNS/MANDI/IPTS-8776/shared/Natrolite/Old/UB.mat'
 DetCalFile = '/SNS/MANDI/shared/calibration/MANDI_500.DetCal'
 descriptor = 'natrolite' #Does not end with '/'
 '''
@@ -55,10 +52,7 @@ loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
 sampleRuns = range(15647,15670)
 peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.integrate'
-UBFile =  '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.mat'
-#UBFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/%i_Niggli.mat'
-crystalSystem ='cubic'
-latticeConstants = [5.43071] #Since it's cubic, this we only need a (in angstrom)
+UBFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/%i_Niggli.mat'
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
 descriptor = 'si_constraints_0p8hkl' #Does not end with '/'
 
@@ -77,7 +71,7 @@ else:
     os.mkdir(workDir + descriptor)
     os.mkdir(workDir + descriptor + '/figs/')
 
-
+#Load our peaks files
 if peaksFile is not None:
     peaks_ws = LoadIsawPeaks(Filename = peaksFile)
     #Get detector bank for each peak
@@ -85,36 +79,42 @@ if peaksFile is not None:
     detBankList = np.zeros(len(peakList))
     for i, peak in enumerate(peakList):
         detBankList[i] = peak.detnum
-    LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFile)
-    UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
 
 logFile = workDir + descriptor + '/log.log'
-ICFitLog.writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, fracStop, refineCenter, removeEdges, doVolumeNormalization, peaksFile, UBFile, DetCalFile, descriptor)
+ICFitLog.writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, fracStop, refineCenter, removeEdges, doVolumeNormalization, peaksFile, UBFormat, DetCalFile, descriptor)
 
 for sampleRun in sampleRuns:
+    
+    #Set up a few things for the run
+    paramList = list()
+    fileName = nxsTemplate%sampleRun
 
+    #If we want to remove edges, we rebuild the panel dictionary every run
+    # TODO this can be reformulated in QLab and apply R each box.
     if removeEdges:
         instrumentFile = EdgeTools.getInstrumentFile(peaks_ws, peaksFile)
         panelDict = EdgeTools.getInstrumentDict(instrumentFile, peaks_ws, sampleRun, fitOrder=2)
     else:
         panelDict = None
-
-    #LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFormat%sampleRun)
-    #UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
-
-    paramList = list()
-    fileName = nxsTemplate%sampleRun
-    MDdata = ICCFT.getSample(sampleRun, UBFile, DetCalFile, workDir, fileName)
-
+    #Conver the sample to reciprocal space
+    MDdata = ICCFT.getSample(sampleRun, DetCalFile, workDir, fileName)
+    
+    #Load the new UB and find peaks in this run if we need to.
     if peaksFile is None:
         peaks_ws = FindPeaksMD(InputWorkspace='MDdata', PeakDistanceThreshold=1.1304, MaxPeaks=1000, DensityThresholdFactor=30, OutputWorkspace='peaks_ws')
-        LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFile)
+        LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFormat%sampleRun)
+        UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
+    else:
+        LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFormat%sampleRun)
         UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
 
+    #Do the actual integration
     peaks_ws,paramList= ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, detBankList, UBMatrix, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.0075, fracStop=fracStop, removeEdges=removeEdges, panelDict=panelDict)
+
+    #Save the results and delete the leftovers
     SaveIsawPeaks(InputWorkspace='peaks_ws', Filename=workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))
     np.savetxt(workDir+descriptor+'/params_%i_%s.dat'%(sampleRun, descriptor), np.array(paramList))
-
+    
     wsList = mtd.getObjectNames()
     for ws in wsList:
         if 'MDbox_' in ws:
