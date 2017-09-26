@@ -52,9 +52,10 @@ loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
 sampleRuns = range(15647,15670)
 peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.integrate'
+
 UBFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/%i_Niggli.mat'
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
-descriptor = 'si_constraints_0p8hkl' #Does not end with '/'
+descriptor = 'si_newUB_0p8hkl' #Does not end with '/'
 
 
 figsFormat = workDir + descriptor+'/figs/mantid_%i_%i.png'
@@ -96,10 +97,12 @@ for sampleRun in sampleRuns:
         panelDict = EdgeTools.getInstrumentDict(instrumentFile, peaks_ws, sampleRun, fitOrder=2)
     else:
         panelDict = None
+
     #Conver the sample to reciprocal space
     MDdata = ICCFT.getSample(sampleRun, DetCalFile, workDir, fileName)
     
     #Load the new UB and find peaks in this run if we need to.
+
     if peaksFile is None:
         peaks_ws = FindPeaksMD(InputWorkspace='MDdata', PeakDistanceThreshold=1.1304, MaxPeaks=1000, DensityThresholdFactor=30, OutputWorkspace='peaks_ws')
         LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFormat%sampleRun)
