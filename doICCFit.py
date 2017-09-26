@@ -18,13 +18,16 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 
 # Some parameters
 dtSpread = 0.03 #how far we look on either side of the nominal peak
-dtBinWidth = 4
+dtBinWidth = 4 #Width (in us) in TOF profile bins
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 doVolumeNormalization = True #True if you want to normalize TOF profiles by volume
-refineCenter = False
-removeEdges = False 
+refineCenter = False #True if you want to determine new centers - still not very good
+removeEdges = False #True if you want to not consider q-pixels that are off detector faces
 fracHKL = 0.8 #Fraction of HKL to look on either side
 fracStop = 0.01 #Fraction of max counts to include in peak selection
+moderatorCoefficientsFile = 'franz_coefficients_2017.dat'
+calibrationDictFile = 'det_calibration/calibration_dictionary.pkl'
+
 
 '''
 #Scolecite - 2016A
@@ -74,12 +77,12 @@ else:
 #Load our peaks files and detector fitting parameters
 if peaksFile is not None:
     peaks_ws = LoadIsawPeaks(Filename = peaksFile)
-padeCoefficients = ICCFT.getModeratorCoefficients('franz_coefficients_2017.dat')
-calibrationDict = pickle.load(open('det_calibration/calibration_dictionary.pkl','rb'))
+padeCoefficients = ICCFT.getModeratorCoefficients(moderatorCoefficientsFile)
+calibrationDict = pickle.load(open(calibrationDictFile, 'rb'))
 
 #Write the log
 logFile = workDir + descriptor + '/log.log'
-ICFitLog.writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, fracStop, refineCenter, removeEdges, doVolumeNormalization, peaksFile, UBFormat, DetCalFile, descriptor)
+ICFitLog.writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, fracStop, refineCenter, removeEdges, doVolumeNormalization, peaksFile, UBFormat, DetCalFile, moderatorCoefficientsFile, calibrationDictFile, descriptor)
 
 for sampleRun in sampleRuns:
     
