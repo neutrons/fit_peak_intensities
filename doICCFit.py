@@ -8,7 +8,6 @@ import ICConvoluted as ICC
 reload(ICC)
 import os 
 import sys
-from parsePeaksFile import getPeaks
 import ICFitLog
 reload(ICFitLog)
 import getEdgePixels as EdgeTools
@@ -75,12 +74,8 @@ else:
 #Load our peaks files
 if peaksFile is not None:
     peaks_ws = LoadIsawPeaks(Filename = peaksFile)
-    #Get detector bank for each peak
-    peakList = getPeaks(peaksFile)
-    detBankList = np.zeros(len(peakList))
-    for i, peak in enumerate(peakList):
-        detBankList[i] = peak.detnum
 
+#Write the log
 logFile = workDir + descriptor + '/log.log'
 ICFitLog.writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, fracStop, refineCenter, removeEdges, doVolumeNormalization, peaksFile, UBFormat, DetCalFile, descriptor)
 
@@ -96,7 +91,7 @@ for sampleRun in sampleRuns:
         instrumentFile = EdgeTools.getInstrumentFile(peaks_ws, peaksFile)
         panelDict = EdgeTools.getInstrumentDict(instrumentFile, peaks_ws, sampleRun, fitOrder=2)
     else:
-        panelDict = None
+        panelDict = EdgeTools.getPanelDictionary(instrumentFile)
 
     #Conver the sample to reciprocal space
     MDdata = ICCFT.getSample(sampleRun, DetCalFile, workDir, fileName)
@@ -112,7 +107,7 @@ for sampleRun in sampleRuns:
         UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
 
     #Do the actual integration
-    peaks_ws,paramList= ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, detBankList, UBMatrix, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.0075, fracStop=fracStop, removeEdges=removeEdges, panelDict=panelDict)
+    peaks_ws,paramList= ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, panelDict, UBMatrix, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.0075, fracStop=fracStop, removeEdges=removeEdges)
 
     #Save the results and delete the leftovers
     SaveIsawPeaks(InputWorkspace='peaks_ws', Filename=workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))

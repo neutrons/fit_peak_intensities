@@ -462,7 +462,7 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQPixel=0.005,fr
     return Box
 
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
-def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, figsFormat=None, dtBinWidth = 4, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, doVolumeNormalization=False, minFracPixels=0.0, fracStop = 0.01, removeEdges=False, panelDict=None):
+def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, figsFormat=None, dtBinWidth = 4, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, doVolumeNormalization=False, minFracPixels=0.0, fracStop = 0.01, removeEdges=False):
     if removeEdges is True and panelDict is None:
         print 'REMOVE EDGES WITHOUT panelDict - IMPOSSIBLE!!'
         0/0
@@ -478,7 +478,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                 energy = 81.804 / wavelength**2 / 1000.0 #in eV
                 flightPath = peak.getL1() + peak.getL2() #in m
                 scatteringHalfAngle = 0.5*peak.getScattering()
-                detNumber = detBankList[i]
+                detNumber = EdgeTools.getDetectorBank(panelDict, peak.getDetectorID())['bankNumber']
                 print '---fitting peak ' + str(i) + '  Num events: ' + str(Box.getNEvents()), ' ', peak.getHKL()
                 if Box.getNEvents() < 1 or np.all(np.abs(peak.getHKL())==0):
                     print "Peak %i has 0 events or is HKL=000. Skipping!"%i
