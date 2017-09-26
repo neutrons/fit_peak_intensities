@@ -7,8 +7,7 @@ from mantid.simpleapi import *
 import ICConvoluted as ICC
 reload(ICC)
 import os 
-import sys
-from parsePeaksFile import getPeaks
+import pickle
 import ICFitLog
 reload(ICFitLog)
 import getEdgePixels as EdgeTools
@@ -18,13 +17,16 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 
 # Some parameters
 dtSpread = 0.03 #how far we look on either side of the nominal peak
-dtBinWidth = 4
+dtBinWidth = 4 #Width (in us) in TOF profile bins
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 doVolumeNormalization = True #True if you want to normalize TOF profiles by volume
-refineCenter = False
-removeEdges = True 
+refineCenter = False #True if you want to determine new centers - still not very good
+removeEdges = False #True if you want to not consider q-pixels that are off detector faces
 fracHKL = 0.8 #Fraction of HKL to look on either side
 fracStop = 0.01 #Fraction of max counts to include in peak selection
+moderatorCoefficientsFile = 'franz_coefficients_2017.dat'
+calibrationDictFile = 'det_calibration/calibration_dictionary.pkl'
+
 
 '''
 #Scolecite - 2016A
@@ -52,7 +54,6 @@ loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
 sampleRuns = range(15647,15670)
 peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.integrate'
-
 UBFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/%i_Niggli.mat'
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
 descriptor = 'si_newUB_0p8hkl' #Does not end with '/'
@@ -72,17 +73,15 @@ else:
     os.mkdir(workDir + descriptor)
     os.mkdir(workDir + descriptor + '/figs/')
 
-#Load our peaks files
+#Load our peaks files and detector fitting parameters
 if peaksFile is not None:
     peaks_ws = LoadIsawPeaks(Filename = peaksFile)
-    #Get detector bank for each peak
-    peakList = getPeaks(peaksFile)
-    detBankList = np.zeros(len(peakList))
-    for i, peak in enumerate(peakList):
-        detBankList[i] = peak.detnum
+padeCoefficients = ICCFT.getModeratorCoefficients(moderatorCoefficientsFile)
+calibrationDict = pickle.load(open(calibrationDictFile, 'rb'))
 
+#Write the log
 logFile = workDir + descriptor + '/log.log'
-ICFitLog.writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, fracStop, refineCenter, removeEdges, doVolumeNormalization, peaksFile, UBFormat, DetCalFile, descriptor)
+ICFitLog.writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, fracStop, refineCenter, removeEdges, doVolumeNormalization, peaksFile, UBFormat, DetCalFile, moderatorCoefficientsFile, calibrationDictFile, descriptor)
 
 for sampleRun in sampleRuns:
     
@@ -92,17 +91,16 @@ for sampleRun in sampleRuns:
 
     #If we want to remove edges, we rebuild the panel dictionary every run
     # TODO this can be reformulated in QLab and apply R each box.
+    instrumentFile = EdgeTools.getInstrumentFile(peaks_ws, peaksFile)
     if removeEdges:
-        instrumentFile = EdgeTools.getInstrumentFile(peaks_ws, peaksFile)
         panelDict = EdgeTools.getInstrumentDict(instrumentFile, peaks_ws, sampleRun, fitOrder=2)
     else:
-        panelDict = None
+        panelDict = EdgeTools.getPanelDictionary(instrumentFile)
 
     #Conver the sample to reciprocal space
     MDdata = ICCFT.getSample(sampleRun, DetCalFile, workDir, fileName)
     
     #Load the new UB and find peaks in this run if we need to.
-
     if peaksFile is None:
         peaks_ws = FindPeaksMD(InputWorkspace='MDdata', PeakDistanceThreshold=1.1304, MaxPeaks=1000, DensityThresholdFactor=30, OutputWorkspace='peaks_ws')
         LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFormat%sampleRun)
@@ -112,7 +110,7 @@ for sampleRun in sampleRuns:
         UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
 
     #Do the actual integration
-    peaks_ws,paramList= ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, detBankList, UBMatrix, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.0075, fracStop=fracStop, removeEdges=removeEdges, panelDict=panelDict)
+    peaks_ws,paramList= ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, panelDict, UBMatrix, padeCoefficients, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.0075, fracStop=fracStop, removeEdges=removeEdges, calibrationDict=calibrationDict)
 
     #Save the results and delete the leftovers
     SaveIsawPeaks(InputWorkspace='peaks_ws', Filename=workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))
