@@ -7,7 +7,6 @@ from mantid.simpleapi import *
 import ICConvoluted as ICC
 reload(ICC)
 import os 
-import sys
 import pickle
 import ICFitLog
 reload(ICFitLog)
