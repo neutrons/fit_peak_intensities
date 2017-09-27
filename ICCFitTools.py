@@ -280,11 +280,11 @@ def oneOverXSquared(x, A, bg):
     return A/np.sqrt(x) + bg
 
 # d = calibration dictionary
-def getInitialGuessByDetector(tofWS, paramNames, energy, flightPath, detNumber):
+def getInitialGuessByDetector(tofWS, paramNames, energy, flightPath, detNumber, calibrationDict):
     x0 = np.zeros(len(paramNames))
     x = tofWS.readX(0)
     y = tofWS.readY(0)
-    d = pickle.load(open('det_calibration/calibration_dictionary.pkl','rb'))
+    d = calibrationDict
     x0[0] = np.polyval(d['det_%i'%detNumber]['A'],energy)
     x0[1] = np.polyval(d['det_%i'%detNumber]['B'],energy)
     x0[2] = np.polyval(d['det_%i'%detNumber]['R'],energy)
@@ -294,39 +294,19 @@ def getInitialGuessByDetector(tofWS, paramNames, energy, flightPath, detNumber):
     x0[6] = 200
     return x0
 
-def getInitialGuessSpline(tofWS, paramNames, energy, flightPath):
-    x0 = np.zeros(len(paramNames))
-    x = tofWS.readX(0)
-    y = tofWS.readY(0)
-    splineDict = pickle.load(open('get_franz_coefficients/splineDict.pkl','rb'))
-    for i, param in enumerate(['A','B','R','T0']):
-        x0[i] = interpolate.splev(energy, splineDict[param])
-    x0[3] += getT0Shift(energy, flightPath) #Simulates at L~=0, we are ~18m downstream, this adjusts for that time.
-    x0[4] = (np.max(y))/x0[0]*2*2.5  #Amplitude
-    x0[5] = 0.5 #hat width in IDX units
-    x0[6] = interpolate.splev(energy, splineDict['k_conv']) #Exponential decay rate for convolution
-
-    #Phenomenology
-    x0[0] /= 1.2
-    x0[2] += 0.05
-    x0[3] -= 10 #This is lazy - we can do it detector-by-detector
-
-    return x0 
-
 #Returns intial parameters for fitting based on a few quickly derived TOF
 # profile parameters.  tofWS is a worskapce containng the TOF profile,
 # paramNames is the list of parameter names
 # energy is the energy of the peak (units: eV)
 # flightPath is L = L1 + L2 (units: m)
-def getInitialGuess(tofWS, paramNames, energy, flightPath):
+def getInitialGuess(tofWS, paramNames, energy, flightPath, padeCoefficients):
     x0 = np.zeros(len(paramNames))
     x = tofWS.readX(0)
     y = tofWS.readY(0)
-    franzCoeff = getModeratorCoefficients('franz_coefficients_2017.dat')
-    x0[0] = pade(franzCoeff['A'], energy)
-    x0[1] = pade(franzCoeff['B'], energy)
-    x0[2] = pade(franzCoeff['R'], energy)
-    x0[3] = pade(franzCoeff['T0'], energy)
+    x0[0] = pade(padeCoefficients['A'], energy)
+    x0[1] = pade(padeCoefficients['B'], energy)
+    x0[2] = pade(padeCoefficients['R'], energy)
+    x0[3] = pade(padeCoefficients['T0'], energy)
 
     #These are still phenomenological
     x0[0] /= 1.2
@@ -343,11 +323,10 @@ def getInitialGuess(tofWS, paramNames, energy, flightPath):
 #Get sample loads the NeXus evnts file and converts from detector space to
 # reciprocal space.
 # run is the run number.
-# UBFile is a string for the file containng the UB matrix for the crystal
 # DetCalFile is a string for the file containng the detector calibration
 # workDir is not used
 # loadDir is the directory to extract the data from
-def getSample(run,  UBFile,  DetCalFile,  workDir, fileName):
+def getSample(run, DetCalFile,  workDir, fileName):
     #data
     print 'Loading file', fileName
     data = Load(Filename = fileName)
@@ -463,7 +442,7 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQPixel=0.005,fr
     return Box
 
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
-def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, figsFormat=None, dtBinWidth = 4, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, doVolumeNormalization=False, minFracPixels=0.0, fracStop = 0.01, removeEdges=False, panelDict=None):
+def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, padeCoefficients, figsFormat=None, dtBinWidth = 4, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, doVolumeNormalization=False, minFracPixels=0.0, fracStop = 0.01, removeEdges=False, calibrationDict=None):
     if removeEdges is True and panelDict is None:
         print 'REMOVE EDGES WITHOUT panelDict - IMPOSSIBLE!!'
         0/0
@@ -479,7 +458,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                 energy = 81.804 / wavelength**2 / 1000.0 #in eV
                 flightPath = peak.getL1() + peak.getL2() #in m
                 scatteringHalfAngle = 0.5*peak.getScattering()
-                detNumber = detBankList[i]
+                detNumber = EdgeTools.getDetectorBank(panelDict, peak.getDetectorID())['bankNumber']
                 print '---fitting peak ' + str(i) + '  Num events: ' + str(Box.getNEvents()), ' ', peak.getHKL()
                 if Box.getNEvents() < 1 or np.all(np.abs(peak.getHKL())==0):
                     print "Peak %i has 0 events or is HKL=000. Skipping!"%i
@@ -502,9 +481,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                 fICC = ICC.IkedaCarpenterConvoluted()
                 fICC.init()
                 paramNames = [fICC.getParamName(x) for x in range(fICC.numParams())]
-                #x0 = getInitialGuessByDetector(tofWS,paramNames,energy,flightPath, detNumber)
-                #x0 = getInitialGuessSpline(tofWS,paramNames,energy,flightPath)
-                x0 = getInitialGuess(tofWS,paramNames,energy,flightPath)
+                x0 = getInitialGuess(tofWS,paramNames,energy,flightPath,padeCoefficients)
                 [fICC.setParameter(iii,v) for iii,v in enumerate(x0[:fICC.numParams()])]
                 x = tofWS.readX(0)
                 y = tofWS.readY(0)
@@ -536,7 +513,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, detBankList, UBMatrix, fig
                 if chiSq > 2.0: #The initial fit isn't great - let's see if we can do better
                     print '############REFITTING########### on %4.4f'%chiSq
                     #x0 = getInitialGuess(tofWS,paramNames,energy,flightPath)
-                    x0 = getInitialGuessByDetector(tofWS,paramNames,energy,flightPath, detNumber)
+                    x0 = getInitialGuessByDetector(tofWS,paramNames,energy,flightPath, detNumber, calibrationDict)
                     paramWS = mtd['fit_parameters']
                     paramString = ''.join(['%s=%4.8f, '%(fICC.getParamName(iii),x0[iii]) for iii in range(fICC.numParams())])
                     funcString1 = 'name=IkedaCarpenterConvoluted, ' + paramString[:-2]
