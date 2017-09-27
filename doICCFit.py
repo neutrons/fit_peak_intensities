@@ -21,10 +21,10 @@ dtBinWidth = 4 #Width (in us) in TOF profile bins
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 doVolumeNormalization = True #True if you want to normalize TOF profiles by volume
 refineCenter = False #True if you want to determine new centers - still not very good
-removeEdges = True #True if you want to not consider q-pixels that are off detector faces
+removeEdges = False #True if you want to not consider q-pixels that are off detector faces
 fracHKL = 0.8 #Fraction of HKL to look on either side
 fracStop = 0.01 #Fraction of max counts to include in peak selection
-moderatorCoefficientsFile = 'franz_coefficients_2017.dat'
+moderatorCoefficientsFile = 'franz_coefficients_2010.dat'
 calibrationDictFile = 'det_calibration/calibration_dictionary.pkl'
 
 
@@ -56,7 +56,7 @@ sampleRuns = range(15647,15670)
 peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.integrate'
 UBFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/%i_Niggli.mat'
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
-descriptor = 'si_newUB_0p8hkl' #Does not end with '/'
+descriptor = 'si_constraints_oldCoeff_0p8hkl' #Does not end with '/'
 
 
 figsFormat = workDir + descriptor+'/figs/mantid_%i_%i.png'

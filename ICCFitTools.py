@@ -317,7 +317,7 @@ def getInitialGuess(tofWS, paramNames, energy, flightPath, padeCoefficients):
     x0[4] = (np.max(y))/x0[0]*2*2.5  #Amplitude
     x0[5] = 0.5 #hat width in IDX units
     #x0[5] = 3.0 #hat width in us
-    x0[6] = 120.0 #Exponential decay rate for convolution
+    x0[6] = 260.0 #Exponential decay rate for convolution
     return x0
 
 #Get sample loads the NeXus evnts file and converts from detector space to
@@ -502,7 +502,8 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, padeC
                 bgString= '; name=LinearBackground,A0=%4.8f,A1=%4.8f'%(bgx0[1],bgx0[0]) #A0=const, A1=slope
                 constraintString2 = ', constraints=(-1.0 < A1 < 1.0)'
                 
-                functionString = funcString1 + 'constraints=('+constraintString1+')' + bgString + constraintString2  
+                #functionString = funcString1 + 'constraints=('+constraintString1+')' + bgString + constraintString2  
+                functionString = funcString1[:-2] + bgString + constraintString2  
                 #fitStatus, chiSq, covarianceTable, paramTable, fitWorkspace = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit') #This is antiquated as of sept 25 2017
                 fitResults = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit')
                 fitStatus = fitResults.OutputStatus
@@ -546,13 +547,15 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, padeC
                 peak.setSigmaIntensity(sigma)
                 if figsFormat is not None:
                     plotFit(figsFormat, r,tofWS,fICC,peak.getRunNumber(), i, energy, chiSq,fitBG, xStart, xStop, bgx0)
-                paramList.append([i, energy, np.sum(icProfile), 0.0,chiSq] + [mtd['fit_Parameters'].row(i)['Value'] for i in range(mtd['fit_parameters'].rowCount())])
+                paramList.append([i, energy, np.sum(icProfile), 0.0,chiSq] + [param.row(i)['Value'] for i in range(param.rowCount())])
+                if param.row(2)['Value'] < 0:
+                    print i, [param.row(i)['Value'] for i in range(param.rowCount())]
                 mtd.remove('MDbox_'+str(run)+'_'+str(i))
             except KeyboardInterrupt:
                 print 'KeyboardInterrupt: Exiting Program!!!!!!!'
                 sys.exit()
             except: #Error with fitting
-                #raise
+                raise
                 peak.setIntensity(0)
                 peak.setSigmaIntensity(1)
                 print 'Error with peak ' + str(i)
