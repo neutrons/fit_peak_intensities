@@ -552,7 +552,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, padeC
                 print 'KeyboardInterrupt: Exiting Program!!!!!!!'
                 sys.exit()
             except: #Error with fitting
-                raise
+                #raise
                 peak.setIntensity(0)
                 peak.setSigmaIntensity(1)
                 print 'Error with peak ' + str(i)
