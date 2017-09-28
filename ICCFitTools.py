@@ -12,6 +12,7 @@ import ICConvoluted as ICC
 reload(ICC)
 import getEdgePixels as EdgeTools
 reload(EdgeTools)
+import itertools
 
 #getDQ determines the q spacing required to make an MDBox 
 # extending from [-hkl+0.5,hkl-0.5].  Inputs are a peak 
@@ -48,8 +49,13 @@ def getDQ(peak, latticeSpacing, crystalSystem):
 
 # UB = UBmatrix as loaded by LoadIsawUB().  Only works in the
 #    Qsample frame right now
+#   TODO - calculate this once per run, not every peak
 def getDQFracHKL(peak, UB, frac=0.5):
     dQ = np.zeros((3,2))
+    q = [UB.dot(v) for v in [seq for seq in itertools.product([-0.8,0.8],repeat=3)]] #Todo - hardcode to speed up
+    dQ[:,0] = np.max(q,axis=0)#TODO THIS CAN BE 1D since it's symmetric
+    dQ[:,1] = np.min(q,axis=0) 
+    '''
     hkl = peak.getHKL()
     if np.all(hkl == np.array([0,0,0])):
         return 0.5*np.ones((3,2))
@@ -59,6 +65,7 @@ def getDQFracHKL(peak, UB, frac=0.5):
     qMinus = UB.dot(hkl-dhkl)*2*np.pi
     dQ[:,0] = qMinus - q0
     dQ[:,1] = qPlus - q0    
+    '''
     '''
     for hklIDX in range(3):
         dhkl = np.zeros(3)
@@ -306,16 +313,13 @@ def getInitialGuess(tofWS, paramNames, energy, flightPath, padeCoefficients,detN
     x0[0] = pade(padeCoefficients['A'], energy)
     x0[1] = pade(padeCoefficients['B'], energy)
     x0[2] = pade(padeCoefficients['R'], energy)
-    x0[3] = oneOverXSquared(energy, calibDict['det_%i'%detNumber]['T0'][0], calibDict['det_%i'%detNumber]['T0'][1])
-    #x0[3] = pade(padeCoefficients['T0'], energy)
-    #x0[3] += getT0Shift(energy, flightPath) #Franz simulates at moderator exit, we are ~18m downstream, this adjusts for that time.
+    #x0[3] = oneOverXSquared(energy, calibDict['det_%i'%detNumber]['T0'][0], calibDict['det_%i'%detNumber]['T0'][1])
+    x0[3] = pade(padeCoefficients['T0'], energy) + getT0Shift(energy, flightPath) #extra is for ~18m downstream we are
 
     #These are still phenomenological
-    #x0[0] /= 1.2
-    #x0[2] += 0.05
-    #TODO: This can be calculated once and absorbed into the coefficients.
-    #x0[3] -= 10 #This is lazy - we can do it detector-by-detector
-    x0[4] = (np.max(y))*2.5  #Amplitude
+    x0[0] /= 1.2
+    x0[2] += 0.05
+    x0[4] = (np.max(y))*2.5  #Amplitude, will be rescaled later
     x0[5] = 0.5 #hat width in IDX units
     x0[6] = 260.0 #Exponential decay rate for convolution
     return x0
@@ -418,6 +422,7 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQPixel=0.005,fr
     Qy = QSample[1]
     Qz = QSample[2]
     dQ = np.abs(getDQFracHKL(peak, UBMatrix, frac = fracHKL))
+    print dQ
     dQ[dQ > 0.5] = 0.5
     nPtsQ = np.round(np.sum(dQ/dQPixel,axis=1)).astype(int)
     if refineCenter: #Find better center by flattining the cube in each direction and fitting a Gaussian
@@ -555,7 +560,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, padeC
                 print 'KeyboardInterrupt: Exiting Program!!!!!!!'
                 sys.exit()
             except: #Error with fitting
-                #raise
+                raise
                 peak.setIntensity(0)
                 peak.setSigmaIntensity(1)
                 print 'Error with peak ' + str(i)
