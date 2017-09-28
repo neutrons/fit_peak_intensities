@@ -22,7 +22,7 @@ workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 doVolumeNormalization = True #True if you want to normalize TOF profiles by volume
 refineCenter = False #True if you want to determine new centers - still not very good
 removeEdges = True #True if you want to not consider q-pixels that are off detector faces
-fracHKL = 0.5 #Fraction of HKL to look on either side
+fracHKL = 0.8 #Fraction of HKL to look on either side
 fracStop = 0.01 #Fraction of max counts to include in peak selection
 moderatorCoefficientsFile = 'franz_coefficients_2017.dat'
 calibrationDictFile = 'det_calibration/calibration_dictionary.pkl'
@@ -34,7 +34,9 @@ loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
 sampleRuns = range(15629,  15644)
 peaksFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/%i_Niggli.integrate'
+peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Monoclinic_C.integrate'
 UBFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/%i_Niggli.mat'
+UBFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Monoclinic_C.mat'
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
 descriptor = 'scolecite_constraints_oldCoeff_0p8hkl' #Does not end with '/'
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
@@ -74,6 +76,12 @@ else:
     os.mkdir(workDir + descriptor)
     os.mkdir(workDir + descriptor + '/figs/')
 
+peaks_ws = LoadIsawPeaks(Filename = peaksFile)
+LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFile)
+UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
+
+
+
 #Load our peaks files and detector fitting parameters
 padeCoefficients = ICCFT.getModeratorCoefficients(moderatorCoefficientsFile)
 calibrationDict = pickle.load(open(calibrationDictFile, 'rb'))
@@ -87,7 +95,7 @@ for sampleRun in sampleRuns:
     #Set up a few things for the run
     paramList = list()
     fileName = nxsTemplate%sampleRun
-    
+    ''' 
     #Load the new UB and find peaks in this run if we need to.
     if peaksFormat is None:
         peaks_ws = FindPeaksMD(InputWorkspace='MDdata', PeakDistanceThreshold=1.1304, MaxPeaks=1000, DensityThresholdFactor=30, OutputWorkspace='peaks_ws')
@@ -97,7 +105,7 @@ for sampleRun in sampleRuns:
         peaks_ws = LoadIsawPeaks(Filename = peaksFormat%sampleRun)
         LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFormat%sampleRun)
         UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
-
+    '''
     #If we want to remove edges, we rebuild the panel dictionary every run
     # TODO this can be reformulated in QLab and apply R each box.
     instrumentFile = EdgeTools.getInstrumentFile(peaks_ws, peaksFormat%sampleRun)

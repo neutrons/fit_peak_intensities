@@ -319,9 +319,10 @@ def getInitialGuess(tofWS, paramNames, energy, flightPath, padeCoefficients,detN
     #These are still phenomenological
     x0[0] /= 1.2
     x0[2] += 0.05
-    x0[4] = (np.max(y))*2.5  #Amplitude, will be rescaled later
+    x0[3] -= 10 #This is lazy - we can do it detector-by-detector
+    x0[4] = (np.max(y))/x0[0]*2*2.5  #Amplitude
     x0[5] = 0.5 #hat width in IDX units
-    x0[6] = 260.0 #Exponential decay rate for convolution
+    x0[6] = 120.0 #Exponential decay rate for convolution
     return x0
 
 #Get sample loads the NeXus evnts file and converts from detector space to
