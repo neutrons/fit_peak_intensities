@@ -28,7 +28,6 @@ moderatorCoefficientsFile = 'franz_coefficients_2017.dat'
 calibrationDictFile = 'det_calibration/calibration_dictionary.pkl'
 
 
-'''
 #Scolecite - 2016A
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
@@ -37,7 +36,6 @@ peaksFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_M
 UBFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/%i_Niggli.mat'
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
 descriptor = 'scolecite_removeEdges_0p8hkl' #Does not end with '/'
-'''
 
 '''
 #Natrolite - 2016 - MANDI
@@ -49,6 +47,7 @@ DetCalFile = '/SNS/MANDI/shared/calibration/MANDI_500.DetCal'
 descriptor = 'natrolite' #Does not end with '/'
 '''
 
+'''
 #Si - 2016A
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
@@ -57,6 +56,7 @@ peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/S
 UBFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/%i_Niggli.mat'
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
 descriptor = 'si_newUB_0p8hkl' #Does not end with '/'
+'''
 
 
 figsFormat = workDir + descriptor+'/figs/mantid_%i_%i.png'
