@@ -42,8 +42,9 @@ class IkedaCarpenterConvoluted(IFunction1D):
         T0 = self.getParamValue(3)
         scale = self.getParamValue(4) 
         hatWidth  = self.getParamValue(5) 
-        k_conv  = self.getParamValue(6) 
-        f_int = scale*A/2*( (1-R)*np.power((A*(t-T0)),2)*
+        k_conv  = self.getParamValue(6)
+        #n.b. A/2 scale factor has been removed to make A more independent 
+        f_int = scale*( (1-R)*np.power((A*(t-T0)),2)*
             np.exp(-A*(t-T0))+2*R*A**2*B/np.power((A-B),3) *
             (np.exp(-B*(t-T0))-np.exp(-A*(t-T0))*(1+(A-B)*(t-T0)+0.5*np.power((A-B),2)*np.power((t-T0),2)) ) )
         f_int[t<T0] = 0
