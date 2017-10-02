@@ -22,7 +22,7 @@ workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 doVolumeNormalization = True #True if you want to normalize TOF profiles by volume
 refineCenter = False #True if you want to determine new centers - still not very good
 removeEdges = True #True if you want to not consider q-pixels that are off detector faces
-fracHKL = 0.8 #Fraction of HKL to look on either side
+fracHKL = 0.35 #Fraction of HKL to look on either side
 fracStop = 0.01 #Fraction of max counts to include in peak selection
 moderatorCoefficientsFile = 'franz_coefficients_2017.dat'
 calibrationDictFile = 'det_calibration/calibration_dictionary.pkl'
@@ -33,13 +33,16 @@ calibrationDictFile = 'det_calibration/calibration_dictionary.pkl'
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
 sampleRuns = range(15629,  15644)
+
 peaksFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/%i_Niggli.integrate'
 peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Monoclinic_C.integrate'
+
 UBFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/%i_Niggli.mat'
 UBFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Monoclinic_C.mat'
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
-descriptor = 'scolecite_constraints_oldCoeff_0p8hkl' #Does not end with '/'
+descriptor = 'scolecite_newDQ_niggli' #Does not end with '/'
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
+
 
 
 '''
@@ -51,6 +54,7 @@ peaksFile=None#'/SNS/MANDI/IPTS-8776/shared/Natrolite/New/8041_Niggli.integrate'
 DetCalFile = '/SNS/MANDI/shared/calibration/MANDI_500.DetCal'
 descriptor = 'natrolite' #Does not end with '/'
 '''
+
 '''
 #Si - 2016A
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
@@ -59,9 +63,10 @@ sampleRuns = range(15647,15670)
 peaksFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/%i_Niggli.integrate'
 UBFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/%i_Niggli.mat'
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
+
 descriptor = 'si_constraints_oldCoeff_0p8hkl' #Does not end with '/'
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
-'''
+
 figsFormat = workDir + descriptor+'/figs/mantid_%i_%i.png'
 
 if os.path.isdir(workDir + descriptor):
@@ -83,6 +88,12 @@ UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
 
 
 #Load our peaks files and detector fitting parameters
+
+if peaksFile is not None:
+    peaks_ws = LoadIsawPeaks(Filename = peaksFile)
+    LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFile)
+    UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
+
 padeCoefficients = ICCFT.getModeratorCoefficients(moderatorCoefficientsFile)
 calibrationDict = pickle.load(open(calibrationDictFile, 'rb'))
 
@@ -117,6 +128,16 @@ for sampleRun in sampleRuns:
     #Conver the sample to reciprocal space
     MDdata = ICCFT.getSample(sampleRun, DetCalFile, workDir, fileName)
     
+
+    #Load the new UB and find peaks in this run if we need to.
+    if peaksFile is None:
+        peaks_ws = FindPeaksMD(InputWorkspace='MDdata', PeakDistanceThreshold=1.1304, MaxPeaks=1000, DensityThresholdFactor=30, OutputWorkspace='peaks_ws')
+        LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFormat%sampleRun)
+        UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
+    #else:
+    #    LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFormat%sampleRun)
+    #    UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
+
 
     #Do the actual integration
     peaks_ws,paramList= ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, panelDict, UBMatrix, padeCoefficients,parameterDict, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.0075, fracStop=fracStop, removeEdges=removeEdges, calibrationDict=calibrationDict)
