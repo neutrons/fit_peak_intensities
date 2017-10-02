@@ -12,43 +12,17 @@ import ICConvoluted as ICC
 reload(ICC)
 import getEdgePixels as EdgeTools
 reload(EdgeTools)
-
-#getDQ determines the q spacing required to make an MDBox 
-# extending from [-hkl+0.5,hkl-0.5].  Inputs are a peak 
-# object and a vector containing lattice spacings. Returns
-# a 3x2 numpy array containing dQ for hkl on the low 
-# and high side.
-def getDQ(peak, latticeSpacing, crystalSystem):
-    dQ = np.zeros((3,2))
-    if crystalSystem == 'cubic':
-            q0 = peak.getQSampleFrame()
-            hkl = peak.getHKL()
-            cubicConstant = 2*np.pi/latticeSpacing[0]
-            for i in range(3):
-                    dhkl = np.zeros(np.shape(hkl))
-                    dhkl[i] = 0.5
-                    dQ[i,0] = cubicConstant*(np.linalg.norm(hkl - dhkl) - np.linalg.norm(hkl))
-                    dQ[i,1] = cubicConstant*(np.linalg.norm(hkl + dhkl) - np.linalg.norm(hkl))
-
-    if crystalSystem == 'monoclinic':
-        a = latticeSpacing[0]; b = latticeSpacing[1]; c = latticeSpacing[2];
-        alpha = latticeSpacing[3]; beta = latticeSpacing[4]; 
-        hkl = peak.getHKL()
-        def monoclinic(hkl):
-            tmp = (((hkl[0])/(a*np.sin(beta/180.*np.pi)))**2 + (hkl[1]/b)**2 + (hkl[2]/c*np.sin(beta/180*np.pi))**2 + 
-                            (2*hkl[0]*hkl[2]*np.cos(beta/180.*np.pi)/(a*c*np.sin(beta/180.*np.pi)**2))  )
-            return 2*np.pi/np.sqrt(tmp)
-
-        for i in range(3):
-            dhkl = np.zeros(np.shape(hkl))
-            dhkl[i] = 0.5
-            dQ[i,0] = monoclinic(hkl-dhkl) - monoclinic(hkl)
-            dQ[i,1] = monoclinic(hkl+dhkl) - monoclinic(hkl)
-    return dQ
+import itertools
 
 # UB = UBmatrix as loaded by LoadIsawUB().  Only works in the
 #    Qsample frame right now
 def getDQFracHKL(peak, UB, frac=0.5):
+    dQ = np.zeros((3,2))
+    q = [2*np.pi*frac*UB.dot(v) for v in [seq for seq in itertools.product([-1.0,1.0],repeat=3)]]
+    dQ[:,0] = np.max(q,axis=0)#TODO THIS CAN BE 1D since it's symmetric
+    dQ[:,1] = np.min(q,axis=0)
+    return dQ
+    '''
     dQ = np.zeros((3,2))
     hkl = peak.getHKL()
     if np.all(hkl == np.array([0,0,0])):
@@ -59,7 +33,7 @@ def getDQFracHKL(peak, UB, frac=0.5):
     qMinus = UB.dot(hkl-dhkl)*2*np.pi
     dQ[:,0] = qMinus - q0
     dQ[:,1] = qPlus - q0    
-    '''
+    '''  '''
     for hklIDX in range(3):
         dhkl = np.zeros(3)
         dhkl[hklIDX]=0.5
@@ -420,6 +394,7 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQPixel=0.005,fr
     dQ = np.abs(getDQFracHKL(peak, UBMatrix, frac = fracHKL))
     dQ[dQ > 0.5] = 0.5
     nPtsQ = np.round(np.sum(dQ/dQPixel,axis=1)).astype(int)
+    print dQ, nPtsQ
     if refineCenter: #Find better center by flattining the cube in each direction and fitting a Gaussian
 
         #Get the new centers and new Box
