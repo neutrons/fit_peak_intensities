@@ -470,7 +470,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, padeC
                 scaleFactor = np.max(y-np.polyval(bgx0,x))/np.max(fICC.function1D(x))
                 x0[4] = x0[4]*scaleFactor
                 fICC.setParameter(4,x0[4])
-                
+                '''
                 #Form the strings for fitting and do the fit
                 paramString = ''.join(['%s=%4.8f, '%(fICC.getParamName(iii),x0[iii]) for iii in range(fICC.numParams())])
                 funcString1 = 'name=IkedaCarpenterConvoluted, ' + paramString
@@ -485,6 +485,13 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, padeC
                 functionString = funcString1[:-2] + bgString + constraintString2  
                 #fitStatus, chiSq, covarianceTable, paramTable, fitWorkspace = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit') #This is antiquated as of sept 25 2017
                 fitResults = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit')
+                '''
+                fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.01, 1.0], T00=[0,1.0e10])
+                f = FunctionWrapper(fICC)
+                bg = LinearBackground(A0=bgx0[1], A1=bgx0[0])
+                bg.constrain('-1.0 < A1 < 1.0')
+                fitFun = f + bg
+                fitResults = Fit(Function=fitFun, InputWorkspace='tofWS', Output='fit')
                 fitStatus = fitResults.OutputStatus
                 chiSq = fitResults.OutputChi2overDoF
                 
@@ -494,13 +501,26 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, padeC
                     print '############REFITTING########### on %4.4f'%chiSq
                     #x0 = getInitialGuess(tofWS,paramNames,energy,flightPath)
                     x0 = getInitialGuessByDetector(tofWS,paramNames,energy,flightPath, detNumber, parameterDict)
+                    [fICC.setParameter(iii,v) for iii,v in enumerate(x0[:fICC.numParams()])]
+                    scaleFactor = np.max(y-np.polyval(bgx0,x))/np.max(fICC.function1D(x))
+                    x0[4] = x0[4]*scaleFactor
+                    fICC.setParameter(4,x0[4])
+                    f = FunctionWrapper(fICC)
+                    bg = LinearBackground(A0=bgx0[1], A1=bgx0[0])
+                    bg.constrain('-1.0 < A1 < 1.0')
+                    fitFun = f + bg
+                    
+                    
+                    '''
                     paramWS = mtd['fit_parameters']
                     paramString = ''.join(['%s=%4.8f, '%(fICC.getParamName(iii),x0[iii]) for iii in range(fICC.numParams())])
                     funcString1 = 'name=IkedaCarpenterConvoluted, ' + paramString[:-2]
                     functionString = funcString1 + ', constraints=('+constraintString1+')' + bgString + constraintString2 
+                    '''
                     try:
                             #fitStatus, chiSq2, covarianceTable, paramTable, fitWorkspace = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit2') #Antiquated, Sept 25 2017
-                        fitResults2 = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit2')
+                        #fitResults2 = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit2')
+                        fitResults2 = Fit(Function=fitFun, InputWorkspace='tofWS', Output='fit2')
                         fitStatus2 = fitResults2.OutputStatus
                         chiSq2 = fitResults2.OutputChi2overDoF
                     except:
