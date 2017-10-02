@@ -14,10 +14,13 @@ import getEdgePixels as EdgeTools
 reload(EdgeTools)
 import itertools
 
+
 # UB = UBmatrix as loaded by LoadIsawUB().  Only works in the
 #    Qsample frame right now
+#   TODO - calculate this once per run, not every peak
 def getDQFracHKL(peak, UB, frac=0.5):
     dQ = np.zeros((3,2))
+
     q = [2*np.pi*frac*UB.dot(v) for v in [seq for seq in itertools.product([-1.0,1.0],repeat=3)]]
     dQ[:,0] = np.max(q,axis=0)#TODO THIS CAN BE 1D since it's symmetric
     dQ[:,1] = np.min(q,axis=0)
@@ -33,7 +36,9 @@ def getDQFracHKL(peak, UB, frac=0.5):
     qMinus = UB.dot(hkl-dhkl)*2*np.pi
     dQ[:,0] = qMinus - q0
     dQ[:,1] = qPlus - q0    
-    '''  '''
+
+    '''
+    '''
     for hklIDX in range(3):
         dhkl = np.zeros(3)
         dhkl[hklIDX]=0.5
@@ -263,7 +268,7 @@ def getInitialGuessByDetector(tofWS, paramNames, energy, flightPath, detNumber, 
     x0[1] = np.polyval(d['det_%i'%detNumber]['B'],energy)
     x0[2] = np.polyval(d['det_%i'%detNumber]['R'],energy)
     x0[3] = oneOverXSquared(energy, d['det_%i'%detNumber]['T0'][0], d['det_%i'%detNumber]['T0'][1])
-    x0[4] = (np.max(y))/x0[0]*2*2.5 
+    x0[4] = 1.0*(np.max(y)) 
     x0[5] = 0.5
     x0[6] = 200
     return x0
@@ -273,24 +278,22 @@ def getInitialGuessByDetector(tofWS, paramNames, energy, flightPath, detNumber, 
 # paramNames is the list of parameter names
 # energy is the energy of the peak (units: eV)
 # flightPath is L = L1 + L2 (units: m)
-def getInitialGuess(tofWS, paramNames, energy, flightPath, padeCoefficients):
+def getInitialGuess(tofWS, paramNames, energy, flightPath, padeCoefficients,detNumber, calibDict):
     x0 = np.zeros(len(paramNames))
     x = tofWS.readX(0)
     y = tofWS.readY(0)
     x0[0] = pade(padeCoefficients['A'], energy)
     x0[1] = pade(padeCoefficients['B'], energy)
     x0[2] = pade(padeCoefficients['R'], energy)
-    x0[3] = pade(padeCoefficients['T0'], energy)
+    #x0[3] = oneOverXSquared(energy, calibDict['det_%i'%detNumber]['T0'][0], calibDict['det_%i'%detNumber]['T0'][1])
+    x0[3] = pade(padeCoefficients['T0'], energy) + getT0Shift(energy, flightPath) #extra is for ~18m downstream we are
 
     #These are still phenomenological
     x0[0] /= 1.2
     x0[2] += 0.05
-    #TODO: This can be calculated once and absorbed into the coefficients.
-    x0[3] += getT0Shift(energy, flightPath) #Franz simulates at moderator exit, we are ~18m downstream, this adjusts for that time.
     x0[3] -= 10 #This is lazy - we can do it detector-by-detector
     x0[4] = (np.max(y))/x0[0]*2*2.5  #Amplitude
     x0[5] = 0.5 #hat width in IDX units
-    #x0[5] = 3.0 #hat width in us
     x0[6] = 120.0 #Exponential decay rate for convolution
     return x0
 
@@ -392,6 +395,7 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQPixel=0.005,fr
     Qy = QSample[1]
     Qz = QSample[2]
     dQ = np.abs(getDQFracHKL(peak, UBMatrix, frac = fracHKL))
+    print dQ
     dQ[dQ > 0.5] = 0.5
     nPtsQ = np.round(np.sum(dQ/dQPixel,axis=1)).astype(int)
     print dQ, nPtsQ
@@ -417,7 +421,7 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQPixel=0.005,fr
     return Box
 
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
-def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, padeCoefficients, figsFormat=None, dtBinWidth = 4, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, doVolumeNormalization=False, minFracPixels=0.0, fracStop = 0.01, removeEdges=False, calibrationDict=None):
+def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, padeCoefficients, parameterDict, figsFormat=None, dtBinWidth = 4, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, doVolumeNormalization=False, minFracPixels=0.0, fracStop = 0.01, removeEdges=False, calibrationDict=None):
     if removeEdges is True and panelDict is None:
         print 'REMOVE EDGES WITHOUT panelDict - IMPOSSIBLE!!'
         0/0
@@ -456,7 +460,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, padeC
                 fICC = ICC.IkedaCarpenterConvoluted()
                 fICC.init()
                 paramNames = [fICC.getParamName(x) for x in range(fICC.numParams())]
-                x0 = getInitialGuess(tofWS,paramNames,energy,flightPath,padeCoefficients)
+                x0 = getInitialGuess(tofWS,paramNames,energy,flightPath,padeCoefficients,detNumber,calibrationDict)
                 [fICC.setParameter(iii,v) for iii,v in enumerate(x0[:fICC.numParams()])]
                 x = tofWS.readX(0)
                 y = tofWS.readY(0)
@@ -477,7 +481,8 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, padeC
                 bgString= '; name=LinearBackground,A0=%4.8f,A1=%4.8f'%(bgx0[1],bgx0[0]) #A0=const, A1=slope
                 constraintString2 = ', constraints=(-1.0 < A1 < 1.0)'
                 
-                functionString = funcString1 + 'constraints=('+constraintString1+')' + bgString + constraintString2  
+                #functionString = funcString1 + 'constraints=('+constraintString1+')' + bgString + constraintString2  
+                functionString = funcString1[:-2] + bgString + constraintString2  
                 #fitStatus, chiSq, covarianceTable, paramTable, fitWorkspace = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit') #This is antiquated as of sept 25 2017
                 fitResults = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit')
                 fitStatus = fitResults.OutputStatus
@@ -488,7 +493,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, padeC
                 if chiSq > 2.0: #The initial fit isn't great - let's see if we can do better
                     print '############REFITTING########### on %4.4f'%chiSq
                     #x0 = getInitialGuess(tofWS,paramNames,energy,flightPath)
-                    x0 = getInitialGuessByDetector(tofWS,paramNames,energy,flightPath, detNumber, calibrationDict)
+                    x0 = getInitialGuessByDetector(tofWS,paramNames,energy,flightPath, detNumber, parameterDict)
                     paramWS = mtd['fit_parameters']
                     paramString = ''.join(['%s=%4.8f, '%(fICC.getParamName(iii),x0[iii]) for iii in range(fICC.numParams())])
                     funcString1 = 'name=IkedaCarpenterConvoluted, ' + paramString[:-2]
@@ -521,13 +526,15 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, padeC
                 peak.setSigmaIntensity(sigma)
                 if figsFormat is not None:
                     plotFit(figsFormat, r,tofWS,fICC,peak.getRunNumber(), i, energy, chiSq,fitBG, xStart, xStop, bgx0)
-                paramList.append([i, energy, np.sum(icProfile), 0.0,chiSq] + [mtd['fit_Parameters'].row(i)['Value'] for i in range(mtd['fit_parameters'].rowCount())])
+                paramList.append([i, energy, np.sum(icProfile), 0.0,chiSq] + [param.row(i)['Value'] for i in range(param.rowCount())])
+                if param.row(2)['Value'] < 0:
+                    print i, [param.row(i)['Value'] for i in range(param.rowCount())]
                 mtd.remove('MDbox_'+str(run)+'_'+str(i))
             except KeyboardInterrupt:
                 print 'KeyboardInterrupt: Exiting Program!!!!!!!'
                 sys.exit()
             except: #Error with fitting
-                #raise
+                raise
                 peak.setIntensity(0)
                 peak.setSigmaIntensity(1)
                 print 'Error with peak ' + str(i)
