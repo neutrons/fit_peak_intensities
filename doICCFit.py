@@ -19,10 +19,11 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 dtSpread = 0.03 #how far we look on either side of the nominal peak
 dtBinWidth = 4 #Width (in us) in TOF profile bins
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
+dQPixel = 0.002
 doVolumeNormalization = True #True if you want to normalize TOF profiles by volume
 refineCenter = False #True if you want to determine new centers - still not very good
-removeEdges = True #True if you want to not consider q-pixels that are off detector faces
-fracHKL = 0.35 #Fraction of HKL to look on either side
+removeEdges = False #True if you want to not consider q-pixels that are off detector faces
+fracHKL = 0.5 #Fraction of HKL to look on either side
 fracStop = 0.01 #Fraction of max counts to include in peak selection
 moderatorCoefficientsFile = 'franz_coefficients_2017.dat'
 calibrationDictFile = 'det_calibration/calibration_dictionary.pkl'
@@ -40,7 +41,7 @@ peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K
 UBFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/%i_Niggli.mat'
 UBFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Monoclinic_C.mat'
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
-descriptor = 'test_new_fit' #Does not end with '/'
+descriptor = 'test_new_fit_tight' #Does not end with '/'
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 
 
@@ -93,7 +94,10 @@ if peaksFile is not None:
     peaks_ws = LoadIsawPeaks(Filename = peaksFile)
     LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFile)
     UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
-
+    dQ = np.abs(ICCFT.getDQFracHKL(UBMatrix, frac=fracHKL))
+    nPtsQ = np.round(np.sum(dQ/dQPixel,axis=1)).astype(int)
+    qMask = ICCFT.getHKLMask(UBMatrix, frac=fracHKL, dQPixel=dQPixel)
+    #qMask = np.ones(nPtsQ).astype(np.bool)
 padeCoefficients = ICCFT.getModeratorCoefficients(moderatorCoefficientsFile)
 calibrationDict = pickle.load(open(calibrationDictFile, 'rb'))
 
@@ -140,7 +144,7 @@ for sampleRun in sampleRuns:
 
 
     #Do the actual integration
-    peaks_ws,paramList= ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, panelDict, UBMatrix, padeCoefficients,parameterDict, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.0075, fracStop=fracStop, removeEdges=removeEdges, calibrationDict=calibrationDict)
+    peaks_ws,paramList= ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients,parameterDict, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.01, fracStop=fracStop, removeEdges=removeEdges, calibrationDict=calibrationDict,dQPixel=dQPixel)
 
     #Save the results and delete the leftovers
     SaveIsawPeaks(InputWorkspace='peaks_ws', Filename=workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))

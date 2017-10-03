@@ -18,38 +18,32 @@ import itertools
 # UB = UBmatrix as loaded by LoadIsawUB().  Only works in the
 #    Qsample frame right now
 #   TODO - calculate this once per run, not every peak
-def getDQFracHKL(peak, UB, frac=0.5):
+def getDQFracHKL(UB, frac=0.5):
     dQ = np.zeros((3,2))
 
     q = [2*np.pi*frac*UB.dot(v) for v in [seq for seq in itertools.product([-1.0,1.0],repeat=3)]]
     dQ[:,0] = np.max(q,axis=0)#TODO THIS CAN BE 1D since it's symmetric
     dQ[:,1] = np.min(q,axis=0)
     return dQ
-    '''
-    dQ = np.zeros((3,2))
-    hkl = peak.getHKL()
-    if np.all(hkl == np.array([0,0,0])):
-        return 0.5*np.ones((3,2))
-    q0 = peak.getQSampleFrame()
-    dhkl = np.array([frac, frac, frac])
-    qPlus = UB.dot(hkl+dhkl)*2*np.pi
-    qMinus = UB.dot(hkl-dhkl)*2*np.pi
-    dQ[:,0] = qMinus - q0
-    dQ[:,1] = qPlus - q0    
 
-    '''
-    '''
-    for hklIDX in range(3):
-        dhkl = np.zeros(3)
-        dhkl[hklIDX]=0.5
-        #dhkl = np.array([0.5, 0.5, 0.5])
-        qPlus = UB.dot(hkl+dhkl)*2*np.pi
-        qMinus = UB.dot(hkl-dhkl)*2*np.pi
-        print qMinus[hklIDX] - q0[hklIDX]
-        dQ[int(hklIDX),0] = qMinus[hklIDX] - q0[hklIDX]
-        dQ[int(hklIDX),1] = qPlus[hklIDX] - q0[hklIDX]
-    '''
-    return dQ
+def getHKLMask(UB, frac=0.5,dQPixel=0.005):
+    dQ = np.abs(getDQFracHKL(UB, frac=frac))
+    dQ[dQ>0.5] = 0.5
+    nPtsQ = np.round(np.sum(dQ/dQPixel,axis=1)).astype(int)
+    h0 = 1.0; k0 = 27.0; l0=7.0
+    qDummy = 2*np.pi*UB.dot(np.asarray([h0, k0, l0]))
+    qx = np.linspace(qDummy[0]-dQ[0,0], qDummy[0]+dQ[0,1], nPtsQ[0])
+    qy = np.linspace(qDummy[1]-dQ[1,0], qDummy[1]+dQ[1,1], nPtsQ[1])
+    qz = np.linspace(qDummy[2]-dQ[2,0], qDummy[2]+dQ[2,1], nPtsQ[2])
+    QX,QY,QZ = np.meshgrid(qx,qy,qz,indexing='ij')
+    UBinv = np.linalg.inv(UB)
+    tHKL = UBinv.dot([QX.ravel(),QY.ravel(),QZ.ravel()])/2/np.pi
+    H = np.reshape(tHKL[0,:], QX.shape)
+    K = np.reshape(tHKL[1,:], QX.shape)
+    L = np.reshape(tHKL[2,:], QX.shape)
+    mask = reduce(np.logical_and,  [H>h0-frac, H<h0+frac, K>k0-frac, K<k0+frac, L>l0-frac, L<l0+frac])
+    return mask 
+
 
 #Wrapper for pade with parametres as separate arguments for compatability with scipy.optimize.curve_fit
 def padeWrapper(x,a,b,c,d,f,g,h,i,j,k):
@@ -134,10 +128,11 @@ def get_pp_lambda(n_events, hasEventsIDX ):
 #Output:
 #    tofWS: a Workspace2D containing the TOF profile.  X-axis is TOF (units: us) and
 #           Y-axis is the number of events.
-def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, peakNumber, dtBinWidth=2, zBG=-1.0, dtSpread = 0.02, doVolumeNormalization=False, minFracPixels = 0.005, removeEdges=False, edgesToCheck=None):
+def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, peakNumber, qMask, dtBinWidth=2, zBG=-1.0, dtSpread = 0.02, doVolumeNormalization=False, minFracPixels = 0.005, removeEdges=False, edgesToCheck=None):
     #Pull the number of events
     n_events = box.getNumEventsArray()
-    hasEventsIDX = np.where((n_events>0) & ~np.isnan(n_events))
+    print '~~~ ', np.sum(n_events), np.sum(n_events[qMask])
+    hasEventsIDX = np.where((n_events>0) & ~np.isnan(n_events) & qMask)
     
 
 
@@ -216,12 +211,13 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
     if doVolumeNormalization:
         QX, QY, QZ = np.meshgrid(qx, qy, qz,indexing='ij')
         tofBox = 3176.507 * flightPath *np.sin(scatteringHalfAngle) * 1/np.sqrt(QX**2 + QY**2 + QZ**2)
+        tofBox *= qMask
         if removeEdges:
             print 'REMOVING EDGES'
             numPixels = np.histogram((tofBox*mask).flatten(), tBins)[0]
         else:
             numPixels = np.histogram(tofBox.flatten(), tBins)[0]
-        yPoints = yPoints / numPixels*1.0
+        yPoints = 1.0*yPoints / numPixels
         useIDX = 1.0*numPixels/np.sum(numPixels) > minFracPixels
         if np.sum(useIDX < 1): #Bad threshold, we'll juse use it all
             useIDX = np.ones(np.size(yPoints)).astype(bool)
@@ -340,7 +336,7 @@ def getRefinedCenter(peak, MDdata, UBMatrix, dQPixel,nPtsQ, neigh_length_m = 5, 
     Qx = QSample[0]
     Qy = QSample[1]
     Qz = QSample[2]
-    dQ = np.abs(getDQFracHKL(peak, UBMatrix,frac=fracHKLSearch))
+    dQ = np.abs(getDQFracHKL(UBMatrix,frac=fracHKLSearch))
     oldWavelength = peak.getWavelength()
     Box = BinMD(InputWorkspace = 'MDdata',
         AlignedDim0='Q_sample_x,'+str(Qx-dQ[0,0])+','+str(Qx+dQ[0,1])+','+str(nPtsQ[0]),
@@ -388,14 +384,14 @@ def getRefinedCenter(peak, MDdata, UBMatrix, dQPixel,nPtsQ, neigh_length_m = 5, 
 #    peakNumber: integer peak number within a  dataset - basically an index
 #  Returns:
 #  Box, an MDWorkspace with histogrammed events around the peak
-def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQPixel=0.005,fracHKL = 0.5, refineCenter=False, fracHKLRefine = 0.2):
+def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.005,fracHKL = 0.5, refineCenter=False, fracHKLRefine = 0.2):
     runNumber = peak.getRunNumber()
     QSample = peak.getQSampleFrame()
     Qx = QSample[0]
     Qy = QSample[1]
     Qz = QSample[2]
-    dQ = np.abs(getDQFracHKL(peak, UBMatrix, frac = fracHKL))
-    print dQ
+    dQ = np.abs(getDQFracHKL(UBMatrix, frac = fracHKL))
+    #print dQ
     dQ[dQ > 0.5] = 0.5
     nPtsQ = np.round(np.sum(dQ/dQPixel,axis=1)).astype(int)
     print dQ, nPtsQ
@@ -420,8 +416,9 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQPixel=0.005,fr
 
     return Box
 
+
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
-def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, padeCoefficients, parameterDict, figsFormat=None, dtBinWidth = 4, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, doVolumeNormalization=False, minFracPixels=0.0, fracStop = 0.01, removeEdges=False, calibrationDict=None):
+def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients, parameterDict, figsFormat=None, dtBinWidth = 4, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, doVolumeNormalization=False, minFracPixels=0.0000, fracStop = 0.01, removeEdges=False, calibrationDict=None,dQPixel=0.005):
     if removeEdges is True and panelDict is None:
         print 'REMOVE EDGES WITHOUT panelDict - IMPOSSIBLE!!'
         0/0
@@ -431,7 +428,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, padeC
         #TODO: does not work if hkl = (0,0,0) - getDQ returns Inf
         if peak.getRunNumber() == run:
             try:#for ppppp in [3]:#try:
-                Box = getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, fracHKL = fracHKL, refineCenter = refineCenter)
+                Box = getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel)
                 tof = peak.getTOF() #in us
                 wavelength = peak.getWavelength() #in Angstrom
                 energy = 81.804 / wavelength**2 / 1000.0 #in eV
@@ -450,11 +447,11 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, padeC
                 if removeEdges: 
                     edgesToCheck = EdgeTools.needsEdgeRemoval(Box,panelDict,peak) 
                     if edgesToCheck != []: #At least one plane intersects so we have to fit
-                        tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=removeEdges, edgesToCheck=edgesToCheck)
+                        tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=removeEdges, edgesToCheck=edgesToCheck)
                     else:
-                        tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False)
+                        tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False)
                 else:
-                    tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False)
+                    tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False)
 
                 #Set up our inital guess
                 fICC = ICC.IkedaCarpenterConvoluted()
@@ -470,23 +467,9 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, padeC
                 scaleFactor = np.max(y-np.polyval(bgx0,x))/np.max(fICC.function1D(x))
                 x0[4] = x0[4]*scaleFactor
                 fICC.setParameter(4,x0[4])
-                '''
-                #Form the strings for fitting and do the fit
-                paramString = ''.join(['%s=%4.8f, '%(fICC.getParamName(iii),x0[iii]) for iii in range(fICC.numParams())])
-                funcString1 = 'name=IkedaCarpenterConvoluted, ' + paramString
-                constraintString1 = ''.join(['%s > 0, '%(fICC.getParamName(iii)) for iii in range(fICC.numParams())])
-                constraintString1 += 'R < 1'
-                #constraintString1 += '100< k_conv < 500'
-                
-                bgString= '; name=LinearBackground,A0=%4.8f,A1=%4.8f'%(bgx0[1],bgx0[0]) #A0=const, A1=slope
-                constraintString2 = ', constraints=(-1.0 < A1 < 1.0)'
-                
-                #functionString = funcString1 + 'constraints=('+constraintString1+')' + bgString + constraintString2  
-                functionString = funcString1[:-2] + bgString + constraintString2  
-                #fitStatus, chiSq, covarianceTable, paramTable, fitWorkspace = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit') #This is antiquated as of sept 25 2017
-                fitResults = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit')
-                '''
-                fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.01, 1.0], T00=[0,1.0e10])
+                fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.01, 1.0], T00=[0,1.0e10],penalty=1.0e20)
+                #fICC.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0,1.0e10],k_conv0=[50,500],penalty=1.0e20)
+
                 f = FunctionWrapper(fICC)
                 bg = LinearBackground(A0=bgx0[1], A1=bgx0[0])
                 bg.constrain('-1.0 < A1 < 1.0')
@@ -507,16 +490,9 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, padeC
                     fICC.setParameter(4,x0[4])
                     f = FunctionWrapper(fICC)
                     bg = LinearBackground(A0=bgx0[1], A1=bgx0[0])
-                    bg.constrain('-1.0 < A1 < 1.0')
+                    bg.constrain('%4.4e < A1 < %4.4e'%(0.5*bgx0[0], 1.5*bgx0[0]))
+                    bg.constrain('%4.4e < A0 < %4.4e'%(0.5*bgx0[1], 1.5*bgx0[1]))
                     fitFun = f + bg
-                    
-                    
-                    '''
-                    paramWS = mtd['fit_parameters']
-                    paramString = ''.join(['%s=%4.8f, '%(fICC.getParamName(iii),x0[iii]) for iii in range(fICC.numParams())])
-                    funcString1 = 'name=IkedaCarpenterConvoluted, ' + paramString[:-2]
-                    functionString = funcString1 + ', constraints=('+constraintString1+')' + bgString + constraintString2 
-                    '''
                     try:
                             #fitStatus, chiSq2, covarianceTable, paramTable, fitWorkspace = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit2') #Antiquated, Sept 25 2017
                         #fitResults2 = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit2')
@@ -554,7 +530,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, padeC
                 print 'KeyboardInterrupt: Exiting Program!!!!!!!'
                 sys.exit()
             except: #Error with fitting
-                raise
+                #raise
                 peak.setIntensity(0)
                 peak.setSigmaIntensity(1)
                 print 'Error with peak ' + str(i)
