@@ -14,6 +14,35 @@ import getEdgePixels as EdgeTools
 reload(EdgeTools)
 import itertools
 
+def getDQTOF(peak, dtSpread=0.03, maxDQ=0.5):
+    dQ=np.zeros(3)
+    dtTarget = dtSpread*peak.getTOF()
+    gamma = 3176.507*(peak.getL1()+peak.getL2())*np.sin(peak.getScattering()*0.5)
+    for i in range(3):
+        gradientVector=np.zeros(3)
+        gradientVector[i]= np.sign(peak.getQSampleFrame()[i]) 
+        for qStep in np.linspace(0,maxDQ, 100):
+            dt = np.abs((gamma /np.linalg.norm(peak.getQSampleFrame()+gradientVector*qStep)) - peak.getTOF())
+            if dt >dtTarget:
+                dQ[i] = qStep
+                break;
+        if dQ[i] == 0:
+            dQ[i] = maxDQ
+    dQ2d = np.array([[dQ[0],dQ[0]],[dQ[1],dQ[1]],[dQ[2],dQ[2]]])
+    return dQ2d
+
+def getPixelStep(peak, dtBin=4):
+    gamma = 3176.507*(peak.getL1()+peak.getL2())*np.sin(peak.getScattering()*0.5)
+    gradientVector = -1.0*np.sign(peak.getQSampleFrame())
+    gradientVector *= 1.0/np.sqrt(3.0)
+    
+    for qStep in np.linspace(0,0.005, 100):
+            dt = np.abs((gamma /np.linalg.norm(peak.getQSampleFrame()+gradientVector*qStep)) - peak.getTOF())
+            if dt >dtBin/np.sqrt(3):
+                return qStep
+
+    return 0.005
+    
 
 # UB = UBmatrix as loaded by LoadIsawUB().  Only works in the
 #    Qsample frame right now
@@ -131,6 +160,7 @@ def get_pp_lambda(n_events, hasEventsIDX ):
 def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, peakNumber, qMask, dtBinWidth=2, zBG=-1.0, dtSpread = 0.02, doVolumeNormalization=False, minFracPixels = 0.005, removeEdges=False, edgesToCheck=None):
     #Pull the number of events
     n_events = box.getNumEventsArray()
+    qMask = np.ones_like(n_events).astype(np.bool)
     print '~~~ ', np.sum(n_events), np.sum(n_events[qMask])
     hasEventsIDX = np.where((n_events>0) & ~np.isnan(n_events) & qMask)
     
@@ -336,7 +366,9 @@ def getRefinedCenter(peak, MDdata, UBMatrix, dQPixel,nPtsQ, neigh_length_m = 5, 
     Qx = QSample[0]
     Qy = QSample[1]
     Qz = QSample[2]
-    dQ = np.abs(getDQFracHKL(UBMatrix,frac=fracHKLSearch))
+    #dQ = np.abs(getDQFracHKL(UBMatrix,frac=fracHKLSearch))
+    dQ = np.abs(getDQTOF(peak))
+    dQPixel = getPixelStep(peak)[0]
     oldWavelength = peak.getWavelength()
     Box = BinMD(InputWorkspace = 'MDdata',
         AlignedDim0='Q_sample_x,'+str(Qx-dQ[0,0])+','+str(Qx+dQ[0,1])+','+str(nPtsQ[0]),
@@ -390,9 +422,11 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.00
     Qx = QSample[0]
     Qy = QSample[1]
     Qz = QSample[2]
-    dQ = np.abs(getDQFracHKL(UBMatrix, frac = fracHKL))
+    #dQ = np.abs(getDQFracHKL(UBMatrix, frac = fracHKL))
     #print dQ
-    dQ[dQ > 0.5] = 0.5
+    dQ = np.abs(getDQTOF(peak))
+    dQPixel = getPixelStep(peak)
+    #dQ[dQ > 0.5] = 0.5
     nPtsQ = np.round(np.sum(dQ/dQPixel,axis=1)).astype(int)
     print dQ, nPtsQ
     if refineCenter: #Find better center by flattining the cube in each direction and fitting a Gaussian
@@ -467,7 +501,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 scaleFactor = np.max(y-np.polyval(bgx0,x))/np.max(fICC.function1D(x))
                 x0[4] = x0[4]*scaleFactor
                 fICC.setParameter(4,x0[4])
-                fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.01, 1.0], T00=[0,1.0e10],penalty=1.0e20)
+                fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.01, 1.0], T00=[0,1.0e10], k_conv0=[20,500],penalty=1.0e20)
                 #fICC.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0,1.0e10],k_conv0=[50,500],penalty=1.0e20)
 
                 f = FunctionWrapper(fICC)
@@ -482,13 +516,16 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 chiSq2  = 1.0e99
                 if chiSq > 2.0: #The initial fit isn't great - let's see if we can do better
                     print '############REFITTING########### on %4.4f'%chiSq
-                    #x0 = getInitialGuess(tofWS,paramNames,energy,flightPath)
-                    x0 = getInitialGuessByDetector(tofWS,paramNames,energy,flightPath, detNumber, parameterDict)
-                    [fICC.setParameter(iii,v) for iii,v in enumerate(x0[:fICC.numParams()])]
-                    scaleFactor = np.max(y-np.polyval(bgx0,x))/np.max(fICC.function1D(x))
+                    #x0 = getInitialGuessByDetector(tofWS,paramNames,energy,flightPath, detNumber, parameterDict)
+                    x0 = getInitialGuess(tofWS,paramNames,energy,flightPath,padeCoefficients,detNumber,calibrationDict)
+                    fICC2 = ICC.IkedaCarpenterConvoluted()
+                    fICC2.init()
+                    [fICC2.setParameter(iii,v) for iii,v in enumerate(x0[:fICC2.numParams()])]
+                    scaleFactor = np.max(y-np.polyval(bgx0,x))/np.max(fICC2.function1D(x))
                     x0[4] = x0[4]*scaleFactor
-                    fICC.setParameter(4,x0[4])
-                    f = FunctionWrapper(fICC)
+                    fICC2.setParameter(4,x0[4])
+                    fICC2.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0,1.0e10],k_conv0=[50,500],penalty=1.0e20)
+                    f = FunctionWrapper(fICC2)
                     bg = LinearBackground(A0=bgx0[1], A1=bgx0[0])
                     bg.constrain('%4.4e < A1 < %4.4e'%(0.5*bgx0[0], 1.5*bgx0[0]))
                     bg.constrain('%4.4e < A0 < %4.4e'%(0.5*bgx0[1], 1.5*bgx0[1]))
@@ -509,6 +546,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     r = mtd['fit2_Workspace']
                     param = mtd['fit2_Parameters']
                     chiSq = chiSq2
+                    fICC = fICC2
 
                 fitBG = [param.cell(iii+2,1),param.cell(iii+1,1)]
                 #Set the intensity before moving on to the next peak
