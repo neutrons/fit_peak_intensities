@@ -10,7 +10,7 @@ def writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtS
         f.write('nxsTemplate: %s\n'%nxsTemplate)
         f.write('figsFormat: %s\n'%figsFormat)
         f.write('sampleRuns: ' + ' '.join(['%i'%i for i in sampleRuns])+'\n')
-        f.write('dtSpread: %4.6f\n'%dtSpread)
+        f.write('dtSpread: ' + str(dtSpread) + '\n')
         f.write('dtBinWidth: %i\n'%dtBinWidth)
         f.write('fracHKL: %4.6f\n'%fracHKL)
         f.write('fracStop: %4.6f\n'%fracStop)

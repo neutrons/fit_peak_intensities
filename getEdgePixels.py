@@ -263,7 +263,7 @@ def getMDData(peak,loadDir,DetCalFile ):
     if importFlag:
         nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
         fileName = nxsTemplate%peak.getRunNumber()
-        MDdata = ICCFT.getSample(peak.getRunNumber(), UBFile, DetCalFile, '', fileName)
+        MDdata = ICCFT.getSample(peak.getRunNumber(), DetCalFile, '', fileName)
         MDdata.setComment('BSGETBOX%i'%peak.getRunNumber())
     return MDdata
 
