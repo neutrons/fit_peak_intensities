@@ -16,10 +16,10 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 
 
 # Some parameters
-dtSpread = 0.015 #how far we look on either side of the nominal peak
+dtSpread = [0.015, 0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
 dtBinWidth = 4 #Width (in us) in TOF profile bins
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
-dQPixel = 0.005
+dQPixel = [0.005, 0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
 doVolumeNormalization = True #True if you want to normalize TOF profiles by volume
 refineCenter = False #True if you want to determine new centers - still not very good
 removeEdges = False #True if you want to not consider q-pixels that are off detector faces
@@ -111,8 +111,11 @@ if peaksFile is not None:
     UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
     dQ = np.abs(ICCFT.getDQFracHKL(UBMatrix, frac=fracHKL))
     nPtsQ = np.round(np.sum(dQ/dQPixel,axis=1)).astype(int)
-    qMask = ICCFT.getHKLMask(UBMatrix, frac=fracHKL, dQPixel=dQPixel)
-    #qMask = np.ones(nPtsQ).astype(np.bool)
+    qMask = list()
+    for dQP in dQPixel:
+        print 'Getting qMask for dQPixel=%f'%dQP
+        qMask.append( ICCFT.getHKLMask(UBMatrix, frac=fracHKL, dQPixel=dQPixel))
+
 padeCoefficients = ICCFT.getModeratorCoefficients(moderatorCoefficientsFile)
 calibrationDict = pickle.load(open(calibrationDictFile, 'rb'))
 
