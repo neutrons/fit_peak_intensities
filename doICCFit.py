@@ -16,19 +16,17 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 
 
 # Some parameters
-dtSpread = 0.03 #how far we look on either side of the nominal peak
+dtSpread = 0.015 #how far we look on either side of the nominal peak
 dtBinWidth = 4 #Width (in us) in TOF profile bins
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 dQPixel = 0.005
-doVolumeNormalization = True #True if you want to normalize TOF profiles by volume
+doVolumeNormalization = False #True if you want to normalize TOF profiles by volume
 refineCenter = False #True if you want to determine new centers - still not very good
 removeEdges = False #True if you want to not consider q-pixels that are off detector faces
-fracHKL = 0.35 #Fraction of HKL to look on either side
+fracHKL = 0.5 #Fraction of HKL to look on either side
 fracStop = 0.01 #Fraction of max counts to include in peak selection
 moderatorCoefficientsFile = 'franz_coefficients_2017.dat'
 calibrationDictFile = 'det_calibration/calibration_dictionary.pkl'
-
-
 
 #Scolecite - 2016A
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
@@ -41,11 +39,23 @@ peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K
 UBFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/%i_Niggli.mat'
 UBFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Monoclinic_C.mat'
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
-descriptor = 'test_new_fit_tight' #Does not end with '/'
+descriptor = 'scol_qMask_calcTOF_VN' #Does not end with '/'
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
+'''
+#IPTS22331
+loadDir = '/SNS/TOPAZ/IPTS-16903/data/'
+nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
+sampleRuns = [22331]
 
+peaksFormat='/SNS/users/ntv/peaks_%i.integrate'
+peaksFile = '/SNS/users/ntv/peaks_22331.integrate'
 
-
+UBFormat = None
+UBFile = '/SNS/TOPAZ/IPTS-16903/shared/Chunruo/ep_100K_MoTe2_adpQ_find/22331_Niggli.mat'
+DetCalFile = '/SNS/TOPAZ/IPTS-16903/shared/calibration/TOPAZ_2016B.DetCal'
+descriptor = 'run22331' #Does not end with '/'
+parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
+'''
 '''
 #Natrolite - 2016 - MANDI
 loadDir = '/SNS/MANDI/IPTS-8776/nexus/'
@@ -56,18 +66,22 @@ DetCalFile = '/SNS/MANDI/shared/calibration/MANDI_500.DetCal'
 descriptor = 'natrolite' #Does not end with '/'
 '''
 
+
 '''
 #Si - 2016A
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
 sampleRuns = range(15647,15670)
-peaksFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/%i_Niggli.integrate'
-UBFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/%i_Niggli.mat'
+peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.integrate'
+peaksFormat = peaksFile
+UBFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.mat'
+UBFormat = UBFile
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
-
-descriptor = 'si_constraints_oldCoeff_0p8hkl' #Does not end with '/'
-parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 '''
+
+descriptor = 'test'#'si_constraints_0p015' #Does not end with '/'
+parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
+
 figsFormat = workDir + descriptor+'/figs/mantid_%i_%i.png'
 
 if os.path.isdir(workDir + descriptor):
@@ -96,8 +110,8 @@ if peaksFile is not None:
     UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
     dQ = np.abs(ICCFT.getDQFracHKL(UBMatrix, frac=fracHKL))
     nPtsQ = np.round(np.sum(dQ/dQPixel,axis=1)).astype(int)
-    #qMask = ICCFT.getHKLMask(UBMatrix, frac=fracHKL, dQPixel=dQPixel)
-    qMask = np.ones(nPtsQ).astype(np.bool)
+    qMask = ICCFT.getHKLMask(UBMatrix, frac=fracHKL, dQPixel=dQPixel)
+    #qMask = np.ones(nPtsQ).astype(np.bool)
 padeCoefficients = ICCFT.getModeratorCoefficients(moderatorCoefficientsFile)
 calibrationDict = pickle.load(open(calibrationDictFile, 'rb'))
 
@@ -123,7 +137,7 @@ for sampleRun in sampleRuns:
     '''
     #If we want to remove edges, we rebuild the panel dictionary every run
     # TODO this can be reformulated in QLab and apply R each box.
-    instrumentFile = EdgeTools.getInstrumentFile(peaks_ws, peaksFormat%sampleRun)
+    instrumentFile = EdgeTools.getInstrumentFile(peaks_ws, peaksFile)
     if removeEdges:
         panelDict = EdgeTools.getInstrumentDict(instrumentFile, peaks_ws, sampleRun, fitOrder=2)
     else:
