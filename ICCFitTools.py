@@ -566,7 +566,6 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     else:
                         tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=CalcTOFPerPixel)
                 else:
-                    print np.shape(qMask), np.shape(dtSpread), Box.getNumEventsArray().shape
                     tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel)
 
                 #Set up our inital guess
