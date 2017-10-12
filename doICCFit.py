@@ -20,9 +20,10 @@ dtSpread = 0.015 #how far we look on either side of the nominal peak
 dtBinWidth = 4 #Width (in us) in TOF profile bins
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 dQPixel = 0.005
-doVolumeNormalization = False #True if you want to normalize TOF profiles by volume
+doVolumeNormalization = True #True if you want to normalize TOF profiles by volume
 refineCenter = False #True if you want to determine new centers - still not very good
 removeEdges = False #True if you want to not consider q-pixels that are off detector faces
+calcTOFPerPixel = False #True to calculate TOF for each pixel in a qBox - uses interpolation for volNorm (if doVolumeNormalization is True)
 fracHKL = 0.5 #Fraction of HKL to look on either side
 fracStop = 0.01 #Fraction of max counts to include in peak selection
 moderatorCoefficientsFile = 'franz_coefficients_2017.dat'
@@ -39,7 +40,7 @@ peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K
 UBFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/%i_Niggli.mat'
 UBFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Monoclinic_C.mat'
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
-descriptor = 'scol_qMask_calcTOF_VN' #Does not end with '/'
+descriptor = 'test' #Does not end with '/'
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 '''
 #IPTS22331
@@ -158,7 +159,7 @@ for sampleRun in sampleRuns:
 
 
     #Do the actual integration
-    peaks_ws,paramList= ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients,parameterDict, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.01, fracStop=fracStop, removeEdges=removeEdges, calibrationDict=calibrationDict,dQPixel=dQPixel)
+    peaks_ws,paramList= ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients,parameterDict, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.01, fracStop=fracStop, removeEdges=removeEdges, calibrationDict=calibrationDict,dQPixel=dQPixel, calcTOFPerPixel=calcTOFPerPixel)
 
     #Save the results and delete the leftovers
     SaveIsawPeaks(InputWorkspace='peaks_ws', Filename=workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))
