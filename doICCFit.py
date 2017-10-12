@@ -114,7 +114,7 @@ if peaksFile is not None:
     qMask = list()
     for dQP in dQPixel:
         print 'Getting qMask for dQPixel=%f'%dQP
-        qMask.append( ICCFT.getHKLMask(UBMatrix, frac=fracHKL, dQPixel=dQPixel))
+        qMask.append( ICCFT.getHKLMask(UBMatrix, frac=fracHKL, dQPixel=dQP))
 
 padeCoefficients = ICCFT.getModeratorCoefficients(moderatorCoefficientsFile)
 calibrationDict = pickle.load(open(calibrationDictFile, 'rb'))

@@ -542,7 +542,8 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
         peak = peaks_ws.getPeak(i)
         if peak.getRunNumber() == run:
             try:#for ppppp in [3]:#try:
-                Box = getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel)
+                Box = getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel[0])
+                print dQPixel, Box
                 tof = peak.getTOF() #in us
                 wavelength = peak.getWavelength() #in Angstrom
                 energy = 81.804 / wavelength**2 / 1000.0 #in eV
@@ -565,6 +566,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     else:
                         tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=CalcTOFPerPixel)
                 else:
+                    print np.shape(qMask), np.shape(dtSpread), Box.getNumEventsArray().shape
                     tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel)
 
                 #Set up our inital guess
@@ -596,6 +598,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
     
                 chiSq2  = 1.0e99
                 if chiSq > 2.0: #The initial fit isn't great - let's see if we can do better
+                    Box = getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel[1])
 
                     if removeEdges:
                         if edgesToCheck != []: #At least one plane intersects so we have to fit
@@ -613,15 +616,22 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     fICC2 = ICC.IkedaCarpenterConvoluted()
                     fICC2.init()
                     [fICC2.setParameter(iii,v) for iii,v in enumerate(x0[:fICC2.numParams()])]
-                    scaleFactor = np.max((y-np.polyval(bgx0,x))[nPts//3:2*nPts//3])/np.max(fICC.function1D(x)[nPts//3:2*nPts//3])
+                    #fICC2.setParameter(3,fICC.getParamValue(3))
+
+                    x = tofWS2.readX(0)
+                    y = tofWS2.readY(0)
+                    nPts=x.size
+                    bgx0 = np.polyfit(x[np.r_[0:nBG,-nBG:0]], y[np.r_[0:nBG,-nBG:0]], 1)
+
+
+                    scaleFactor = np.max((y-np.polyval(bgx0,x))[nPts//3:2*nPts//3])/np.max(fICC2.function1D(x)[nPts//3:2*nPts//3])
                     x0[4] = x0[4]*scaleFactor
                     fICC2.setParameter(4,x0[4])
                     #fICC2.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0,1.0e10],k_conv0=[50,500],penalty=1.0e20)
-                    fICC2.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.01, 1.0], T00=[0,1.0e10], penalty=1.0e20)
+                    fICC2.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.01, 1.0], T00=[0,1.0e10], k_conv0=[10,500], penalty=1.0e20)
                     f = FunctionWrapper(fICC2)
                     bg = LinearBackground(A0=bgx0[1], A1=bgx0[0])
-                    bg.constrain('%4.4e < A1 < %4.4e'%(0.5*bgx0[0], 1.5*bgx0[0]))
-                    bg.constrain('%4.4e < A0 < %4.4e'%(0.5*bgx0[1], 1.5*bgx0[1]))
+                    #bg.constrain('-1.0 < A1 < 1.0')
                     fitFun = f + bg
                     try:
                             #fitStatus, chiSq2, covarianceTable, paramTable, fitWorkspace = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit2') #Antiquated, Sept 25 2017
@@ -665,7 +675,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 print 'KeyboardInterrupt: Exiting Program!!!!!!!'
                 sys.exit()
             except: #Error with fitting
-                #raise
+                raise
                 peak.setIntensity(0)
                 peak.setSigmaIntensity(1)
                 print 'Error with peak ' + str(i)
