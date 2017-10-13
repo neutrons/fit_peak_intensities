@@ -538,10 +538,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
         peak = peaks_ws.getPeak(i)
         if peak.getRunNumber() == run:
             try:#for ppppp in [3]:#try:
-                t1 = timer() #timeit
                 Box = getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel[0])
-                t2 = timer() #timeit
-                print 'Box construction: %f s'%(t2-t1) #timeit
                 print dQPixel, Box
                 tof = peak.getTOF() #in us
                 wavelength = peak.getWavelength() #in Angstrom
@@ -565,11 +562,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     else:
                         tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=CalcTOFPerPixel)
                 else:
-                    t1 = timer() #timeit
                     tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel)
-                t2 = timer() #timeit
-                print 'getTOFWS: %f s'%(t2-t1) #timeit
-                t1 = timer() #timeit
                 #Set up our inital guess
                 fICC = ICC.IkedaCarpenterConvoluted()
                 fICC.init()
@@ -595,8 +588,6 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 fitResults = Fit(Function=fitFun, InputWorkspace='tofWS', Output='fit')
                 fitStatus = fitResults.OutputStatus
                 chiSq = fitResults.OutputChi2overDoF
-                t2 = timer() #timeit
-                print 'Fit1: %f s'%(t2-t1) #timeit
     
                 chiSq2  = 1.0e99
                 if chiSq > 2.0: #The initial fit isn't great - let's see if we can do better
@@ -656,7 +647,6 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     fICC = fICC2
                     tofWS = mtd['tofWS2']
 
-                t1 = timer() #timeit
                 fitBG = [param.cell(iii+2,1),param.cell(iii+1,1)]
                 #Set the intensity before moving on to the next peak
                 icProfile = r.readY(1)
@@ -667,23 +657,18 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 icProfile = icProfile - np.polyval(bgCoefficients, r.readX(1)) #subtract background
                 peak.setIntensity(intensity)
                 peak.setSigmaIntensity(sigma)
-                t3=timer()#timeit
                 if figsFormat is not None:
                     plotFit(figsFormat, r,tofWS,fICC,peak.getRunNumber(), i, energy, chiSq,fitBG, xStart, xStop, bgx0)
                     #plotFitPresentation('/SNS/users/ntv/med_peak.pdf', r, tofWS,fICC,peak.getRunNumber(), i, energy, chiSq,fitBG, xStart, xStop, bgx0)
-                t4=timer()#timeit
-                print 'plot %f s'%(t4-t3)
                 fitDict[i] = np.array([r.readX(0),r.readY(0), r.readY(1), r.readY(2)])
                 paramList.append([i, energy, np.sum(icProfile), 0.0,chiSq] + [param.row(i)['Value'] for i in range(param.rowCount())])
                 if param.row(2)['Value'] < 0:
                     print i, [param.row(i)['Value'] for i in range(param.rowCount())]
                 mtd.remove('MDbox_'+str(run)+'_'+str(i))
-                t2 = timer()#timeit
-                print 'Finalizing stuff: %f s'%(t2-t1)#timeit
                 
             except KeyboardInterrupt:
                 print 'KeyboardInterrupt: Exiting Program!!!!!!!'
-                sys.exit()/para
+                sys.exit()
             except: #Error with fitting
                 raise
                 peak.setIntensity(0)

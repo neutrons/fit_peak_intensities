@@ -29,6 +29,7 @@ fracStop = 0.01 #Fraction of max counts to include in peak selection
 moderatorCoefficientsFile = 'franz_coefficients_2017.dat'
 calibrationDictFile = 'det_calibration/calibration_dictionary.pkl'
 
+'''
 #Scolecite - 2016A
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
@@ -42,6 +43,7 @@ UBFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Mo
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
 descriptor = 'test' #Does not end with '/'
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
+'''
 '''
 #IPTS22331
 loadDir = '/SNS/TOPAZ/IPTS-16903/data/'
@@ -68,7 +70,6 @@ descriptor = 'natrolite' #Does not end with '/'
 '''
 
 
-'''
 #Si - 2016A
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
@@ -78,11 +79,10 @@ peaksFormat = peaksFile
 UBFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.mat'
 UBFormat = UBFile
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
-descriptor = 'test'#'si_constraints_0p015' #Does not end with '/'
+descriptor = 'si_0p015_hybrid' #Does not end with '/'
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
-'''
 
-figsFormat = workDir + descriptor+'/figs/mantid_%i_%i.png'
+figsFormat = None# workDir + descriptor+'/figs/mantid_%i_%i.png'
 
 if os.path.isdir(workDir + descriptor):
     inp = raw_input('!!!!!! WARNING: PATH %s ALREADY EXIST!!!!! CONTINUE? (Y/<n>):'%(workDir + descriptor))
