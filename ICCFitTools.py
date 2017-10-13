@@ -1,5 +1,3 @@
-import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
@@ -536,6 +534,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
         0/0
     if p is None:
         p = range(peaks_ws.getNumberPeaks())
+    fitDict = {}
     for i in p:
         peak = peaks_ws.getPeak(i)
         if peak.getRunNumber() == run:
@@ -675,6 +674,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     #plotFitPresentation('/SNS/users/ntv/med_peak.pdf', r, tofWS,fICC,peak.getRunNumber(), i, energy, chiSq,fitBG, xStart, xStop, bgx0)
                 t4=timer()#timeit
                 print 'plot %f s'%(t4-t3)
+                fitDict[i] = np.array([r.readX(0),r.readY(0), r.readY(1), r.readY(2)])
                 paramList.append([i, energy, np.sum(icProfile), 0.0,chiSq] + [param.row(i)['Value'] for i in range(param.rowCount())])
                 if param.row(2)['Value'] < 0:
                     print i, [param.row(i)['Value'] for i in range(param.rowCount())]
@@ -684,7 +684,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 
             except KeyboardInterrupt:
                 print 'KeyboardInterrupt: Exiting Program!!!!!!!'
-                sys.exit()
+                sys.exit()/para
             except: #Error with fitting
                 raise
                 peak.setIntensity(0)
@@ -694,9 +694,8 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 print(exc_type, fname, exc_tb.tb_lineno)
                 paramList.append([i, energy, 0.0, 1.0e10,1.0e10] + [0 for i in range(mtd['fit_parameters'].rowCount())])
-           
         mtd.remove('MDbox_'+str(run)+'_'+str(i))
-    return peaks_ws, paramList
+    return peaks_ws, paramList, fitDict
 
 
 
