@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
@@ -15,6 +17,8 @@ import getEdgePixels as EdgeTools
 reload(EdgeTools)
 import itertools
 from scipy.interpolate import LinearNDInterpolator
+from timeit import default_timer as timer
+
 
 def getDQTOF(peak, dtSpread=0.03, maxDQ=0.5):
     dQ=np.zeros(3)
@@ -167,9 +171,9 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
     print '~~~ ', np.sum(n_events), np.sum(n_events[qMask]), np.sum(n_events[hasEventsIDX])
 
 
-    #Set up some things to remove bad pixels
+    #Set up some things to only consider good pixels
     N = np.shape(n_events)[0]
-    neigh_length_m = 0 #Set to zero for "this pixel only" mode - can be made faster if using this mode
+    neigh_length_m = 0 #Set to zero for "this pixel only" mode - performance is optimized for neigh_length_m=0 
     maxBin = np.shape(n_events)
 
     if zBG >= 0:
@@ -536,7 +540,10 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
         peak = peaks_ws.getPeak(i)
         if peak.getRunNumber() == run:
             try:#for ppppp in [3]:#try:
+                t1 = timer() #timeit
                 Box = getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel[0])
+                t2 = timer() #timeit
+                print 'Box construction: %f s'%(t2-t1) #timeit
                 print dQPixel, Box
                 tof = peak.getTOF() #in us
                 wavelength = peak.getWavelength() #in Angstrom
@@ -553,6 +560,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     mtd.remove('MDbox_'+str(run)+'_'+str(i))
                     continue
                 #Do background removal (optionally) and construct the TOF workspace for fitting
+                t1 = timer() #timeit
                 if removeEdges: 
                     edgesToCheck = EdgeTools.needsEdgeRemoval(Box,panelDict,peak) 
                     if edgesToCheck != []: #At least one plane intersects so we have to fit
@@ -561,7 +569,9 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                         tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=CalcTOFPerPixel)
                 else:
                     tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel)
-
+                t2 = timer() #timeit
+                print 'getTOFWS: %f s'%(t2-t1) #timeit
+                t1 = timer() #timeit
                 #Set up our inital guess
                 fICC = ICC.IkedaCarpenterConvoluted()
                 fICC.init()
@@ -587,7 +597,8 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 fitResults = Fit(Function=fitFun, InputWorkspace='tofWS', Output='fit')
                 fitStatus = fitResults.OutputStatus
                 chiSq = fitResults.OutputChi2overDoF
-                
+                t2 = timer() #timeit
+                print 'Fit1: %f s'%(t2-t1) #timeit
     
                 chiSq2  = 1.0e99
                 if chiSq > 2.0: #The initial fit isn't great - let's see if we can do better
@@ -647,6 +658,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     fICC = fICC2
                     tofWS = mtd['tofWS2']
 
+                t1 = timer() #timeit
                 fitBG = [param.cell(iii+2,1),param.cell(iii+1,1)]
                 #Set the intensity before moving on to the next peak
                 icProfile = r.readY(1)
@@ -657,13 +669,19 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 icProfile = icProfile - np.polyval(bgCoefficients, r.readX(1)) #subtract background
                 peak.setIntensity(intensity)
                 peak.setSigmaIntensity(sigma)
+                t3=timer()#timeit
                 if figsFormat is not None:
                     plotFit(figsFormat, r,tofWS,fICC,peak.getRunNumber(), i, energy, chiSq,fitBG, xStart, xStop, bgx0)
                     #plotFitPresentation('/SNS/users/ntv/med_peak.pdf', r, tofWS,fICC,peak.getRunNumber(), i, energy, chiSq,fitBG, xStart, xStop, bgx0)
+                t4=timer()#timeit
+                print 'plot %f s'%(t4-t3)
                 paramList.append([i, energy, np.sum(icProfile), 0.0,chiSq] + [param.row(i)['Value'] for i in range(param.rowCount())])
                 if param.row(2)['Value'] < 0:
                     print i, [param.row(i)['Value'] for i in range(param.rowCount())]
                 mtd.remove('MDbox_'+str(run)+'_'+str(i))
+                t2 = timer()#timeit
+                print 'Finalizing stuff: %f s'%(t2-t1)#timeit
+                
             except KeyboardInterrupt:
                 print 'KeyboardInterrupt: Exiting Program!!!!!!!'
                 sys.exit()
