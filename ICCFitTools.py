@@ -69,7 +69,7 @@ def getHKLMask(UB, frac=0.5,dQPixel=0.005, dQ=None):
     qx = np.linspace(qDummy[0]-dQ[0,0], qDummy[0]+dQ[0,1], nPtsQ[0])
     qy = np.linspace(qDummy[1]-dQ[1,0], qDummy[1]+dQ[1,1], nPtsQ[1])
     qz = np.linspace(qDummy[2]-dQ[2,0], qDummy[2]+dQ[2,1], nPtsQ[2])
-    QX,QY,QZ = np.meshgrid(qx,qy,qz,indexing='ij')
+    QX,QY,QZ = np.meshgrid(qx,qy,qz,indexing='ij',copy=False)
     UBinv = np.linalg.inv(UB)
     tHKL = UBinv.dot([QX.ravel(),QY.ravel(),QZ.ravel()])/2/np.pi
     H = np.reshape(tHKL[0,:], QX.shape)
@@ -165,9 +165,8 @@ def get_pp_lambda(n_events, hasEventsIDX ):
 def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, peakNumber, qMask, dtBinWidth=2, zBG=-1.0, dtSpread = 0.02, doVolumeNormalization=False, minFracPixels = 0.005, removeEdges=False, edgesToCheck=None, calcTOFPerPixel=False, workspaceNumber=None):
     #Find the qVoxels to use
     n_events = box.getNumEventsArray()
-    hasEventsIDX = reduce(np.logical_and, [n_events>0, ~np.isnan(n_events), qMask])
+    hasEventsIDX = np.logical_and(n_events>0,qMask)
     print '~~~ ', np.sum(n_events), np.sum(n_events[qMask]), np.sum(n_events[hasEventsIDX])
-
 
     #Set up some things to only consider good pixels
     N = np.shape(n_events)[0]
@@ -191,7 +190,6 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
     else: #don't do background removal - just consider one pixel at a time 
         boxMean = n_events[hasEventsIDX]
         boxMeanIDX = np.where(hasEventsIDX)
-    
     boxMeanIDX = np.asarray(boxMeanIDX) 
     useIDX = boxMeanIDX.transpose()
     
@@ -202,7 +200,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
     qy = np.linspace(yaxis.getMinimum(), yaxis.getMaximum(), yaxis.getNBins())
     zaxis = box.getZDimension()
     qz = np.linspace(zaxis.getMinimum(), zaxis.getMaximum(), zaxis.getNBins())
-    QX, QY, QZ = np.meshgrid(qx, qy, qz,indexing='ij')
+    QX, QY, QZ = np.meshgrid(qx, qy, qz,indexing='ij',copy=False)
 
     #Create our TOF distribution from bg corrected data
     if calcTOFPerPixel == False:
@@ -227,7 +225,6 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
             
         tList = getTList(peak, qx, qy, qz, boxMeanIDX)
         print tList
-
     #Set up our bins for histogramming
     tMin = np.min(tList)
     tMax = np.max(tList)
@@ -251,8 +248,6 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
         '''
     else:
         h = np.histogram(tList,tBins,weights=weightList);
-
-
     #For and plot the TOF distribution
     tPoints = 0.5*(h[1][1:] + h[1][:-1])
     yPoints = h[0]
@@ -260,7 +255,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
     if doVolumeNormalization:
         if calcTOFPerPixel == False:
             tofBox = 3176.507 * flightPath *np.sin(scatteringHalfAngle) * 1/np.sqrt(QX[qMask]**2 + QY[qMask]**2 + QZ[qMask]**2)
-            tofMask = np.ones_like(tofBox).astype(np.bool)
+            #tofMask = np.ones_like(tofBox).astype(np.bool)
         if calcTOFPerPixel == True:
             qS0 = peak.getQSampleFrame()
             qqx = qx[::20] #Points we'll interpolate from for speed
@@ -278,7 +273,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
             peak.setQSampleFrame(qS0)
             LLIST = np.asarray(LLIST)
             LLIST[LLIST>19.0] = np.nan
-            QQX,QQY,QQZ = np.meshgrid(qqx,qqy,qqz,indexing='ij')
+            QQX,QQY,QQZ = np.meshgrid(qqx,qqy,qqz,indexing='ij',copy=False)
             cartcoord = list(zip(QQX.flatten(), QQY.flatten(), QQZ.flatten()))
             nn = LinearNDInterpolator(cartcoord, LLIST.flatten())
 
@@ -290,11 +285,15 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
             print 'REMOVING EDGES'
             numPixels = np.histogram((tofBox*mask[qMask])[tofMask], tBins)[0]
         else:
-            numPixels = np.histogram(tofBox[tofMask], tBins)[0]
+            if not calcTOFPerPixel:
+                numPixels = np.histogram(tofBox, tBins)[0]
+            else:
+                numPixels = np.histogram(tofBox[tofMask], tBins)[0]
+            
         yPoints = 1.0*yPoints / numPixels
         useIDX = 1.0*numPixels/np.sum(numPixels) > minFracPixels
         if np.sum(useIDX < 1): #Bad threshold, we'll juse use it all
-            useIDX = np.ones(np.size(yPoints)).astype(bool)
+            useIDX = np.ones(np.size(yPoints)).astype(np.bool)
         tPoints = tPoints[useIDX]
         yPoints = yPoints[useIDX] * np.mean(numPixels)
         #if dtSpread > 0.04:
@@ -559,7 +558,6 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     mtd.remove('MDbox_'+str(run)+'_'+str(i))
                     continue
                 #Do background removal (optionally) and construct the TOF workspace for fitting
-                t1 = timer() #timeit
                 if removeEdges: 
                     edgesToCheck = EdgeTools.needsEdgeRemoval(Box,panelDict,peak) 
                     if edgesToCheck != []: #At least one plane intersects so we have to fit
@@ -567,6 +565,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     else:
                         tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=CalcTOFPerPixel)
                 else:
+                    t1 = timer() #timeit
                     tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel)
                 t2 = timer() #timeit
                 print 'getTOFWS: %f s'%(t2-t1) #timeit
