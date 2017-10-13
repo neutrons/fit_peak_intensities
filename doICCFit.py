@@ -78,10 +78,9 @@ peaksFormat = peaksFile
 UBFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.mat'
 UBFormat = UBFile
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
-'''
-
 descriptor = 'test'#'si_constraints_0p015' #Does not end with '/'
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
+'''
 
 figsFormat = workDir + descriptor+'/figs/mantid_%i_%i.png'
 
