@@ -189,10 +189,9 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
     else: #don't do background removal - just consider one pixel at a time 
         boxMean = n_events[hasEventsIDX]
         boxMeanIDX = np.where(hasEventsIDX)
-        print 'BOXMEAN:::: ', np.sum(boxMean)
-          
-    realNeutronIDX = np.asarray(boxMeanIDX)
-    useIDX = realNeutronIDX.transpose()
+    
+    boxMeanIDX = np.asarray(boxMeanIDX) 
+    useIDX = boxMeanIDX.transpose()
     
     #Setup our axes -- ask if there is a way to just get this
     xaxis = box.getXDimension()
@@ -211,10 +210,10 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
     if calcTOFPerPixel == True:
         origFlightPath = flightPath
         origScatteringHalfAngle = scatteringHalfAngle
-        def getTList(peak,qx,qy,qz,realNeutronIDX):
+        def getTList(peak,qx,qy,qz,boxMeanIDX):
             origQS = peak.getQSampleFrame()
             tList = []
-            for idx in realNeutronIDX:
+            for idx in boxMeanIDX.transpose():
                 newQ = V3D(qx[idx[0]],qy[idx[1]],qz[idx[2]])
                 peak.setQSampleFrame(newQ)
                 flightPath = peak.getL1() + peak.getL2()
@@ -224,7 +223,8 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
             peak.setQSampleFrame(origQS)
             return tList
             
-        tList = getTList(peak, qx, qy, qz, realNeutronIDX)
+        tList = getTList(peak, qx, qy, qz, boxMeanIDX)
+        print tList
 
     #Set up our bins for histogramming
     tMin = np.min(tList)
@@ -282,8 +282,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
 
             PIXELFACTOR = np.array(nn(QX,QY,QZ)) #=(L1*L2) + sin(theta)
 
-            tofBox = 3176.507 * PIXELFACTOR * 1.0/np.sqrt(QX**2 + QY**2 + QZ**2)
-            tofBox *= qMask
+            tofBox = 3176.507 * PIXELFACTOR * 1.0/np.sqrt(QX[qMask]**2 + QY[qMask]**2 + QZ[qMask]**2)
             tofMask = ~np.isnan(tofBox) 
         if removeEdges:
             print 'REMOVING EDGES'
