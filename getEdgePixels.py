@@ -226,8 +226,6 @@ def getMask(peak, Box, panelDict, edgesToCheck=[0,1,2,3]):
     qz = np.linspace(zaxis.getMinimum(), zaxis.getMaximum(), zaxis.getNBins())
     QX,QY,QZ = np.meshgrid(qx,qy,qz,indexing='ij',copy=False)
 
-    maskXY = None
-    maskZY = None
 
     # -- Prototype for mask generation
     for i in edgesToCheck:
