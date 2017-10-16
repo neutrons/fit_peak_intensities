@@ -62,7 +62,7 @@ def getDQFracHKL(UB, frac=0.5):
 def getHKLMask(UB, frac=0.5,dQPixel=0.005, dQ=None):
     if dQ is None:
         dQ = np.abs(getDQFracHKL(UB, frac=frac))
-        #dQ[dQ>0.5] = 0.5
+        dQ[dQ>0.5] = 0.5
     nPtsQ = np.round(np.sum(dQ/dQPixel,axis=1)).astype(int)
     h0 = 1.0; k0 = 27.0; l0=7.0
     qDummy = 2*np.pi*UB.dot(np.asarray([h0, k0, l0]))
@@ -236,7 +236,8 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
     weightList = n_events[hasEventsIDX]
     if removeEdges:
         mask = EdgeTools.getMask(peak, box, panelDict,edgesToCheck=edgesToCheck)
-        h = np.histogram(tList,tBins,weights=weightList*mask[useIDX.transpose()[:,0],useIDX.transpose()[:,1],useIDX.transpose()[:,2]]);
+        print np.shape(mask), np.shape(useIDX), np.shape(useIDX[0])
+        h = np.histogram(tList,tBins,weights=weightList*mask[hasEventsIDX]);
         '''
         plt.figure(2); plt.clf()
         q = mask[:,mask.shape[1]//2,:]
@@ -283,7 +284,10 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
             tofMask = ~np.isnan(tofBox) 
         if removeEdges:
             print 'REMOVING EDGES'
-            numPixels = np.histogram((tofBox*mask[qMask])[tofMask], tBins)[0]
+            if not calcTOFPerPixel:
+                numPixels = np.histogram((tofBox*mask[qMask]), tBins)[0]
+            else:
+                numPixels = np.histogram((tofBox*mask[qMask])[tofMask], tBins)[0]
         else:
             if not calcTOFPerPixel:
                 numPixels = np.histogram(tofBox, tBins)[0]
@@ -501,7 +505,7 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.00
     #dQ = np.abs(getDQTOF(peak))
     #dQPixel = getPixelStep(peak)
     dQ = np.abs(dQ)
-    #dQ[dQ > 0.5] = 0.5
+    dQ[dQ>0.5] = 0.5
     nPtsQ = np.round(np.sum(dQ/dQPixel,axis=1)).astype(int)
     print dQ, nPtsQ
     if refineCenter: #Find better center by flattining the cube in each direction and fitting a Gaussian
@@ -539,7 +543,6 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
         if peak.getRunNumber() == run:
             try:#for ppppp in [3]:#try:
                 Box = getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel[0])
-                print dQPixel, Box
                 tof = peak.getTOF() #in us
                 wavelength = peak.getWavelength() #in Angstrom
                 energy = 81.804 / wavelength**2 / 1000.0 #in eV
@@ -555,7 +558,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     mtd.remove('MDbox_'+str(run)+'_'+str(i))
                     continue
                 #Do background removal (optionally) and construct the TOF workspace for fitting
-                if removeEdges: 
+                if removeEdges:
                     edgesToCheck = EdgeTools.needsEdgeRemoval(Box,panelDict,peak) 
                     if edgesToCheck != []: #At least one plane intersects so we have to fit
                         tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=calcTOFPerPixel)
