@@ -14,19 +14,16 @@ from timeit import default_timer as timer
 #reload(ICCFT)
 
 def polyfit2d(x, y, z, order=3):
-    t1 = timer()
     ncols = (order + 1)**2
     G = np.zeros((x.size, ncols))
     ij = itertools.product(range(order+1), range(order+1))
     for k, (i,j) in enumerate(ij):
         G[:,k] = x**i * y**j
     m, residual, _, _ = np.linalg.lstsq(G, z)
-    t2 = timer()
-    print 'FIT 2nd ORDER IN %f s'%(t2-t1)
     return m, residual
 
+#n.b. this is hardcoded at 2nd order right now
 def polyval2d(x, y, m):
-    t1 = timer()
     order = int(np.sqrt(len(m))) - 1
     z = np.zeros_like(x)
     XSQ = x*x
@@ -36,8 +33,6 @@ def polyval2d(x, y, m):
     #z = np.zeros_like(x)
     #for a, (i,j) in zip(m, ij):
     #    z += a * x**i * y**j
-    t2 = timer()
-    print 'POLYVAL2D: %f s'%(t2-t1)
     return z
 
 
@@ -213,7 +208,7 @@ def needsEdgeRemoval(Box, panelDict, peak):
     return edgesToCheck
 
 
-def getMask(peak, Box, panelDict, edgesToCheck=[0,1,2,3]):
+def getMask(peak, Box, panelDict, qMask, edgesToCheck=[0,1,2,3]):
     maskList = list()
     qS = peak.getQSampleFrame()
     panel = getDetectorBank(panelDict, peak.getDetectorID())
@@ -226,28 +221,28 @@ def getMask(peak, Box, panelDict, edgesToCheck=[0,1,2,3]):
     qz = np.linspace(zaxis.getMinimum(), zaxis.getMaximum(), zaxis.getNBins())
     QX,QY,QZ = np.meshgrid(qx,qy,qz,indexing='ij',copy=False)
 
-
+    t1 = timer()
     # -- Prototype for mask generation
     for i in edgesToCheck:
-        t1 = timer()
+        tmpMask = np.zeros_like(QX).astype(np.bool)
         if not panel['switch_xz_%i'%i]:
             gtVect = qS > polyval2d(qS[0], qS[1], panel['surf_coefficients_%i'%i])
             peakGreaterZ = gtVect[2]
             if peakGreaterZ:
-                maskList.append(QZ > polyval2d(QX, QY, panel['surf_coefficients_%i'%i]))
+                tmpMask[qMask] += QZ[qMask] > polyval2d(QX[qMask], QY[qMask], panel['surf_coefficients_%i'%i])
             else:
-                maskList.append(QZ < polyval2d(QX, QY, panel['surf_coefficients_%i'%i])) 
+                tmpMask[qMask] += QZ[qMask] < polyval2d(QX[qMask], QY[qMask], panel['surf_coefficients_%i'%i]) 
         else:#We had a poorly formed polynomial, so we fit in X instead of Z
             gtVect = qS > polyval2d(qS[2], qS[1], panel['surf_coefficients_%i'%i])
             peakGreaterX = gtVect[0]
             if peakGreaterX:
-                maskList.append(QX > polyval2d(QZ, QY, panel['surf_coefficients_%i'%i]))
+                tmpMask[qMask] += QX[qMask] > polyval2d(QZ[qMask], QY[qMask], panel['surf_coefficients_%i'%i])
             else:
-                maskList.append(QX < polyval2d(QZ, QY, panel['surf_coefficients_%i'%i])) 
-        t2 = timer()
-        print 'EDGE TIME (including polyval2d): %f s'%(t2-t1)
+                tmpMask[qMask] += QX[qMask] < polyval2d(QZ[qMask], QY[qMask], panel['surf_coefficients_%i'%i]) 
+        maskList.append(tmpMask)
     maskList = np.asarray(maskList)
     mask = reduce(np.logical_and, maskList)
+    print 'Made mask in %f s'%(timer()-t1)
     return mask
 
 def getPeaksWS(peaksFile, UBFile):
