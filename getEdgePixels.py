@@ -10,10 +10,10 @@ import ICCFitTools as ICCFT
 import itertools
 import re
 import pickle
+from timeit import default_timer as timer
 #reload(ICCFT)
 
 def polyfit2d(x, y, z, order=3):
-    import itertools
     ncols = (order + 1)**2
     G = np.zeros((x.size, ncols))
     ij = itertools.product(range(order+1), range(order+1))
@@ -22,13 +22,17 @@ def polyfit2d(x, y, z, order=3):
     m, residual, _, _ = np.linalg.lstsq(G, z)
     return m, residual
 
+#n.b. this is hardcoded at 2nd order right now
 def polyval2d(x, y, m):
-    import itertools
     order = int(np.sqrt(len(m))) - 1
-    ij = itertools.product(range(order+1), range(order+1))
     z = np.zeros_like(x)
-    for a, (i,j) in zip(m, ij):
-        z += a * x**i * y**j
+    XSQ = x*x
+    YSQ = y*y
+    z = m[0] + m[1]*y + m[2]*YSQ + m[3]*x + m[4]*x*y + m[5]*x*YSQ + m[6]*XSQ + m[7]*x*x*y + m[8]*XSQ*YSQ
+    #ij = itertools.product(range(order+1), range(order+1))
+    #z = np.zeros_like(x)
+    #for a, (i,j) in zip(m, ij):
+    #    z += a * x**i * y**j
     return z
 
 
@@ -192,8 +196,8 @@ def needsEdgeRemoval(Box, panelDict, peak):
     cx = [Box.getDimension(0).getMinimum(), Box.getDimension(0).getMaximum()]
     cy = [Box.getDimension(1).getMinimum(), Box.getDimension(1).getMaximum()]
     cz = [Box.getDimension(2).getMinimum(), Box.getDimension(2).getMaximum()]
-    CX, CY, CZ = np.meshgrid(cx,cy,cz) 
-    edgesToCheck = list() 
+    CX, CY, CZ = np.meshgrid(cx,cy,cz,copy=False) 
+    edgesToCheck = list()
     for i in range(4):
         if not panel['switch_xz_%i'%i]:
             gtVect = CZ > polyval2d(CX, CY, panel['surf_coefficients_%i'%i])
@@ -204,7 +208,7 @@ def needsEdgeRemoval(Box, panelDict, peak):
     return edgesToCheck
 
 
-def getMask(peak, Box, panelDict, edgesToCheck=[0,1,2,3]):
+def getMask(peak, Box, panelDict, qMask, edgesToCheck=[0,1,2,3]):
     maskList = list()
     qS = peak.getQSampleFrame()
     panel = getDetectorBank(panelDict, peak.getDetectorID())
@@ -215,28 +219,30 @@ def getMask(peak, Box, panelDict, edgesToCheck=[0,1,2,3]):
     qy = np.linspace(yaxis.getMinimum(), yaxis.getMaximum(), yaxis.getNBins())
     zaxis = Box.getZDimension()
     qz = np.linspace(zaxis.getMinimum(), zaxis.getMaximum(), zaxis.getNBins())
-    QX,QY,QZ = np.meshgrid(qx,qy,qz,indexing='ij')
+    QX,QY,QZ = np.meshgrid(qx,qy,qz,indexing='ij',copy=False)
 
-
+    t1 = timer()
     # -- Prototype for mask generation
     for i in edgesToCheck:
+        tmpMask = np.zeros_like(QX).astype(np.bool)
         if not panel['switch_xz_%i'%i]:
             gtVect = qS > polyval2d(qS[0], qS[1], panel['surf_coefficients_%i'%i])
             peakGreaterZ = gtVect[2]
             if peakGreaterZ:
-                maskList.append(QZ > polyval2d(QX, QY, panel['surf_coefficients_%i'%i]))
+                tmpMask[qMask] += QZ[qMask] > polyval2d(QX[qMask], QY[qMask], panel['surf_coefficients_%i'%i])
             else:
-                maskList.append(QZ < polyval2d(QX, QY, panel['surf_coefficients_%i'%i])) 
+                tmpMask[qMask] += QZ[qMask] < polyval2d(QX[qMask], QY[qMask], panel['surf_coefficients_%i'%i]) 
         else:#We had a poorly formed polynomial, so we fit in X instead of Z
             gtVect = qS > polyval2d(qS[2], qS[1], panel['surf_coefficients_%i'%i])
             peakGreaterX = gtVect[0]
             if peakGreaterX:
-                maskList.append(QX > polyval2d(QZ, QY, panel['surf_coefficients_%i'%i]))
+                tmpMask[qMask] += QX[qMask] > polyval2d(QZ[qMask], QY[qMask], panel['surf_coefficients_%i'%i])
             else:
-                maskList.append(QX < polyval2d(QZ, QY, panel['surf_coefficients_%i'%i])) 
-
+                tmpMask[qMask] += QX[qMask] < polyval2d(QZ[qMask], QY[qMask], panel['surf_coefficients_%i'%i]) 
+        maskList.append(tmpMask)
     maskList = np.asarray(maskList)
     mask = reduce(np.logical_and, maskList)
+    print 'Made mask in %f s'%(timer()-t1)
     return mask
 
 def getPeaksWS(peaksFile, UBFile):
