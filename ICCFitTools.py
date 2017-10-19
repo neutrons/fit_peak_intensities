@@ -91,8 +91,9 @@ def padeWrapper(x,a,b,c,d,f,g,h,i,j,k):
 def pade(c,x): #c are coefficients, x is the energy in eV
     return c[0]*x**c[1]*(1+c[2]*x+c[3]*x**2+(x/c[4])**c[5])/(1+c[6]*x+c[7]*x**2+(x/c[8])**c[9])
 
-def integratePeak(x, y, bg,t0, fracStop = 0.01):
-    yScaled = (y-bg) / np.max(y-bg)
+def integratePeak(x, yFit, yData, bg, fracStop = 0.01):
+    #Find out start/stop point
+    yScaled = (yFit-bg) / np.max(yFit-bg)
     goodIDX = yScaled > fracStop
     if np.sum(goodIDX) > 0:
         iStart = np.min(np.where(goodIDX))
@@ -102,23 +103,14 @@ def integratePeak(x, y, bg,t0, fracStop = 0.01):
     else:
         print 'THIS IS BAD - NO GOOD START/STOP POINT!!'
         return 0.0, 1.0, x[0], x[-1]
-    '''
-    try:
-        iStart = np.min(np.where((y-bg)>ctsStop))
-    except:
-        raise
-        iStart = 0
-    xStart = x[iStart]
-    try:
-        print np.min(y[x>t0]-bg[x>t0])
-        iStop = np.min(np.where(np.logical_and(x>t0,(y-bg)<ctsStop)))
-    except:
-        raise
-        iStop = len(x)-1 #TODO: Probably need to go further out
-    xStop = x[iStop]
-    '''
-    intensity = np.sum(y[iStart:iStop] - bg[iStart:iStop])
-    sigma = np.sqrt(np.var(y[iStart:iStop])+np.var(bg[iStart:iStop]))
+ 
+    #Do the integration
+    intensity = np.sum(yFit[iStart:iStop] - bg[iStart:iStop])
+
+    #Calculate the background sigma = sqrt(var(Fit) + sum(BG))
+    bgSum = np.sum(bg[iStart:iStop])
+    varFit = np.average((yData-yFit)**2,weights=yData)   
+    sigma = np.sqrt(varFit + bgSum)
     return intensity, sigma, xStart, xStop
 
 #Poission distribution
@@ -656,7 +648,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 bgCoefficients = fitBG
                 #peak.setSigmaIntensity(np.sqrt(np.sum(icProfile)))i
                 t0 = param.row(3)['Value']
-                intensity, sigma, xStart, xStop = integratePeak(r.readX(0), icProfile, np.polyval(bgCoefficients, r.readX(1)),t0, fracStop=fracStop)
+                intensity, sigma, xStart, xStop = integratePeak(r.readX(0), icProfile,r.readY(0), np.polyval(bgCoefficients, r.readX(1)), fracStop=fracStop)
                 icProfile = icProfile - np.polyval(bgCoefficients, r.readX(1)) #subtract background
                 peak.setIntensity(intensity)
                 peak.setSigmaIntensity(sigma)
