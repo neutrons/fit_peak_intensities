@@ -108,9 +108,11 @@ def integratePeak(x, yFit, yData, bg, fracStop = 0.01):
     intensity = np.sum(yFit[iStart:iStop] - bg[iStart:iStop])
 
     #Calculate the background sigma = sqrt(var(Fit) + sum(BG))
+    yFitSum = np.sum(yFit[iStart:iStop])
     bgSum = np.sum(bg[iStart:iStop])
-    varFit = np.average((yData-yFit)**2,weights=yData)   
-    sigma = np.sqrt(varFit + bgSum)
+    varFit = np.average((yData-yFit)**2,weights=(yData-bg))   
+    #sigma = np.sqrt(varFit + bgSum)
+    sigma = np.sqrt(yFitSum + bgSum)
     return intensity, sigma, xStart, xStop
 
 #Poission distribution
