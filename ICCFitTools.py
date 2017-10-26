@@ -176,16 +176,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
         hasEventsIDX = goodIDX #TODO this is bad naming, but a lot of the naming in this function assumes it
         boxMean = n_events[goodIDX]
         boxMeanIDX = np.where(goodIDX)
-        '''
-        for i,idx in enumerate(np.array(hasEventsIDXLoc).transpose()):
-            dataBox = n_events[max(idx[0] - neigh_length_m,0):min(idx[0] + neigh_length_m+1, maxBin[0]),
-                                           max(idx[1] - neigh_length_m,0):min(idx[1] + neigh_length_m+1, maxBin[1]),
-                                           max(idx[2] - neigh_length_m,0):min(idx[2] + neigh_length_m+1, maxBin[2])]
-            boxMean[i] = np.mean(dataBox)
-            boxMeanIDX.append(idx)
-        signalIDX = np.where(boxMean > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
-        '''
-    else: #don't do background removal - just consider one pixel at a time 
+   else: #don't do background removal - just consider one pixel at a time 
         boxMean = n_events[hasEventsIDX]
         boxMeanIDX = np.where(hasEventsIDX)
     boxMeanIDX = np.asarray(boxMeanIDX) 
