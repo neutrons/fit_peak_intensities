@@ -16,6 +16,7 @@ reload(EdgeTools)
 import itertools
 from scipy.interpolate import LinearNDInterpolator
 from timeit import default_timer as timer
+from scipy.ndimage.filters import convolve
 
 
 def getDQTOF(peak, dtSpread=0.03, maxDQ=0.5):
@@ -132,7 +133,6 @@ def normPoiss(k,lam,eventHist):
 #the most likely number of events.
 def get_pp_lambda(n_events, hasEventsIDX ):
 
-    
     eventValues = n_events[hasEventsIDX]
     numEvents = np.sum(eventValues)
     eventHist = np.bincount(eventValues.astype('int'))[1:]
@@ -168,19 +168,23 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
     maxBin = np.shape(n_events)
 
     if zBG >= 0:
-        hasEventsIDX = np.where(hasEventsIDX)
-        boxMean = np.zeros(hasEventsIDX.size)
-        boxMeanIDX = list()
         pp_lambda = get_pp_lambda(n_events,hasEventsIDX) #Get the most probably number of events
         #Determine which pixels we want by considering the surrounding box
-        for i,idx in enumerate(np.array(hasEventsIDX).transpose()):
+        convBox = 1.0*np.ones([neigh_length_m, neigh_length_m,neigh_length_m]) / neigh_length_m**3
+        conv_n_events = convolve(n_events,convBox)
+        goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
+        hasEventsIDX = goodIDX #TODO this is bad naming, but a lot of the naming in this function assumes it
+        boxMean = n_events[goodIDX]
+        boxMeanIDX = np.where(goodIDX)
+        '''
+        for i,idx in enumerate(np.array(hasEventsIDXLoc).transpose()):
             dataBox = n_events[max(idx[0] - neigh_length_m,0):min(idx[0] + neigh_length_m+1, maxBin[0]),
                                            max(idx[1] - neigh_length_m,0):min(idx[1] + neigh_length_m+1, maxBin[1]),
                                            max(idx[2] - neigh_length_m,0):min(idx[2] + neigh_length_m+1, maxBin[2])]
             boxMean[i] = np.mean(dataBox)
-            boxMean[i] = n_events[idx[0],idx[1],idx[2]]
             boxMeanIDX.append(idx)
         signalIDX = np.where(boxMean > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
+        '''
     else: #don't do background removal - just consider one pixel at a time 
         boxMean = n_events[hasEventsIDX]
         boxMeanIDX = np.where(hasEventsIDX)
