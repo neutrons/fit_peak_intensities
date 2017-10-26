@@ -1,7 +1,7 @@
 import numpy as np
 from datetime import datetime
 
-def writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, fracStop, refineCenter, removeEdges, doVolumeNormalization, peaksFile, UBFormat, DetCalFile, moderatorCoefficientsFile, calibrationDictFile, descriptor):
+def writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, fracStop, refineCenter, removeEdges, doVolumeNormalization, peaksFile, UBFormat, DetCalFile, moderatorCoefficientsFile, calibrationDictFile, descriptor,zBG,neigh_length_m):
     with open(logFile,'w') as f:
         f.write('---Log file for %s\n'%descriptor)
         f.write('Log created: ' + datetime.now().strftime('%m/%d/%Y %H:%M:%S')+'\n')
@@ -22,4 +22,5 @@ def writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtS
         f.write('moderatorCoefficientsFile: %s\n'%moderatorCoefficientsFile)
         f.write('calibrationDictFile: %s\n'%calibrationDictFile)
         f.write('DetCalFile: %s\n'%DetCalFile)
-
+        f.write('zBG: %4.6f\n'%zBG)
+        f.write('neigh_length_m: %4.6f\n'%neigh_length_m)

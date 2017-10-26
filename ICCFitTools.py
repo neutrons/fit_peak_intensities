@@ -92,7 +92,7 @@ def padeWrapper(x,a,b,c,d,f,g,h,i,j,k):
 def pade(c,x): #c are coefficients, x is the energy in eV
     return c[0]*x**c[1]*(1+c[2]*x+c[3]*x**2+(x/c[4])**c[5])/(1+c[6]*x+c[7]*x**2+(x/c[8])**c[9])
 
-def integratePeak(x, yFit, yData, bg, fracStop = 0.01):
+def integratePeak(x, yFit, yData, bg, pp_lambda=0, fracStop = 0.01):
     #Find out start/stop point
     yScaled = (yFit-bg) / np.max(yFit-bg)
     goodIDX = yScaled > fracStop
@@ -110,7 +110,9 @@ def integratePeak(x, yFit, yData, bg, fracStop = 0.01):
 
     #Calculate the background sigma = sqrt(var(Fit) + sum(BG))
     yFitSum = np.sum(yFit[iStart:iStop])
-    bgSum = np.sum(bg[iStart:iStop])
+    bgSum = np.abs(np.sum(bg[iStart:iStop])) + np.abs(pp_lambda*(iStop-iStart))
+    print pp_lambda, iStop, iStart
+    print bgSum
     #varFit = np.average((yData-yFit)**2,weights=(yData-bg))   
     #sigma = np.sqrt(varFit + bgSum)
     sigma = np.sqrt(yFitSum + bgSum)
@@ -176,7 +178,8 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
         hasEventsIDX = goodIDX #TODO this is bad naming, but a lot of the naming in this function assumes it
         boxMean = n_events[goodIDX]
         boxMeanIDX = np.where(goodIDX)
-   else: #don't do background removal - just consider one pixel at a time 
+    else: #don't do background removal - just consider one pixel at a time
+        pp_lambda = 0 
         boxMean = n_events[hasEventsIDX]
         boxMeanIDX = np.where(hasEventsIDX)
     boxMeanIDX = np.asarray(boxMeanIDX) 
@@ -297,7 +300,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
         tofWS = CreateWorkspace(OutputWorkspace='tofWS', DataX=tPoints, DataY=yPoints, DataE=np.sqrt(yPoints))
     else:
         tofWS = CreateWorkspace(OutputWorkspace='tofWS%i'%workspaceNumber, DataX=tPoints, DataY=yPoints, DataE=np.sqrt(yPoints))
-    return tofWS
+    return tofWS, float(pp_lambda)
 
 #Determines the T0 shift for comparing moderator simulations (done at L=0)
 # to our data (measured at L=L1+L2).  E is the neutron energy (units: eV)
@@ -550,11 +553,11 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 if removeEdges:
                     edgesToCheck = EdgeTools.needsEdgeRemoval(Box,panelDict,peak) 
                     if edgesToCheck != []: #At least one plane intersects so we have to fit
-                        tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=calcTOFPerPixel,neigh_len_m=neigh_length_m,zBG=zBG)
+                        tofWS,ppl = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG)
                     else:
-                        tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_len_m=neigh_length_m,zBG=zBG)
+                        tofWS,ppl = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG)
                 else:
-                    tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_len_m=neigh_length_m,zBG=zBG)
+                    tofWS,ppl = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG)
                 #Set up our inital guess
                 fICC = ICC.IkedaCarpenterConvoluted()
                 fICC.init()
@@ -587,11 +590,11 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
 
                     if removeEdges:
                         if edgesToCheck != []: #At least one plane intersects so we have to fit
-                            tofWS2 = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[1], dtBinWidth=dtBinWidth,dtSpread=dtSpread[1], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=calcTOFPerPixel, workspaceNumber=2,neigh_len_m=neigh_length_m,zBG=zBG)
+                            tofWS2,ppl2 = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[1], dtBinWidth=dtBinWidth,dtSpread=dtSpread[1], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=calcTOFPerPixel, workspaceNumber=2,neigh_length_m=neigh_length_m,zBG=zBG)
                         else:
-                            tofWS2 = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[1], dtBinWidth=dtBinWidth,dtSpread=dtSpread[1], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel, workspaceNumber=2,neigh_len_m=neigh_length_m,zBG=zBG)
+                            tofWS2,ppl2 = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[1], dtBinWidth=dtBinWidth,dtSpread=dtSpread[1], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel, workspaceNumber=2,neigh_length_m=neigh_length_m,zBG=zBG)
                     else:
-                        tofWS2 = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[1], dtBinWidth=dtBinWidth,dtSpread=dtSpread[1], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,workspaceNumber=2,neigh_len_m=neigh_length_m,zBG=zBG)
+                        tofWS2,ppl2 = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[1], dtBinWidth=dtBinWidth,dtSpread=dtSpread[1], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,workspaceNumber=2,neigh_length_m=neigh_length_m,zBG=zBG)
 
 
 
@@ -638,6 +641,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     chiSq = chiSq2
                     fICC = fICC2
                     tofWS = mtd['tofWS2']
+                    ppl = ppl2
 
                 fitBG = [param.cell(iii+2,1),param.cell(iii+1,1)]
                 #Set the intensity before moving on to the next peak
@@ -645,7 +649,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 bgCoefficients = fitBG
                 #peak.setSigmaIntensity(np.sqrt(np.sum(icProfile)))i
                 t0 = param.row(3)['Value']
-                intensity, sigma, xStart, xStop = integratePeak(r.readX(0), icProfile,r.readY(0), np.polyval(bgCoefficients, r.readX(1)), fracStop=fracStop)
+                intensity, sigma, xStart, xStop = integratePeak(r.readX(0), icProfile,r.readY(0), np.polyval(bgCoefficients, r.readX(1)), pp_lambda=ppl, fracStop=fracStop)
                 icProfile = icProfile - np.polyval(bgCoefficients, r.readX(1)) #subtract background
                 peak.setIntensity(intensity)
                 peak.setSigmaIntensity(sigma)
@@ -670,6 +674,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 print(exc_type, fname, exc_tb.tb_lineno)
                 paramList.append([i, energy, 0.0, 1.0e10,1.0e10] + [0 for i in range(mtd['fit_parameters'].rowCount())])
+                paramList.append(ppl)#pp_lambda, we'll want this to calculate bg
         mtd.remove('MDbox_'+str(run)+'_'+str(i))
     return peaks_ws, paramList, fitDict
 
