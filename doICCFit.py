@@ -16,13 +16,13 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 
 
 # Some parameters
-dtSpread = [0.015, 0.04] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+dtSpread = [0.015, 0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
 dtBinWidth = 4 #Width (in us) in TOF profile bins
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 dQPixel = [0.005, 0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
-doVolumeNormalization = True #True if you want to normalize TOF profiles by volume
+doVolumeNormalization = False #True if you want to normalize TOF profiles by volume
 refineCenter = False #True if you want to determine new centers - still not very good
-removeEdges = True #True if you want to not consider q-pixels that are off detector faces
+removeEdges = False #True if you want to not consider q-pixels that are off detector faces
 calcTOFPerPixel = False #True to calculate TOF for each pixel in a qBox - uses interpolation for volNorm (if doVolumeNormalization is True)
 fracHKL = 0.5 #Fraction of HKL to look on either side
 fracStop = 0.01 #Fraction of max counts to include in peak selection
@@ -38,7 +38,7 @@ peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K
 UBFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/%i_Niggli.mat'
 UBFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Monoclinic_C.mat'
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
-descriptor = 'test' #Does not end with '/'
+descriptor = 'scol_0p015_hybridFit_NV' #Does not end with '/'
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 
 '''
@@ -75,9 +75,8 @@ peaksFormat = peaksFile
 UBFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.mat'
 UBFormat = UBFile
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
-descriptor = 'si_0p015_hybrid' #Does not end with '/'
+descriptor = 'si_0p015_hybrid_NV' #Does not end with '/'
 '''
-
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 figsFormat = None# workDir + descriptor+'/figs/mantid_%i_%i.png'
 

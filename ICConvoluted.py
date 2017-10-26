@@ -67,10 +67,11 @@ class IkedaCarpenterConvoluted(IFunction1D):
         mid_point_hat = len(f_int)//2
         gc_x = np.array(range(len(f_int))).astype(float)
         ppd = 0.0*gc_x
-        lowIDX  = np.max([mid_point_hat-np.abs(hatWidth),0])
-        highIDX = np.min([mid_point_hat+np.abs(hatWidth),len(gc_x)])
+        lowIDX  = int(np.floor(np.max([mid_point_hat-np.abs(hatWidth),0])))
+        highIDX = int(np.ceil(np.min([mid_point_hat+np.abs(hatWidth),len(gc_x)])))
         #print lowIDX, highIDX
         #print c, lowIDX, highIDX
+        
         ppd[lowIDX:highIDX] = 1.0;
         ppd = ppd/sum(ppd);
 
