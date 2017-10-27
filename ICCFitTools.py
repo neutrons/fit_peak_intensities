@@ -17,24 +17,60 @@ import itertools
 from scipy.interpolate import LinearNDInterpolator
 from timeit import default_timer as timer
 from scipy.ndimage.filters import convolve
+from scipy.stats import multivariate_normal
+from scipy.optimize import curve_fit
 
-#from scipy.stats import multivariate_normal
 # (x,y,z) -> (r,phi,theta)
-'''
 def cart2sph(x,y,z):
     hxy = np.hypot(x, y)
     r = np.hypot(hxy, z)
     el = np.arctan2(z, hxy)
     az = np.arctan2(y, x)
     return r, az, el
-#def fit_bvg(mu, sigma, )
+
+def getAngularHistogram(box, useIDX=None, ntheta=20, nPhi=20):
+    n_events = box.getNumEventsArray()
+    useIDX = n_events > 0
+#    if useIDX is None:
+#        useIDX = n_events>0    
+
+    #Setup our axes -- ask if there is a way to just get this
+    xaxis = box.getXDimension()
+    qx = np.linspace(xaxis.getMinimum(), xaxis.getMaximum(), xaxis.getNBins())
+    yaxis = box.getYDimension()
+    qy = np.linspace(yaxis.getMinimum(), yaxis.getMaximum(), yaxis.getNBins())
+    zaxis = box.getZDimension()
+    qz = np.linspace(zaxis.getMinimum(), zaxis.getMaximum(), zaxis.getNBins())
+    QX, QY, QZ = np.meshgrid(qx, qy, qz,indexing='ij',copy=False)
+
+    try:  R, THETA, PHI = cart2sph(QX,QY,QZ)
+    except: R, THETA, PHI = ICCFT.cart2sph(QX,QY,QZ)
+ 
+    
+    thetaMin = np.min(THETA); thetaMax = np.max(THETA)
+    phiMin = np.min(PHI); phiMax = np.max(PHI) 
+
+    thetaBins = np.linspace(thetaMin, thetaMax, nTheta)
+    phiBins = np.linspace(phiMin, phiMax, nPhi)
+
+    #TH2D, PH2D = np.meshgrid(TH2d,PH2D,indexing='ij',copy=False) 
+    thetaVect = THETA[useIDX]
+    phiVect = PHI[useIDX]
+    nVect = n_events[useIDX]
+    
+    h, thBins, phBins = np.histogram2d(thetaVect, phiVect, weights=nVect, bins=[thetaBins,phiBins])
+    return h,thBins, phBins 
+
+def bvgFitFun(x, A, mu0, mu1,sigX,sigY,p,bg):
+    sigma = np.array([[sigX**2,p*sigX*sigY], [p*sigX*sigY,sigY**2]])
+    mu = np.array([mu0,mu1])
+    return bvg(mu,sigma,x[0],x[1]) 
 
 def bvg(mu,sigma,x,y):
     pos = np.empty(x.shape+(2,))
     pos[:,:,0] = x; pos[:,:,1] = y
     rv = multivariate_normal(mu, sigma)
     return rv.pdf(pos)
-'''
 
 
 def getDQTOF(peak, dtSpread=0.03, maxDQ=0.5):
@@ -245,7 +281,6 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
         tList = getTList(peak, qx, qy, qz, boxMeanIDX)
         print tList
     #Set up our bins for histogramming
-    print '11111111111111111111111111   ', tList.sum(), hasEventsIDX.sum()
     tMin = np.min(tList)
     tMax = np.max(tList)
     dt = tofPeak*dtSpread #time in us on either side of the peak position to consider
