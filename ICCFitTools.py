@@ -201,7 +201,6 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
                 if allEvents > np.sum(boxMean):
                     found_pp_lambda = True
                 else:
-                    print 'incppl'
                     pp_lambda *= 1.05
                 
                 
