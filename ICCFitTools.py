@@ -18,6 +18,24 @@ from scipy.interpolate import LinearNDInterpolator
 from timeit import default_timer as timer
 from scipy.ndimage.filters import convolve
 
+#from scipy.stats import multivariate_normal
+# (x,y,z) -> (r,phi,theta)
+'''
+def cart2sph(x,y,z):
+    hxy = np.hypot(x, y)
+    r = np.hypot(hxy, z)
+    el = np.arctan2(z, hxy)
+    az = np.arctan2(y, x)
+    return r, az, el
+#def fit_bvg(mu, sigma, )
+
+def bvg(mu,sigma,x,y):
+    pos = np.empty(x.shape+(2,))
+    pos[:,:,0] = x; pos[:,:,1] = y
+    rv = multivariate_normal(mu, sigma)
+    return rv.pdf(pos)
+'''
+
 
 def getDQTOF(peak, dtSpread=0.03, maxDQ=0.5):
     dQ=np.zeros(3)
@@ -171,13 +189,23 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
 
     if zBG >= 0:
         pp_lambda = get_pp_lambda(n_events,hasEventsIDX) #Get the most probably number of events
-        #Determine which pixels we want by considering the surrounding box
+        found_pp_lambda = False
         convBox = 1.0*np.ones([neigh_length_m, neigh_length_m,neigh_length_m]) / neigh_length_m**3
         conv_n_events = convolve(n_events,convBox)
-        goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
+        allEvents = np.sum(n_events[hasEventsIDX])
+        if allEvents > 0:
+            while not found_pp_lambda and pp_lambda < 3.0:
+                goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
+                boxMean = n_events[goodIDX]
+                boxMeanIDX = np.where(goodIDX)
+                if allEvents > np.sum(boxMean):
+                    found_pp_lambda = True
+                else:
+                    print 'incppl'
+                    pp_lambda *= 1.05
+                
+                
         hasEventsIDX = goodIDX #TODO this is bad naming, but a lot of the naming in this function assumes it
-        boxMean = n_events[goodIDX]
-        boxMeanIDX = np.where(goodIDX)
     else: #don't do background removal - just consider one pixel at a time
         pp_lambda = 0 
         boxMean = n_events[hasEventsIDX]
@@ -218,6 +246,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
         tList = getTList(peak, qx, qy, qz, boxMeanIDX)
         print tList
     #Set up our bins for histogramming
+    print '11111111111111111111111111   ', tList.sum(), hasEventsIDX.sum()
     tMin = np.min(tList)
     tMax = np.max(tList)
     dt = tofPeak*dtSpread #time in us on either side of the peak position to consider
