@@ -28,9 +28,35 @@ def cart2sph(x,y,z):
     az = np.arctan2(y, x)
     return r, az, el
 
-def getAngularHistogram(box, useIDX=None, ntheta=20, nPhi=20):
+def getAngularHistogram(box, useIDX=None, nTheta=20, nPhi=20,zBG=1.96,neigh_length_m=3):
+
     n_events = box.getNumEventsArray()
-    useIDX = n_events > 0
+    hasEventsIDX = n_events>0
+
+    #Set up some things to only consider good pixels
+    N = np.shape(n_events)[0]
+    neigh_length_m = neigh_length_m #Set to zero for "this pixel only" mode - performance is optimized for neigh_length_m=0 
+    maxBin = np.shape(n_events)
+
+    if zBG >= 0:
+        pp_lambda = get_pp_lambda(n_events,hasEventsIDX) #Get the most probably number of events
+        found_pp_lambda = False
+        convBox = 1.0*np.ones([neigh_length_m, neigh_length_m,neigh_length_m]) / neigh_length_m**3
+        conv_n_events = convolve(n_events,convBox)
+        allEvents = np.sum(n_events[hasEventsIDX])
+        if allEvents > 0:
+            while not found_pp_lambda and pp_lambda < 3.0:
+                goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
+                boxMean = n_events[goodIDX]
+                boxMeanIDX = np.where(goodIDX)
+                if allEvents > np.sum(boxMean):
+                    found_pp_lambda = True
+                else:
+                    pp_lambda *= 1.05
+
+
+
+    useIDX = goodIDX
 #    if useIDX is None:
 #        useIDX = n_events>0    
 
@@ -61,17 +87,35 @@ def getAngularHistogram(box, useIDX=None, ntheta=20, nPhi=20):
     h, thBins, phBins = np.histogram2d(thetaVect, phiVect, weights=nVect, bins=[thetaBins,phiBins])
     return h,thBins, phBins 
 
+def plotBVGResult(box, params,nTheta=200,nPhi=200):
+    h, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi)
+    thCenters = 0.5*(thBins[1:] + thBins[:-1])
+    phCenters = 0.5*(phBins[1:] + phBins[:-1])
+    TH, PH = np.meshgrid(thCenters, phCenters,indexing='ij',copy=False)
+    Y = bvgFitFun([TH,PH],params[0],params[1],params[2],params[3],params[4],params[5],params[6])
+    Y = Y.reshape([nTheta-1,nPhi-1])
+    plt.figure(20); plt.clf()
+    plt.imshow(Y,cmap='jet')
+    return Y
+
+
+def doBVGFit(box,nTheta=200, nPhi=200):
+    h, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi)
+    thCenters = 0.5*(thBins[1:] + thBins[:-1])
+    phCenters = 0.5*(phBins[1:] + phBins[:-1])
+    TH, PH = np.meshgrid(thCenters, phCenters,indexing='ij',copy=False)
+    return curve_fit(bvgFitFun, [TH, PH], h.ravel(), p0=[np.max(h)/300., thCenters.mean(), phCenters.mean(), .006, .004, 0.07, 0.0] )
+
 def bvgFitFun(x, A, mu0, mu1,sigX,sigY,p,bg):
     sigma = np.array([[sigX**2,p*sigX*sigY], [p*sigX*sigY,sigY**2]])
     mu = np.array([mu0,mu1])
-    return bvg(mu,sigma,x[0],x[1]) 
+    return bvg(A, mu,sigma,x[0],x[1],bg) 
 
-def bvg(mu,sigma,x,y):
+def bvg(A, mu,sigma,x,y,bg):
     pos = np.empty(x.shape+(2,))
     pos[:,:,0] = x; pos[:,:,1] = y
     rv = multivariate_normal(mu, sigma)
-    return rv.pdf(pos)
-
+    return A*rv.pdf(pos).ravel() + bg
 
 def getDQTOF(peak, dtSpread=0.03, maxDQ=0.5):
     dQ=np.zeros(3)
@@ -156,7 +200,7 @@ def integratePeak(x, yFit, yData, bg, pp_lambda=0, fracStop = 0.01):
         xStart = x[iStart]
         xStop = x[iStop]
     else:
-        print 'THIS IS BAD - NO GOOD START/STOP POINT!!'
+        print 'ICCFITTOOLS:integratePeak - NO GOOD START/STOP POINT!!'
         return 0.0, 1.0, x[0], x[-1]
  
     #Do the integration
@@ -165,11 +209,10 @@ def integratePeak(x, yFit, yData, bg, pp_lambda=0, fracStop = 0.01):
     #Calculate the background sigma = sqrt(var(Fit) + sum(BG))
     yFitSum = np.sum(yFit[iStart:iStop])
     bgSum = np.abs(np.sum(bg[iStart:iStop])) + np.abs(pp_lambda*(iStop-iStart))
-    print pp_lambda, iStop, iStart
-    print bgSum
     #varFit = np.average((yData-yFit)**2,weights=(yData-bg))   
     #sigma = np.sqrt(varFit + bgSum)
     sigma = np.sqrt(yFitSum + bgSum)
+    print pp_lambda, intensity, sigma
     return intensity, sigma, xStart, xStop
 
 #Poission distribution
@@ -637,7 +680,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 scaleFactor = np.max((y-np.polyval(bgx0,x))[nPts//3:2*nPts//3])/np.max(fICC.function1D(x)[nPts//3:2*nPts//3])
                 x0[4] = x0[4]*scaleFactor
                 fICC.setParameter(4,x0[4])
-                #fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.01, 1.0], T00=[0,1.0e10], k_conv0=[50,500],penalty=1.0e20)
+                #fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.01, 1.0], T00=[0,1.0e10], k_conv0=[10,500],penalty=1.0e20)
                 fICC.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0,1.0e10],k_conv0=[10,500],penalty=1.0e20)
 
                 f = FunctionWrapper(fICC)
@@ -714,6 +757,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 #peak.setSigmaIntensity(np.sqrt(np.sum(icProfile)))i
                 t0 = param.row(3)['Value']
                 intensity, sigma, xStart, xStop = integratePeak(r.readX(0), icProfile,r.readY(0), np.polyval(bgCoefficients, r.readX(1)), pp_lambda=ppl, fracStop=fracStop)
+                print '~~~ ', intensity, sigma
                 icProfile = icProfile - np.polyval(bgCoefficients, r.readX(1)) #subtract background
                 peak.setIntensity(intensity)
                 peak.setSigmaIntensity(sigma)
