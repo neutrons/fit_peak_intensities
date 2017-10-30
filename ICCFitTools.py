@@ -54,7 +54,7 @@ def getAngularHistogram(box, useIDX=None, nTheta=20, nPhi=20,zBG=1.96,neigh_leng
                 else:
                     pp_lambda *= 1.05
 
-
+    else: goodIDX = hasEventsIDX
 
     useIDX = goodIDX
 #    if useIDX is None:
@@ -87,24 +87,49 @@ def getAngularHistogram(box, useIDX=None, nTheta=20, nPhi=20,zBG=1.96,neigh_leng
     h, thBins, phBins = np.histogram2d(thetaVect, phiVect, weights=nVect, bins=[thetaBins,phiBins])
     return h,thBins, phBins 
 
-def plotBVGResult(box, params,nTheta=200,nPhi=200):
+def integrateBVGFit(Y,params):
+    bg = params[0][-1]
+    pIDX = Y > bg
+    fitSum = np.sum(Y[pIDX])
+    bgSum = bg*np.sum(pIDX) 
+    intensity = fitSum - bgSum 
+    sigma = np.sqrt(fitSum + bgSum)
+    return intensity, sigma
+
+def integrateBVGPeak(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.005,fracHKL = 0.5, refineCenter=False, fracHKLRefine = 0.2,nTheta=400,nPhi=400):
+    box = getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel)
+    params,h,t,p = doBVGFit(box,nTheta=nTheta,nPhi=nPhi)
+    Y = getBVGResult(box, params[0],nTheta=nTheta,nPhi=nPhi)
+    intens, sigma = integrateBVGFit(Y,params)
+    print peak.getIntensity(), intens, sigma
+    peak.setIntensity(intens)
+    peak.setSigmaIntensity(sigma)
+
+def getBVGResult(box, params,nTheta=200,nPhi=200):
     h, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi)
     thCenters = 0.5*(thBins[1:] + thBins[:-1])
     phCenters = 0.5*(phBins[1:] + phBins[:-1])
     TH, PH = np.meshgrid(thCenters, phCenters,indexing='ij',copy=False)
     Y = bvgFitFun([TH,PH],params[0],params[1],params[2],params[3],params[4],params[5],params[6])
     Y = Y.reshape([nTheta-1,nPhi-1])
-    plt.figure(20); plt.clf()
-    plt.imshow(Y,cmap='jet')
     return Y
 
 
-def doBVGFit(box,nTheta=200, nPhi=200):
-    h, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi)
+def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96):
+    h, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi,zBG=zBG)
+    dtH = np.mean(np.diff(thBins))
+    dpH = np.mean(np.diff(phBins))
+    thSum = np.sum(h,axis=1)
+    phSum = np.sum(h,axis=0)
+    thStd = np.std(thSum)*dtH
+    phStd = np.std(phSum)*dpH
     thCenters = 0.5*(thBins[1:] + thBins[:-1])
     phCenters = 0.5*(phBins[1:] + phBins[:-1])
     TH, PH = np.meshgrid(thCenters, phCenters,indexing='ij',copy=False)
-    return curve_fit(bvgFitFun, [TH, PH], h.ravel(), p0=[np.max(h)/300., thCenters.mean(), phCenters.mean(), .006, .004, 0.07, 0.0] )
+    
+    params= curve_fit(bvgFitFun, [TH, PH], h.ravel(), p0=[np.max(h)/300., thCenters.mean(), phCenters.mean(), 0.005, 0.005, 0.05, 0.0] )
+    #params= curve_fit(bvgFitFun, [TH, PH], h.ravel(), p0=[np.max(h)/300., thCenters.mean(), phCenters.mean(), thStd, phStd, 0.05, 0.0] )
+    return params, h, thBins, phBins
 
 def bvgFitFun(x, A, mu0, mu1,sigX,sigY,p,bg):
     sigma = np.array([[sigX**2,p*sigX*sigY], [p*sigX*sigY,sigY**2]])
