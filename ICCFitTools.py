@@ -20,6 +20,25 @@ from timeit import default_timer as timer
 from scipy.ndimage.filters import convolve
 from scipy.stats import multivariate_normal
 
+
+# (x,y,z) -> (r,phi,theta)
+def cart2sph(x,y,z):
+    hxy = np.hypot(x, y)
+    r = np.hypot(hxy, z)
+    el = np.arctan2(z, hxy)
+    az = np.arctan2(y, x)
+    return r, az, el
+
+def getQXQYQZ(box):
+    xaxis = box.getXDimension()
+    qx = np.linspace(xaxis.getMinimum(), xaxis.getMaximum(), xaxis.getNBins())
+    yaxis = box.getYDimension()
+    qy = np.linspace(yaxis.getMinimum(), yaxis.getMaximum(), yaxis.getNBins())
+    zaxis = box.getZDimension()
+    qz = np.linspace(zaxis.getMinimum(), zaxis.getMaximum(), zaxis.getNBins())
+    QX, QY, QZ = np.meshgrid(qx, qy, qz,indexing='ij',copy=False)
+    return QX, QY, QZ
+
 def getBGRemovedIndices(n_events,zBG=1.96,neigh_length_m=3):
     hasEventsIDX = n_events>0
     #Set up some things to only consider good pixels
