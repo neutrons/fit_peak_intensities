@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys
 import os
+from scipy.interpolate import interp1d
 from scipy.misc import factorial
 from scipy.optimize import curve_fit
 sys.path.append("/opt/mantidnightly/bin")
@@ -18,129 +19,29 @@ from scipy.interpolate import LinearNDInterpolator
 from timeit import default_timer as timer
 from scipy.ndimage.filters import convolve
 from scipy.stats import multivariate_normal
-from scipy.optimize import curve_fit
 
-# (x,y,z) -> (r,phi,theta)
-def cart2sph(x,y,z):
-    hxy = np.hypot(x, y)
-    r = np.hypot(hxy, z)
-    el = np.arctan2(z, hxy)
-    az = np.arctan2(y, x)
-    return r, az, el
-
-def getAngularHistogram(box, useIDX=None, nTheta=20, nPhi=20,zBG=1.96,neigh_length_m=3):
-
-    n_events = box.getNumEventsArray()
+def getBGRemovedIndices(n_events,zBG=1.96,neigh_length_m=3):
     hasEventsIDX = n_events>0
-
     #Set up some things to only consider good pixels
     N = np.shape(n_events)[0]
     neigh_length_m = neigh_length_m #Set to zero for "this pixel only" mode - performance is optimized for neigh_length_m=0 
     maxBin = np.shape(n_events)
 
-    if zBG >= 0:
-        pp_lambda = get_pp_lambda(n_events,hasEventsIDX) #Get the most probably number of events
-        found_pp_lambda = False
-        convBox = 1.0*np.ones([neigh_length_m, neigh_length_m,neigh_length_m]) / neigh_length_m**3
-        conv_n_events = convolve(n_events,convBox)
-        allEvents = np.sum(n_events[hasEventsIDX])
-        if allEvents > 0:
-            while not found_pp_lambda and pp_lambda < 3.0:
-                goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
-                boxMean = n_events[goodIDX]
-                boxMeanIDX = np.where(goodIDX)
-                if allEvents > np.sum(boxMean):
-                    found_pp_lambda = True
-                else:
-                    pp_lambda *= 1.05
-
-    else: goodIDX = hasEventsIDX
-
-    useIDX = goodIDX
-#    if useIDX is None:
-#        useIDX = n_events>0    
-
-    #Setup our axes -- ask if there is a way to just get this
-    xaxis = box.getXDimension()
-    qx = np.linspace(xaxis.getMinimum(), xaxis.getMaximum(), xaxis.getNBins())
-    yaxis = box.getYDimension()
-    qy = np.linspace(yaxis.getMinimum(), yaxis.getMaximum(), yaxis.getNBins())
-    zaxis = box.getZDimension()
-    qz = np.linspace(zaxis.getMinimum(), zaxis.getMaximum(), zaxis.getNBins())
-    QX, QY, QZ = np.meshgrid(qx, qy, qz,indexing='ij',copy=False)
-
-    try:  R, THETA, PHI = cart2sph(QX,QY,QZ)
-    except: R, THETA, PHI = ICCFT.cart2sph(QX,QY,QZ)
- 
-    
-    thetaMin = np.min(THETA); thetaMax = np.max(THETA)
-    phiMin = np.min(PHI); phiMax = np.max(PHI) 
-
-    thetaBins = np.linspace(thetaMin, thetaMax, nTheta)
-    phiBins = np.linspace(phiMin, phiMax, nPhi)
-
-    #TH2D, PH2D = np.meshgrid(TH2d,PH2D,indexing='ij',copy=False) 
-    thetaVect = THETA[useIDX]
-    phiVect = PHI[useIDX]
-    nVect = n_events[useIDX]
-    
-    h, thBins, phBins = np.histogram2d(thetaVect, phiVect, weights=nVect, bins=[thetaBins,phiBins])
-    return h,thBins, phBins 
-
-def integrateBVGFit(Y,params):
-    bg = params[0][-1]
-    pIDX = Y > bg
-    fitSum = np.sum(Y[pIDX])
-    bgSum = bg*np.sum(pIDX) 
-    intensity = fitSum - bgSum 
-    sigma = np.sqrt(fitSum + bgSum)
-    return intensity, sigma
-
-def integrateBVGPeak(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.005,fracHKL = 0.5, refineCenter=False, fracHKLRefine = 0.2,nTheta=400,nPhi=400):
-    box = getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel)
-    params,h,t,p = doBVGFit(box,nTheta=nTheta,nPhi=nPhi)
-    Y = getBVGResult(box, params[0],nTheta=nTheta,nPhi=nPhi)
-    intens, sigma = integrateBVGFit(Y,params)
-    print peak.getIntensity(), intens, sigma
-    peak.setIntensity(intens)
-    peak.setSigmaIntensity(sigma)
-
-def getBVGResult(box, params,nTheta=200,nPhi=200):
-    h, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi)
-    thCenters = 0.5*(thBins[1:] + thBins[:-1])
-    phCenters = 0.5*(phBins[1:] + phBins[:-1])
-    TH, PH = np.meshgrid(thCenters, phCenters,indexing='ij',copy=False)
-    Y = bvgFitFun([TH,PH],params[0],params[1],params[2],params[3],params[4],params[5],params[6])
-    Y = Y.reshape([nTheta-1,nPhi-1])
-    return Y
-
-
-def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96):
-    h, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi,zBG=zBG)
-    dtH = np.mean(np.diff(thBins))
-    dpH = np.mean(np.diff(phBins))
-    thSum = np.sum(h,axis=1)
-    phSum = np.sum(h,axis=0)
-    thStd = np.std(thSum)*dtH
-    phStd = np.std(phSum)*dpH
-    thCenters = 0.5*(thBins[1:] + thBins[:-1])
-    phCenters = 0.5*(phBins[1:] + phBins[:-1])
-    TH, PH = np.meshgrid(thCenters, phCenters,indexing='ij',copy=False)
-    
-    params= curve_fit(bvgFitFun, [TH, PH], h.ravel(), p0=[np.max(h)/300., thCenters.mean(), phCenters.mean(), 0.005, 0.005, 0.05, 0.0] )
-    #params= curve_fit(bvgFitFun, [TH, PH], h.ravel(), p0=[np.max(h)/300., thCenters.mean(), phCenters.mean(), thStd, phStd, 0.05, 0.0] )
-    return params, h, thBins, phBins
-
-def bvgFitFun(x, A, mu0, mu1,sigX,sigY,p,bg):
-    sigma = np.array([[sigX**2,p*sigX*sigY], [p*sigX*sigY,sigY**2]])
-    mu = np.array([mu0,mu1])
-    return bvg(A, mu,sigma,x[0],x[1],bg) 
-
-def bvg(A, mu,sigma,x,y,bg):
-    pos = np.empty(x.shape+(2,))
-    pos[:,:,0] = x; pos[:,:,1] = y
-    rv = multivariate_normal(mu, sigma)
-    return A*rv.pdf(pos).ravel() + bg
+    pp_lambda = get_pp_lambda(n_events,hasEventsIDX) #Get the most probably number of events
+    found_pp_lambda = False
+    convBox = 1.0*np.ones([neigh_length_m, neigh_length_m,neigh_length_m]) / neigh_length_m**3
+    conv_n_events = convolve(n_events,convBox)
+    allEvents = np.sum(n_events[hasEventsIDX])
+    if allEvents > 0:
+        while not found_pp_lambda and pp_lambda < 3.0:
+            goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
+            boxMean = n_events[goodIDX]
+            boxMeanIDX = np.where(goodIDX)
+            if allEvents > np.sum(boxMean):
+                found_pp_lambda = True
+            else:
+                pp_lambda *= 1.05
+    return goodIDX, pp_lambda
 
 def getDQTOF(peak, dtSpread=0.03, maxDQ=0.5):
     dQ=np.zeros(3)
@@ -292,23 +193,10 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
     maxBin = np.shape(n_events)
 
     if zBG >= 0:
-        pp_lambda = get_pp_lambda(n_events,hasEventsIDX) #Get the most probably number of events
-        found_pp_lambda = False
-        convBox = 1.0*np.ones([neigh_length_m, neigh_length_m,neigh_length_m]) / neigh_length_m**3
-        conv_n_events = convolve(n_events,convBox)
-        allEvents = np.sum(n_events[hasEventsIDX])
-        if allEvents > 0:
-            while not found_pp_lambda and pp_lambda < 3.0:
-                goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
-                boxMean = n_events[goodIDX]
-                boxMeanIDX = np.where(goodIDX)
-                if allEvents > np.sum(boxMean):
-                    found_pp_lambda = True
-                else:
-                    pp_lambda *= 1.05
-                
-                
-        hasEventsIDX = goodIDX #TODO this is bad naming, but a lot of the naming in this function assumes it
+        goodIDX, pp_lambda= getBGRemovedIndices(n_events)
+        hasEventsIDX = np.logical_and(goodIDX, qMask) #TODO bad naming, but a lot of the naming in this function assumes it
+        boxMean = n_events[hasEventsIDX]
+        boxMeanIDX = np.where(hasEventsIDX)
     else: #don't do background removal - just consider one pixel at a time
         pp_lambda = 0 
         boxMean = n_events[hasEventsIDX]
@@ -505,7 +393,9 @@ def getSample(run, DetCalFile,  workDir, fileName):
     #data
     print 'Loading file', fileName
     data = Load(Filename = fileName)
-    LoadIsawDetCal(InputWorkspace = data, Filename = DetCalFile)
+    if DetCalFile is not None:
+        LoadIsawDetCal(InputWorkspace = data, Filename = DetCalFile)
+    
     MDdata = ConvertToMD(InputWorkspace = data, QDimensions = 'Q3D', dEAnalysisMode = 'Elastic',
       Q3DFrames = 'Q_sample', QConversionScales = 'Q in A^-1',
       MinValues = '-25, -25, -25', Maxvalues = '25, 25, 25')
@@ -671,7 +561,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 energy = 81.804 / wavelength**2 / 1000.0 #in eV
                 flightPath = peak.getL1() + peak.getL2() #in m
                 scatteringHalfAngle = 0.5*peak.getScattering()
-                detNumber = EdgeTools.getDetectorBank(panelDict, peak.getDetectorID())['bankNumber']
+                detNumber = 0#EdgeTools.getDetectorBank(panelDict, peak.getDetectorID())['bankNumber']
                 print '---fitting peak ' + str(i) + '  Num events: ' + str(Box.getNEvents()), ' ', peak.getHKL()
                 if Box.getNEvents() < 1 or np.all(np.abs(peak.getHKL())==0):
                     print "Peak %i has 0 events or is HKL=000. Skipping!"%i

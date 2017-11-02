@@ -66,7 +66,7 @@ def getPanelDictionary(instrumentFile):
     panelDict = {} 
     for i, it in enumerate(root.getiterator()):
         if 'type' in it.attrib:
-            if it.attrib['type'] == 'panel':
+            if 'panel' in it.attrib['type']:# == 'panel':
                 panel = {}
                 panel['idstart'] = int(it.attrib['idstart'])
                 panel['idend'] = int(it.attrib['idstart']) + int(it.attrib['idstepbyrow'])**2 - 1

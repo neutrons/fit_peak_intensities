@@ -17,9 +17,9 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 
 # Some parameters
 dtSpread = [0.015, 0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-dtBinWidth = 4 #Width (in us) in TOF profile bins
+dtBinWidth = 10 #Width (in us) in TOF profile bins
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
-dQPixel = [0.005, 0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
+dQPixel = [0.001, 0.0005] #dQ for each voxel in qBox - recommended to decrease for successive fits
 doVolumeNormalization = False #True if you want to normalize TOF profiles by volume
 refineCenter = False #True if you want to determine new centers - still not very good
 removeEdges = False #True if you want to not consider q-pixels that are off detector faces
@@ -50,16 +50,27 @@ parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scoleci
 loadDir = '/SNS/TOPAZ/IPTS-16903/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
 sampleRuns = [22331]
-
 peaksFormat='/SNS/users/ntv/peaks_%i.integrate'
 peaksFile = '/SNS/users/ntv/peaks_22331.integrate'
-
 UBFormat = None
 UBFile = '/SNS/TOPAZ/IPTS-16903/shared/Chunruo/ep_100K_MoTe2_adpQ_find/22331_Niggli.mat'
 DetCalFile = '/SNS/TOPAZ/IPTS-16903/shared/calibration/TOPAZ_2016B.DetCal'
 descriptor = 'run22331' #Does not end with '/'
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 '''
+
+#Beta lactamase - 2016 - MANDI
+loadDir = '/SNS/MANDI/IPTS-15000/data/'
+nxsTemplate = loadDir+'MANDI_%i_event.nxs'
+sampleRuns = range(4999,5003+1)
+peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.integrate'
+peaksFormat = peaksFile
+UBFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
+UBFormat = UBFile
+DetCalFile = None
+descriptor = 'beta_lac_combined' #Does not end with '/'
+parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
+
 '''
 #Natrolite - 2016 - MANDI
 loadDir = '/SNS/MANDI/IPTS-8776/nexus/'
@@ -68,6 +79,7 @@ sampleRuns = [8401]
 peaksFile=None#'/SNS/MANDI/IPTS-8776/shared/Natrolite/New/8041_Niggli.integrate'
 DetCalFile = '/SNS/MANDI/shared/calibration/MANDI_500.DetCal'
 descriptor = 'natrolite' #Does not end with '/'
+'''
 '''
 #Si - 2016A
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
@@ -80,7 +92,7 @@ UBFormat = UBFile
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
 descriptor = 'si_0p015_removeBG' #Does not end with '/'
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
-
+'''
 #==================WORK STARTS HERE==========================================
 figsFormat = None# workDir + descriptor+'/figs/mantid_%i_%i.png'
 
