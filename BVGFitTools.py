@@ -195,7 +195,7 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96):
     phCenters = 0.5*(phBins[1:] + phBins[:-1])
     TH, PH = np.meshgrid(thCenters, phCenters,indexing='ij',copy=False)
     
-    params= curve_fit(bvgFitFun, [TH, PH], h.ravel(), p0=[np.max(h), thCenters.mean(), phCenters.mean(), 0.005, 0.005, 0.05, 0.0] )
+    params= curve_fit(bvgFitFun, [TH, PH], h.ravel(), p0=[np.max(h)/300., thCenters.mean(), phCenters.mean(), 0.005, 0.005, 0.05, 0.0] )
     #params= curve_fit(bvgFitFun, [TH, PH], h.ravel(), p0=[np.max(h)/300., thCenters.mean(), phCenters.mean(), thStd, phStd, 0.05, 0.0] )
     return params, h, thBins, phBins
 
