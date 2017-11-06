@@ -100,7 +100,7 @@ def peak3D(X, A, mu0, mu1, sigX, sigY, p, alpha, beta, R, T0, k_conv, bg):
     
     sigma = np.array([[sigX**2,p*sigX*sigY], [p*sigX*sigY,sigY**2]])
     mu = np.array([mu0,mu1])
-    YBVG= bvg(1.0, mu,sigma,XTHETA,XPHI,bg) - bg
+    YBVG= bvg(1.0, mu,sigma,XTHETA,XPHI,0)
     YBVG /= np.max(YBVG)
     #combine the results
     return A*YTOF*YBVG + bg, YTOF, YBVG
