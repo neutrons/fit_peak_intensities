@@ -18,7 +18,6 @@ import itertools
 from scipy.interpolate import LinearNDInterpolator
 from timeit import default_timer as timer
 from scipy.ndimage.filters import convolve
-from scipy.stats import multivariate_normal
 
 
 # (x,y,z) -> (r,phi,theta)
@@ -263,7 +262,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
     tMin = max(tMin, tofPeak - dt)
     tMax = min(tMax, tofPeak + dt)
     tBins = np.arange(tMin, tMax, dtBinWidth)
-    weightList = n_events[hasEventsIDX]
+    weightList = n_events[hasEventsIDX] - pp_lambda
     if removeEdges:
         mask = EdgeTools.getMask(peak, box, panelDict,qMask, edgesToCheck=edgesToCheck)
         print np.shape(mask), np.shape(useIDX), np.shape(useIDX[0])
@@ -608,18 +607,18 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 x = tofWS.readX(0)
                 y = tofWS.readY(0)
                 if len(y)//2 < nBG: nBG = len(y)//2
-                bgx0 = np.polyfit(x[np.r_[0:nBG,-nBG:0]], y[np.r_[0:nBG,-nBG:0]], 1)
+                bgx0 = np.polyfit(x[np.r_[0:nBG,-nBG:0]], y[np.r_[0:nBG,-nBG:0]], 2)
 
                 nPts = x.size                
                 scaleFactor = np.max((y-np.polyval(bgx0,x))[nPts//3:2*nPts//3])/np.max(fICC.function1D(x)[nPts//3:2*nPts//3])
                 x0[4] = x0[4]*scaleFactor
                 fICC.setParameter(4,x0[4])
                 #fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.01, 1.0], T00=[0,1.0e10], k_conv0=[10,500],penalty=1.0e20)
-                fICC.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0,1.0e10],k_conv0=[10,500],penalty=1.0e20)
+                fICC.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0,1.0e10],k_conv0=[5,500],penalty=1.0e20)
 
                 f = FunctionWrapper(fICC)
-                bg = LinearBackground(A0=bgx0[1], A1=bgx0[0])
-                bg.constrain('-1.0 < A1 < 1.0')
+                bg = Quadratic(A0=bgx0[2], A1=bgx0[1],A2=bgx0[0])
+                bg.constrain('-1.0 < A2 < 1.0')
                 fitFun = f + bg
                 fitResults = Fit(Function=fitFun, InputWorkspace='tofWS', Output='fit')
                 fitStatus = fitResults.OutputStatus
@@ -650,16 +649,16 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     x = tofWS2.readX(0)
                     y = tofWS2.readY(0)
                     nPts=x.size
-                    bgx0 = np.polyfit(x[np.r_[0:nBG,-nBG:0]], y[np.r_[0:nBG,-nBG:0]], 1)
+                    bgx0 = np.polyfit(x[np.r_[0:nBG,-nBG:0]], y[np.r_[0:nBG,-nBG:0]], 2)
 
 
                     scaleFactor = np.max((y-np.polyval(bgx0,x))[nPts//3:2*nPts//3])/np.max(fICC2.function1D(x)[nPts//3:2*nPts//3])
                     x0[4] = x0[4]*scaleFactor
                     fICC2.setParameter(4,x0[4])
                     #fICC2.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0,1.0e10],k_conv0=[50,500],penalty=1.0e20)
-                    fICC2.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.01, 1.0], T00=[0,1.0e10], k_conv0=[10,500], penalty=1.0e20)
+                    fICC2.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.00, 1.], T00=[0,1.0e10], k_conv0=[5.,500], penalty=1.0e20)
                     f = FunctionWrapper(fICC2)
-                    bg = LinearBackground(A0=bgx0[1], A1=bgx0[0])
+                    bg = Quadratic(A0=bgx0[2], A1=bgx0[1],A2=bgx0[0])
                     #bg.constrain('-1.0 < A1 < 1.0')
                     fitFun = f + bg
                     try:
@@ -684,7 +683,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     tofWS = mtd['tofWS2']
                     ppl = ppl2
 
-                fitBG = [param.cell(iii+2,1),param.cell(iii+1,1)]
+                fitBG = [param.cell(iii+3,1), param.cell(iii+2,1),param.cell(iii+1,1)]
                 #Set the intensity before moving on to the next peak
                 icProfile = r.readY(1)
                 bgCoefficients = fitBG
@@ -696,7 +695,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 peak.setIntensity(intensity)
                 peak.setSigmaIntensity(sigma)
                 if figsFormat is not None:
-                    plotFit(figsFormat, r,tofWS,fICC,peak.getRunNumber(), i, energy, chiSq,fitBG, xStart, xStop, bgx0)
+                    plotFit(figsFormat, r,tofWS,fICC,peak.getRunNumber(), i, energy, chiSq,fitBG, xStart, xStop, bgx0=None)
                     #plotFitPresentation('/SNS/users/ntv/med_peak.pdf', r, tofWS,fICC,peak.getRunNumber(), i, energy, chiSq,fitBG, xStart, xStop, bgx0)
                 fitDict[i] = np.array([r.readX(0),r.readY(0), r.readY(1), r.readY(2)])
                 paramList.append([i, energy, np.sum(icProfile), 0.0,chiSq] + [param.row(i)['Value'] for i in range(param.rowCount())]+[ppl])

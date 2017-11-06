@@ -16,17 +16,18 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 
 
 # Some parameters
-dtSpread = [0.015, 0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
 dtBinWidth = 10 #Width (in us) in TOF profile bins
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
-dQPixel = [0.001, 0.0005] #dQ for each voxel in qBox - recommended to decrease for successive fits
+dQPixel = [0.001,0.001] #dQ for each voxel in qBox - recommended to decrease for successive fits
 doVolumeNormalization = False #True if you want to normalize TOF profiles by volume
 refineCenter = False #True if you want to determine new centers - still not very good
 removeEdges = False #True if you want to not consider q-pixels that are off detector faces
 calcTOFPerPixel = False #True to calculate TOF for each pixel in a qBox - uses interpolation for volNorm (if doVolumeNormalization is True)
 fracHKL = 0.5 #Fraction of HKL to look on either side
 fracStop = 0.01 #Fraction of max counts to include in peak selection
-moderatorCoefficientsFile = 'franz_coefficients_2017.dat'
+#moderatorCoefficientsFile = 'franz_coefficients_2017.dat'
+moderatorCoefficientsFile = 'franz_coefficients_2010.dat'
 calibrationDictFile = 'det_calibration/calibration_dictionary.pkl'
 neigh_length_m = 3 #Will average over a (neigh_length_m)**3 box
 zBG = 1.96 #z score to keep this with
@@ -68,7 +69,7 @@ peaksFormat = peaksFile
 UBFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
 UBFormat = UBFile
 DetCalFile = None
-descriptor = 'beta_lac_combined' #Does not end with '/'
+descriptor = 'beta_lac_combined_v2' #Does not end with '/'
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 
 '''
@@ -121,10 +122,11 @@ if peaksFile is not None:
     LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFile)
     UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
     dQ = np.abs(ICCFT.getDQFracHKL(UBMatrix, frac=fracHKL))
+    dQ = 0.15*np.ones_like(dQ)
     qMask = list()
     for dQP in dQPixel:
         print 'Getting qMask for dQPixel=%f'%dQP
-        qMask.append(ICCFT.getHKLMask(UBMatrix, frac=fracHKL, dQPixel=dQP))
+        qMask.append(ICCFT.getHKLMask(UBMatrix, frac=fracHKL, dQPixel=dQP,dQ=dQ))
 
 padeCoefficients = ICCFT.getModeratorCoefficients(moderatorCoefficientsFile)
 calibrationDict = pickle.load(open(calibrationDictFile, 'rb'))
