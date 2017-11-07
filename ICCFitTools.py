@@ -262,7 +262,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
     tMin = max(tMin, tofPeak - dt)
     tMax = min(tMax, tofPeak + dt)
     tBins = np.arange(tMin, tMax, dtBinWidth)
-    weightList = n_events[hasEventsIDX] - pp_lambda
+    weightList = n_events[hasEventsIDX] #- pp_lambda
     if removeEdges:
         mask = EdgeTools.getMask(peak, box, panelDict,qMask, edgesToCheck=edgesToCheck)
         print np.shape(mask), np.shape(useIDX), np.shape(useIDX[0])
