@@ -44,20 +44,21 @@ def fitPeak3D(box, X, n_events, peak,goodIDX):
     k_conv = 120
     params,h,t,p = doBVGFit(box,nTheta=400,nPhi=400)
     params, cov = params
-    p0 = [np.max(n_events), params[1], params[2], params[3], params[4], params[5], alpha, beta, R, T0, k_conv, 0.0 ]
-    bounds = ([0,-np.inf,-np.inf,0,0,-np.inf] + [0.5*v for v in x0[:4]] + [10, 0],
-                [np.inf for i in range(6)] + [1.5*v for v in x0[:4]] + [500, np.inf]  )
+    p0 = [np.max(n_events), np.max(n_events), np.max(n_events), params[1], params[2], params[3], params[4], params[5], alpha, beta, R, T0, k_conv, 0.0 ]
+    bounds = ([0,-np.inf, -np.inf, -np.inf,-np.inf,0,0,-np.inf] + [0.5*v for v in x0[:4]] + [10, 0],
+                [np.inf for i in range(8)] + [1.5*v for v in x0[:4]] + [500, np.inf]  )
     params= curve_fit(peak3DFitFunction, X[goodIDX], n_events[goodIDX],  p0,maxfev=1000, sigma=np.sqrt(n_events[goodIDX]),bounds=bounds)
     return params
 
-def peak3DFitFunction(X, A, mu0, mu1, sigmaX, sigmaY, p12, alpha, beta, R, T0, k_conv, bg):
-    return peak3D(X, A, mu0, mu1, sigmaX, sigmaY, p12, alpha, beta, R, T0, k_conv, bg)[0].ravel()
+def peak3DFitFunction(X, A, ATOF, ABVG, mu0, mu1, sigmaX, sigmaY, p12, alpha, beta, R, T0, k_conv, bg):
+    return peak3D(X, A, ATOF, ABVG, mu0, mu1, sigmaX, sigmaY, p12, alpha, beta, R, T0, k_conv, bg)[0].ravel()
     
 def peak3DFromParams(X,params):
     return peak3D(X, params[0],params[1],params[2],params[3],params[4],params[5],
-                    params[6],params[7],params[8],params[9],params[10],params[11])
+                    params[6],params[7],params[8],params[9],params[10],params[11],
+                    params[12],params[13])
 
-def peak3D(X, A, mu0, mu1, sigX, sigY, p, alpha, beta, R, T0, k_conv, bg):
+def peak3D(X, A, ATOF, ABVG, mu0, mu1, sigX, sigY, p, alpha, beta, R, T0, k_conv, bg):
     #Axis 0 = TOF, axis1 = theta, axis2 = phi
     #First we calculate the TOF distribution to estimate sigma_TOF
 
@@ -82,7 +83,7 @@ def peak3D(X, A, mu0, mu1, sigX, sigY, p, alpha, beta, R, T0, k_conv, bg):
     fICC['R'] = R
     fICC['T0'] = T0
     fICC['hatWidth'] = 0.5
-    fICC['scale'] = 1.0/alpha
+    fICC['scale'] = 1/alpha
     fICC['k_conv'] = k_conv
     tofMin = np.min(XTOF)
     tofMax = np.max(XTOF)
@@ -100,10 +101,10 @@ def peak3D(X, A, mu0, mu1, sigX, sigY, p, alpha, beta, R, T0, k_conv, bg):
     
     sigma = np.array([[sigX**2,p*sigX*sigY], [p*sigX*sigY,sigY**2]])
     mu = np.array([mu0,mu1])
-    YBVG= bvg(1.0, mu,sigma,XTHETA,XPHI,0)
+    YBVG= bvg(ABVG, mu,sigma,XTHETA,XPHI,0)
     YBVG /= np.max(YBVG)
     #combine the results
-    return A*YTOF*YBVG + bg, YTOF, YBVG
+    return A*YTOF*YBVG+bg, YTOF, YBVG
 
 
 def getAngularHistogram(box, useIDX=None, nTheta=200, nPhi=200,zBG=1.96,neigh_length_m=3):
@@ -218,7 +219,7 @@ def bvg(A, mu,sigma,x,y,bg):
         return np.all(np.linalg.eigvals(x) > 0)
     if is_pos_def(sigma):
         rv = multivariate_normal(mu, sigma)
-        return A*rv.pdf(pos) + bg
+        return A*rv.pdf(pos)+bg 
     else:
         print 'not PSD Matrix'
-        return 1.0e15*np.ones_like(x)
+        return 0.0*np.ones_like(x)
