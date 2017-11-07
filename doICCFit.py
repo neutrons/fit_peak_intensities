@@ -32,7 +32,6 @@ calibrationDictFile = 'det_calibration/calibration_dictionary.pkl'
 neigh_length_m = 3 #Will average over a (neigh_length_m)**3 box
 zBG = 1.96 #z score to keep this with
 
-'''
 #Scolecite - 2016A
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
@@ -43,9 +42,8 @@ UBFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/%i_Nigg
 UBFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Monoclinic_C.mat'
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
 descriptor = 'scol_removeBG' #Does not end with '/'
-
+descriptor = 'test'
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
-'''
 '''
 #IPTS22331
 loadDir = '/SNS/TOPAZ/IPTS-16903/data/'
@@ -59,7 +57,7 @@ DetCalFile = '/SNS/TOPAZ/IPTS-16903/shared/calibration/TOPAZ_2016B.DetCal'
 descriptor = 'run22331' #Does not end with '/'
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 '''
-
+'''
 #Beta lactamase - 2016 - MANDI
 loadDir = '/SNS/MANDI/IPTS-15000/data/'
 nxsTemplate = loadDir+'MANDI_%i_event.nxs'
@@ -71,7 +69,7 @@ UBFormat = UBFile
 DetCalFile = None
 descriptor = 'beta_lac_combined_v2' #Does not end with '/'
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
-
+'''
 '''
 #Natrolite - 2016 - MANDI
 loadDir = '/SNS/MANDI/IPTS-8776/nexus/'

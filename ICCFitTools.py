@@ -395,7 +395,7 @@ def getInitialGuess(tofWS, paramNames, energy, flightPath, padeCoefficients,detN
     #These are still phenomenological
     x0[0] /= 1.2
     x0[2] += 0.05
-    x0[3] -= 10+30 #This is lazy - we can do it detector-by-detector
+    x0[3] -= 10 #This is lazy - we can do it detector-by-detector
     x0[4] = (np.max(y))/x0[0]*2*2.5  #Amplitude
     x0[5] = 0.5 #hat width in IDX units
     x0[6] = 120.0 #Exponential decay rate for convolution
@@ -561,8 +561,40 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.00
     return Box
 
 
+def doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,constraintScheme=1,nBG=15, outputWSName='fit', fitOrder=1):
+    #Set up our inital guess
+    print nBG, ' is nBG'
+    fICC = ICC.IkedaCarpenterConvoluted()
+    fICC.init()
+    paramNames = [fICC.getParamName(x) for x in range(fICC.numParams())]
+    x0 = getInitialGuess(tofWS,paramNames,energy,flightPath,padeCoefficients,detNumber,calibrationDict)
+    [fICC.setParameter(iii,v) for iii,v in enumerate(x0[:fICC.numParams()])]
+    x = tofWS.readX(0)
+    y = tofWS.readY(0)
+    if len(y)//2 < nBG: nBG = len(y)//2
+    bgx0 = np.polyfit(x[np.r_[0:nBG,-nBG:0]], y[np.r_[0:nBG,-nBG:0]], fitOrder)
+
+    nPts = x.size                
+    scaleFactor = np.max((y-np.polyval(bgx0,x))[nPts//3:2*nPts//3])/np.max(fICC.function1D(x)[nPts//3:2*nPts//3])
+    x0[4] = x0[4]*scaleFactor
+    fICC.setParameter(4,x0[4])
+    #fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.01, 1.0], T00=[0,1.0e10], k_conv0=[10,500],penalty=1.0e20)
+    if constraintScheme == 1:
+        fICC.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0,1.0e10],k_conv0=[5,500],penalty=1.0e20)
+    if constraintScheme == 2:
+        fICC2.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.00, 1.], T00=[0,1.0e10], k_conv0=[5.,500], penalty=1.0e20)
+    f = FunctionWrapper(fICC)
+    bg = Polynomial(n=fitOrder)
+    print bgx0
+    for i in range(fitOrder+1):
+        bg['A'+str(fitOrder-i)] = bgx0[i]
+    bg.constrain('-1.0 < A%i < 1.0'%fitOrder)
+    fitFun = f + bg
+    fitResults = Fit(Function=fitFun, InputWorkspace='tofWS', Output=outputWSName)
+    return fitResults, fICC
+
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
-def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients, parameterDict, figsFormat=None, dtBinWidth = 4, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, doVolumeNormalization=False, minFracPixels=0.0000, fracStop = 0.01, removeEdges=False, calibrationDict=None,dQPixel=0.005,calcTOFPerPixel=False, p=None,neigh_length_m=0,zBG=-1.0):
+def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients, parameterDict, figsFormat=None, dtBinWidth = 4, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, doVolumeNormalization=False, minFracPixels=0.0000, fracStop = 0.01, removeEdges=False, calibrationDict=None,dQPixel=0.005,calcTOFPerPixel=False, p=None,neigh_length_m=0,zBG=-1.0,bgPolyOrder=1):
     if removeEdges is True and panelDict is None:
         print 'REMOVE EDGES WITHOUT panelDict - IMPOSSIBLE!!'
         0/0
@@ -598,32 +630,14 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                         tofWS,ppl = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG)
                 else:
                     tofWS,ppl = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG)
-                #Set up our inital guess
-                fICC = ICC.IkedaCarpenterConvoluted()
-                fICC.init()
-                paramNames = [fICC.getParamName(x) for x in range(fICC.numParams())]
-                x0 = getInitialGuess(tofWS,paramNames,energy,flightPath,padeCoefficients,detNumber,calibrationDict)
-                [fICC.setParameter(iii,v) for iii,v in enumerate(x0[:fICC.numParams()])]
-                x = tofWS.readX(0)
-                y = tofWS.readY(0)
-                if len(y)//2 < nBG: nBG = len(y)//2
-                bgx0 = np.polyfit(x[np.r_[0:nBG,-nBG:0]], y[np.r_[0:nBG,-nBG:0]], 2)
 
-                nPts = x.size                
-                scaleFactor = np.max((y-np.polyval(bgx0,x))[nPts//3:2*nPts//3])/np.max(fICC.function1D(x)[nPts//3:2*nPts//3])
-                x0[4] = x0[4]*scaleFactor
-                fICC.setParameter(4,x0[4])
-                #fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.01, 1.0], T00=[0,1.0e10], k_conv0=[10,500],penalty=1.0e20)
-                fICC.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0,1.0e10],k_conv0=[5,500],penalty=1.0e20)
-
-                f = FunctionWrapper(fICC)
-                bg = Quadratic(A0=bgx0[2], A1=bgx0[1],A2=bgx0[0])
-                bg.constrain('-1.0 < A2 < 1.0')
-                fitFun = f + bg
-                fitResults = Fit(Function=fitFun, InputWorkspace='tofWS', Output='fit')
+                fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,nBG=nBG,fitOrder=bgPolyOrder) 
                 fitStatus = fitResults.OutputStatus
                 chiSq = fitResults.OutputChi2overDoF
-    
+
+
+
+ 
                 chiSq2  = 1.0e99
                 if chiSq > 2.0: #The initial fit isn't great - let's see if we can do better
                     Box = getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel[1])
@@ -639,6 +653,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
 
 
                     print '############REFITTING########### on %4.4f'%chiSq
+                    '''
                     #x0 = getInitialGuessByDetector(tofWS,paramNames,energy,flightPath, detNumber, parameterDict)
                     x0 = getInitialGuess(tofWS2,paramNames,energy,flightPath,padeCoefficients,detNumber,calibrationDict)
                     fICC2 = ICC.IkedaCarpenterConvoluted()
@@ -669,7 +684,12 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                         chiSq2 = fitResults2.OutputChi2overDoF
                     except:
                             print 'CANNOT DO SECOND FIT, GOING BACK TO FIRST!'
-                
+                '''
+                try:
+                    fitResults2,fICC2 = doICCFit(tofWS2, energy, flightPath, padeCoefficients, detNumber, calibrationDict,nBG=nBG,outputWSName='fit2',fitOrder=bgPolyOrder,constraintScheme=2) 
+                    fitStatus2 = fitResults2.OutputStatus
+                    chiSq2 = fitResults2.OutputChi2overDoF
+                except: print 'CANNOT DO SECOND FIT, GOING BACK TO FIRST!!'
                 if(chiSq < chiSq2):
                     r = mtd['fit_Workspace']
                     param = mtd['fit_Parameters']
@@ -683,7 +703,9 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     tofWS = mtd['tofWS2']
                     ppl = ppl2
 
-                fitBG = [param.cell(iii+3,1), param.cell(iii+2,1),param.cell(iii+1,1)]
+                iii = fICC.numParams() - 1
+                #fitBG = [param.cell(iii+3,1), param.cell(iii+2,1),param.cell(iii+1,1)]
+                fitBG = [param.cell(int(iii+i+1),1) for i in range(bgPolyOrder)]
                 #Set the intensity before moving on to the next peak
                 icProfile = r.readY(1)
                 bgCoefficients = fitBG
@@ -707,7 +729,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 print 'KeyboardInterrupt: Exiting Program!!!!!!!'
                 sys.exit()
             except: #Error with fitting
-                #raise
+                raise
                 peak.setIntensity(0)
                 peak.setSigmaIntensity(1)
                 print 'Error with peak ' + str(i)
