@@ -561,7 +561,7 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.00
     return Box
 
 
-def doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,constraintScheme=1,nBG=15, outputWSName='fit', fitOrder=1):
+def doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,constraintScheme=None,nBG=15, outputWSName='fit', fitOrder=1):
     #Set up our inital guess
     print nBG, ' is nBG'
     fICC = ICC.IkedaCarpenterConvoluted()
@@ -631,7 +631,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 else:
                     tofWS,ppl = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG)
 
-                fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,nBG=nBG,fitOrder=bgPolyOrder) 
+                fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,nBG=nBG,fitOrder=bgPolyOrder,constraintScheme=1) 
                 fitStatus = fitResults.OutputStatus
                 chiSq = fitResults.OutputChi2overDoF
 

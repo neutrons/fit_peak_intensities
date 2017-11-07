@@ -9,6 +9,7 @@ from scipy.optimize import curve_fit
 from scipy.ndimage.filters import convolve
 from scipy.stats import multivariate_normal
 import ICConvoluted as ICC
+FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 
 #Example usage for bvg
 # run getBox.py (or get the box object from ICCFT)
@@ -27,6 +28,54 @@ def boxToTOFThetaPhi(box,peak):
     X[:,:,:,1] = THETA
     X[:,:,:,2] = PHI
     return X
+
+def fitScaling(n_events, YTOF, YBVG):
+    YJOINT = 1.0*YTOF * YBVG
+    YJOINT /= 1.0*YJOINT.sum()
+#    goodIDX = n_events > 0.5*n_events.max()
+    goodIDX = ICCFT.getBGRemovedIndices(n_events)[0]
+    p0 = np.array([np.sum(goodIDX), 0.])
+    p, cov = curve_fit(fitScalingFunction,YJOINT[goodIDX],n_events[goodIDX],sigma=np.sqrt(n_events[goodIDX]),p0=p0)
+    #p = [0,0]
+    #p[1] = np.mean(YJOINT[~goodIDX])
+    #p[0] = np.mean(n_events[goodIDX]) / np.mean(YJOINT[goodIDX]-p[1] )
+    print p
+    YRET = p[0]*YJOINT  
+    
+    weights = 1.0*n_events.copy()
+    weights[weights<1] = 1.
+    chiSq = np.sum((YRET[goodIDX]-n_events[goodIDX])**2 / weights[goodIDX])
+    chiSqRed = chiSq / (np.sum(goodIDX) - 2)
+    print chiSqRed, 'is chiSqRed' 
+    return YRET, chiSqRed
+   
+def fitScalingFunction(x,a,bg):
+    return a*x #+ bg
+ 
+
+def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVolumeNormalization=False,minFracPixels=0.01,removeEdges=False,calcTOFPerPixel=False,neigh_length_m=3,zBG=1.96,bgPolyOrder=1,panelDict=None,qMask=None,calibrationDict=None,nBG=15):
+    tof = peak.getTOF() #in us
+    wavelength = peak.getWavelength() #in Angstrom
+    flightPath = peak.getL1() + peak.getL2() #in m
+    scatteringHalfAngle = 0.5*peak.getScattering()
+    energy = 81.804 / wavelength**2 / 1000.0 #in eV
+    detNumber = 0#EdgeTools.getDetectorBank(panelDict, peak.getDetectorID())['bankNumber']
+    if qMask is None:
+        qMask = np.ones_like(box.getNumEventsArray()).astype(np.bool) 
+    tofWS,ppl = ICCFT.getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, panelDict, 0, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG)
+
+    fitResults,fICC = ICCFT.doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,nBG=nBG,fitOrder=bgPolyOrder)
+    for i, param in enumerate(['A','B','R','T0','scale', 'hatWidth', 'k_conv']):
+        fICC[param] = mtd['fit_Parameters'].row(i)['Value']
+    print fICC, mtd['fit_Parameters'].row(2)
+    tofxx = np.linspace(tofWS.readX(0).min(), tofWS.readX(0).max(),1000)
+    tofyy = fICC.function1D(tofxx)
+    plt.figure(1); plt.clf(); plt.plot(tofxx,tofyy)
+    ftof = interp1d(tofxx, tofyy,bounds_error=False,fill_value=0.0)
+    XTOF = boxToTOFThetaPhi(box,peak)[:,:,:,0]
+    YTOF = ftof(XTOF)
+    return YTOF
+    
 
 def fitPeak3D(box, X, n_events, peak,goodIDX):
     paramNames = [0 for i in range(7)]

@@ -17,9 +17,9 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 
 # Some parameters
 dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-dtBinWidth = 10 #Width (in us) in TOF profile bins
+dtBinWidth = 4 #Width (in us) in TOF profile bins
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
-dQPixel = [0.001,0.001] #dQ for each voxel in qBox - recommended to decrease for successive fits
+dQPixel = [0.005,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
 doVolumeNormalization = False #True if you want to normalize TOF profiles by volume
 refineCenter = False #True if you want to determine new centers - still not very good
 removeEdges = False #True if you want to not consider q-pixels that are off detector faces
@@ -120,7 +120,7 @@ if peaksFile is not None:
     LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFile)
     UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
     dQ = np.abs(ICCFT.getDQFracHKL(UBMatrix, frac=fracHKL))
-    dQ = 0.15*np.ones_like(dQ)
+    dQ[dQ>0.5] = 0.5
     qMask = list()
     for dQP in dQPixel:
         print 'Getting qMask for dQPixel=%f'%dQP
