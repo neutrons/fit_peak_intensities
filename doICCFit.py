@@ -16,10 +16,10 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 
 
 # Some parameters
-dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-dtBinWidth = 4 #Width (in us) in TOF profile bins
+dtSpread = [0.015,0.015] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+dtBinWidth = 30 #Width (in us) in TOF profile bins
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
-dQPixel = [0.005,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
+dQPixel = [0.003,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
 doVolumeNormalization = False #True if you want to normalize TOF profiles by volume
 refineCenter = False #True if you want to determine new centers - still not very good
 removeEdges = False #True if you want to not consider q-pixels that are off detector faces
@@ -31,7 +31,7 @@ moderatorCoefficientsFile = 'franz_coefficients_2010.dat'
 calibrationDictFile = 'det_calibration/calibration_dictionary.pkl'
 neigh_length_m = 3 #Will average over a (neigh_length_m)**3 box
 zBG = 1.96 #z score to keep this with
-
+'''
 #Scolecite - 2016A
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
@@ -45,6 +45,7 @@ descriptor = 'scol_removeBG' #Does not end with '/'
 descriptor = 'test'
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 '''
+'''
 #IPTS22331
 loadDir = '/SNS/TOPAZ/IPTS-16903/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
@@ -57,7 +58,7 @@ DetCalFile = '/SNS/TOPAZ/IPTS-16903/shared/calibration/TOPAZ_2016B.DetCal'
 descriptor = 'run22331' #Does not end with '/'
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 '''
-'''
+
 #Beta lactamase - 2016 - MANDI
 loadDir = '/SNS/MANDI/IPTS-15000/data/'
 nxsTemplate = loadDir+'MANDI_%i_event.nxs'
@@ -67,9 +68,9 @@ peaksFormat = peaksFile
 UBFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
 UBFormat = UBFile
 DetCalFile = None
-descriptor = 'beta_lac_combined_v2' #Does not end with '/'
+descriptor = 'beta_lac_combined_v3' #Does not end with '/'
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
-'''
+
 '''
 #Natrolite - 2016 - MANDI
 loadDir = '/SNS/MANDI/IPTS-8776/nexus/'
@@ -170,7 +171,7 @@ for sampleRun in sampleRuns:
     #    LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFormat%sampleRun)
     #    UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
 
-
+    0/0
     #Do the actual integration
     peaks_ws,paramList,fitDict = ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients,parameterDict, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.01, fracStop=fracStop, removeEdges=removeEdges, calibrationDict=calibrationDict,dQPixel=dQPixel, calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG)
 

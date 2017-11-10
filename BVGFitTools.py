@@ -31,16 +31,19 @@ def boxToTOFThetaPhi(box,peak):
 
 def fitScaling(n_events, YTOF, YBVG):
     YJOINT = 1.0*YTOF * YBVG
-    YJOINT /= 1.0*YJOINT.sum()
-#    goodIDX = n_events > 0.5*n_events.max()
-    goodIDX = ICCFT.getBGRemovedIndices(n_events)[0]
-    p0 = np.array([np.sum(goodIDX), 0.])
-    p, cov = curve_fit(fitScalingFunction,YJOINT[goodIDX],n_events[goodIDX],sigma=np.sqrt(n_events[goodIDX]),p0=p0)
-    #p = [0,0]
-    #p[1] = np.mean(YJOINT[~goodIDX])
-    #p[0] = np.mean(n_events[goodIDX]) / np.mean(YJOINT[goodIDX]-p[1] )
+    YJOINT /= 1.0*YJOINT.max() #Joint PDF - max is 1, integral is unknown
+    goodIDX = n_events > 0.5*n_events.max()
+    #goodIDX = YJOINT > 0.5
+    #goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events)
+    p0 = np.array([4*np.max(n_events), 0.])
+    weights = np.sqrt(n_events)
+    weights[weights<1] = 1.
+    p, cov = curve_fit(fitScalingFunction,YJOINT[goodIDX],n_events[goodIDX],p0=p0)
+    
+    #highIDX = np.logical_and(n_events > pp_lambda, YJOINT > 0.7)
+    #p[0] = np.mean(n_events[highIDX] / YJOINT[highIDX])
     print p
-    YRET = p[0]*YJOINT  
+    YRET = p[0]*YJOINT #+ p[1] 
     
     weights = 1.0*n_events.copy()
     weights[weights<1] = 1.
@@ -50,8 +53,29 @@ def fitScaling(n_events, YTOF, YBVG):
     return YRET, chiSqRed
    
 def fitScalingFunction(x,a,bg):
-    return a*x #+ bg
- 
+    return a*x 
+
+def xyzlinear(X, a0, a1, a2, a3, a4, a5, a6, a7):
+    x = X[0]; y = X[1]; z = X[2];
+    return a0*x*y*z + a1*x*y + a2*x*z + a3*y*z + a4*x + a5*y + a6*z + a7
+
+def getXTOF(box, peak):
+    from mantid.kernel import V3D
+    QX,QY,QZ = ICCFT.getQXQYQZ(box) 
+    origQS = peak.getQSampleFrame()
+    tList = np.zeros_like(QX)
+    for i in xrange(QX.shape[0]):
+        print i
+        for j in xrange(QX.shape[1]):
+            for k in xrange(QX.shape[2]):
+                newQ = V3D(QX[i,j,k],QY[i,j,k],QZ[i,j,k])
+                peak.setQSampleFrame(newQ)
+                flightPath = peak.getL1() + peak.getL2()
+                scatteringHalfAngle=0.5*peak.getScattering()
+                tList[i,j,k] = 3176.507 * flightPath * np.sin(scatteringHalfAngle) / np.linalg.norm(newQ) #convert to microseconds)
+    peak.setQSampleFrame(origQS)
+    return tList
+
 
 def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVolumeNormalization=False,minFracPixels=0.01,removeEdges=False,calcTOFPerPixel=False,neigh_length_m=3,zBG=1.96,bgPolyOrder=1,panelDict=None,qMask=None,calibrationDict=None,nBG=15):
     tof = peak.getTOF() #in us
@@ -71,31 +95,41 @@ def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVol
     tofxx = np.linspace(tofWS.readX(0).min(), tofWS.readX(0).max(),1000)
     tofyy = fICC.function1D(tofxx)
     plt.figure(1); plt.clf(); plt.plot(tofxx,tofyy)
+    plt.plot(tofWS.readX(0), tofWS.readY(0),'o')
+    print 'sum:', np.sum(fICC.function1D(tofWS.readX(0)))
+    plt.plot(mtd['fit_Workspace'].readX(1), mtd['fit_Workspace'].readY(1))
     ftof = interp1d(tofxx, tofyy,bounds_error=False,fill_value=0.0)
     XTOF = boxToTOFThetaPhi(box,peak)[:,:,:,0]
+    #XTOF = getXTOF(box,peak)
     YTOF = ftof(XTOF)
     return YTOF
-    
 
-def fitPeak3D(box, X, n_events, peak,goodIDX):
-    paramNames = [0 for i in range(7)]
-    padeCoefficients = ICCFT.getModeratorCoefficients('franz_coefficients_2017.dat')
-    flightPath = peak.getL1() + peak.getL2()
-    halfScatteringAngle = 0.5*peak.getScattering()
-    paramNames = [0 for i in range(7)]
-    energy = peak.getInitialEnergy()/1000.0
-    tofWS = CreateWorkspace(DataX = np.ones(50), DataY=np.ones(50))
-    x0 = ICCFT.getInitialGuess(tofWS, paramNames, energy, flightPath, padeCoefficients,None, None)     
-    alpha = x0[0]
-    beta = x0[1]
-    R = x0[2]
-    T0 = x0[3]
-    k_conv = 120
+def getTOFParameters(box, peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVolumeNormalization=False,minFracPixels=0.01,removeEdges=False,calcTOFPerPixel=False,neigh_length_m=3,zBG=1.96,bgPolyOrder=1,panelDict=None,qMask=None,calibrationDict=None,nBG=15):
+    tof = peak.getTOF() #in us
+    wavelength = peak.getWavelength() #in Angstrom
+    flightPath = peak.getL1() + peak.getL2() #in m
+    scatteringHalfAngle = 0.5*peak.getScattering()
+    energy = 81.804 / wavelength**2 / 1000.0 #in eV
+    detNumber = 0#EdgeTools.getDetectorBank(panelDict, peak.getDetectorID())['bankNumber']
+    if qMask is None:
+        qMask = np.ones_like(box.getNumEventsArray()).astype(np.bool)
+    tofWS,ppl = ICCFT.getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, panelDict, 0, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG)
+
+    fitResults,fICC = ICCFT.doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,nBG=nBG,fitOrder=bgPolyOrder)
+    for i, param in enumerate(['A','B','R','T0','scale', 'hatWidth', 'k_conv']):
+        fICC[param] = mtd['fit_Parameters'].row(i)['Value']
+    return fICC 
+
+def fitPeak3D(box, X, n_events, peak,goodIDX,padeCoefficients):
+
+    fICC = getTOFParameters(box, peak, padeCoefficients)
+    alpha = fICC['A']; beta = fICC['B']; R = fICC['R']; T0 = fICC['T0']; k_conv = fICC['k_conv']; ATOF = fICC['scale']
+    x0 = [alpha, beta, R, T0, ATOF, 0.5, k_conv]
     params,h,t,p = doBVGFit(box,nTheta=400,nPhi=400)
     params, cov = params
-    p0 = [np.max(n_events), np.max(n_events), np.max(n_events), params[1], params[2], params[3], params[4], params[5], alpha, beta, R, T0, k_conv, 0.0 ]
-    bounds = ([0,-np.inf, -np.inf, -np.inf,-np.inf,0,0,-np.inf] + [0.5*v for v in x0[:4]] + [10, 0],
-                [np.inf for i in range(8)] + [1.5*v for v in x0[:4]] + [500, np.inf]  )
+    p0 = [np.max(n_events), ATOF, params[0], params[1], params[2], params[3], params[4], params[5], alpha, beta, R, T0, k_conv, 0.0 ]
+    bounds = ([0,0,0, -np.inf,-np.inf,0.,0.,-np.inf] + [0.9*v for v in x0[:4]] + [10, 0],
+                [np.inf for i in range(8)] + [1.1*v for v in x0[:4]] + [500, np.inf]  )
     params= curve_fit(peak3DFitFunction, X[goodIDX], n_events[goodIDX],  p0,maxfev=1000, sigma=np.sqrt(n_events[goodIDX]),bounds=bounds)
     return params
 
@@ -132,11 +166,11 @@ def peak3D(X, A, ATOF, ABVG, mu0, mu1, sigX, sigY, p, alpha, beta, R, T0, k_conv
     fICC['R'] = R
     fICC['T0'] = T0
     fICC['hatWidth'] = 0.5
-    fICC['scale'] = 1/alpha
+    fICC['scale'] = ATOF
     fICC['k_conv'] = k_conv
     tofMin = np.min(XTOF)
     tofMax = np.max(XTOF)
-    tofxx = np.linspace(tofMin, tofMax, 1000)
+    tofxx = np.linspace(tofMin, tofMax, 100000)
     tofyy = fICC.function1D(tofxx.ravel())
     ftof = interp1d(tofxx, tofyy)
 
@@ -156,7 +190,7 @@ def peak3D(X, A, ATOF, ABVG, mu0, mu1, sigX, sigY, p, alpha, beta, R, T0, k_conv
     return A*YTOF*YBVG+bg, YTOF, YBVG
 
 
-def getAngularHistogram(box, useIDX=None, nTheta=200, nPhi=200,zBG=1.96,neigh_length_m=3):
+def getAngularHistogram(box, useIDX=None, nTheta=200, nPhi=200,zBG=1.96,neigh_length_m=3,fracBoxToHistogram=1.0):
     n_events = box.getNumEventsArray()
     hasEventsIDX = n_events>0
     if zBG >=0:
@@ -169,8 +203,24 @@ def getAngularHistogram(box, useIDX=None, nTheta=200, nPhi=200,zBG=1.96,neigh_le
     #Setup our coordinates
     QX, QY, QZ = ICCFT.getQXQYQZ(box)
     R, THETA, PHI = ICCFT.cart2sph(QX,QY,QZ)
-    thetaMin = np.min(THETA); thetaMax = np.max(THETA)
-    phiMin = np.min(PHI); phiMax = np.max(PHI) 
+
+    thetaMin = np.min(THETA); 
+    thetaMax = np.max(THETA)
+    dTheta = thetaMax - thetaMin
+    thetaMid = 0.5*(thetaMin + thetaMax)
+    thetaMin = max(thetaMin, thetaMid-dTheta*fracBoxToHistogram/2.0)
+    thetaMax = min(thetaMax, thetaMid+dTheta*fracBoxToHistogram/2.0)
+
+
+    phiMin = np.min(PHI); 
+    phiMax = np.max(PHI) 
+    dPhi = phiMax - phiMin
+    phiMid = 0.5*(phiMin + phiMax)
+    phiMin = max(phiMin, phiMid-dPhi*fracBoxToHistogram/2.0)
+    phiMax = min(phiMax, phiMid+dPhi*fracBoxToHistogram/2.0)
+
+
+
     thetaBins = np.linspace(thetaMin, thetaMax, nTheta)
     phiBins = np.linspace(phiMin, phiMax, nPhi)
     thetaVect = THETA[useIDX]
@@ -199,8 +249,8 @@ def integrateBVGPeak(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0
     peak.setIntensity(intens)
     peak.setSigmaIntensity(sigma)
 
-def getBVGResult(box, params,nTheta=200,nPhi=200):
-    h, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi)
+def getBVGResult(box, params,nTheta=200,nPhi=200,fracBoxToHistogram=1.0):
+    h, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram)
     thCenters = 0.5*(thBins[1:] + thBins[:-1])
     phCenters = 0.5*(phBins[1:] + phBins[:-1])
     TH, PH = np.meshgrid(thCenters, phCenters,indexing='ij',copy=False)
@@ -208,10 +258,10 @@ def getBVGResult(box, params,nTheta=200,nPhi=200):
     Y = Y.reshape([nTheta-1,nPhi-1])
     return Y
 
-def compareBVGFitData(box,params,nTheta=200,nPhi=200,figNumber=2):
-    h, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi)
-    Y = getBVGResult(box,params,nTheta=nTheta,nPhi=nPhi)
-    pLow = 0.3; pHigh = 0.7
+def compareBVGFitData(box,params,nTheta=200,nPhi=200,figNumber=2,fracBoxToHistogram=1.0):
+    h, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram)
+    Y = getBVGResult(box,params,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram)
+    pLow = 0.4; pHigh = 0.6
     nX, nY = Y.shape
     plt.figure(figNumber); plt.clf()
     plt.subplot(2,2,1);
@@ -222,30 +272,30 @@ def compareBVGFitData(box,params,nTheta=200,nPhi=200,figNumber=2):
     plt.colorbar() 
     plt.subplot(2,2,2);
     plt.imshow(Y,vmin=0,vmax=np.max(h),interpolation='None' )
+    #plt.imshow(Y,interpolation='None' )
     plt.title('Modeled Peak')
     plt.xlim([pLow*nX, pHigh*nX])
     plt.ylim([pLow*nY, pHigh*nY])
     plt.colorbar() 
     plt.subplot(2,2,3);
-    plt.imshow(h-Y,interpolation='None')
+    plt.imshow(h/h.max()-Y/Y.max(),interpolation='None')
     plt.xlim([pLow*nX, pHigh*nX])
     plt.ylim([pLow*nY, pHigh*nY])
-    plt.xlabel('Difference')
+    plt.xlabel('Normed Difference')
     plt.colorbar() 
 
-def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96):
-    h, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi,zBG=zBG)
+def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0):
+    h, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi,zBG=zBG,fracBoxToHistogram=fracBoxToHistogram)
     dtH = np.mean(np.diff(thBins))
     dpH = np.mean(np.diff(phBins))
-    thSum = np.sum(h,axis=1)
-    phSum = np.sum(h,axis=0)
-    thStd = np.std(thSum)*dtH
-    phStd = np.std(phSum)*dpH
     thCenters = 0.5*(thBins[1:] + thBins[:-1])
     phCenters = 0.5*(phBins[1:] + phBins[:-1])
     TH, PH = np.meshgrid(thCenters, phCenters,indexing='ij',copy=False)
-    
-    params= curve_fit(bvgFitFun, [TH, PH], h.ravel(), p0=[np.max(h)/300., thCenters.mean(), phCenters.mean(), 0.005, 0.005, 0.05, 0.0] )
+    fitIDX = np.ones_like(h).astype(np.bool)
+    weights = np.sqrt(h)
+    weights[weights<1] = 1 
+    params= curve_fit(bvgFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(), p0=[np.max(h)*50., TH.mean(), PH.mean(), 0.005, 0.005, 0.0005,0.0])
+
     #params= curve_fit(bvgFitFun, [TH, PH], h.ravel(), p0=[np.max(h)/300., thCenters.mean(), phCenters.mean(), thStd, phStd, 0.05, 0.0] )
     return params, h, thBins, phBins
 
@@ -268,7 +318,7 @@ def bvg(A, mu,sigma,x,y,bg):
         return np.all(np.linalg.eigvals(x) > 0)
     if is_pos_def(sigma):
         rv = multivariate_normal(mu, sigma)
-        return A*rv.pdf(pos)+bg 
+        return A*rv.pdf(pos) +bg
     else:
         print 'not PSD Matrix'
         return 0.0*np.ones_like(x)
