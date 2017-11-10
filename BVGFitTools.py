@@ -34,7 +34,13 @@ def interpolateXGrid(X):
 
     # -- triple +1
     XT[1:-1:2,1:-1:2,1:-1:2,:] = (XT[:-2:2,:-2:2,:-2:2,:] + XT[2::2,2::2,2::2,:])*0.5
-    XT = XT[:-1,:-1,:-1,]
+
+    # --the last plane in each dimension - not interpolated, just a copy
+    # TODO: real interpolation, but note that if you're integrating your last
+    # column, you probably want to draw a bigger box
+    XT[-1,:,:,:] = XT[-2,:,:,:]  
+    XT[:,-1,:,:] = XT[:,-2,:,:]  
+    XT[:,:,-1,:] = XT[:,:,-2,:]  
     return XT
 
 def boxToTOFThetaPhi(box,peak):
