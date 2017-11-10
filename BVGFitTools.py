@@ -16,6 +16,26 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 # params,h,th,ph = BVGFT.doBVGFit(box)
 # BVGFT.compareBVGFitData(box,params[0])
 
+#Linear interpolation - only works for doubling samples in the range
+def interpolateXGrid(X):
+    XT = np.zeros(tuple(2*np.array(X.shape[:-1]))+(3,))
+    XT[::2,::2,::2,:] = X
+    #Now we need to interpolate - linear will be fast
+
+    # -- single +1
+    XT[1:-2:2,::2,::2,:] = (XT[:-2:2,::2,::2,:] + XT[2::2,::2,::2,:])*0.5
+    XT[::2,1:-2:2,::2,:] = (XT[::2,:-2:2,::2,:] + XT[::2,2::2,::2,:])*0.5
+    XT[::2,::2,1:-2:2,:] = (XT[::2,::2,:-2:2,:] + XT[::2,::2,2::2,:])*0.5
+
+    # -- double +1
+    XT[1:-2:2,1:-2:2,::2,:] = (XT[:-2:2,:-2:2,::2,:] + XT[2::2,2::2,::2,:])*0.5
+    XT[1:-2:2,::2,1:-2:2] = (XT[:-2:2,::2,:-2:2,:] + XT[2::2,::2,2::2,:])*0.5
+    XT[::2,1:-2:2,1:-2:2,:] = (XT[::2,:-2:2,:-2:2,:] + XT[::2,2::2,2::2,:])*0.5
+
+    # -- triple +1
+    XT[1:-1:2,1:-1:2,1:-1:2,:] = (XT[:-2:2,:-2:2,:-2:2,:] + XT[2::2,2::2,2::2,:])*0.5
+    XT = XT[:-1,:-1,:-1,]
+    return XT
 
 def boxToTOFThetaPhi(box,peak):
     QX, QY, QZ = ICCFT.getQXQYQZ(box)
@@ -32,15 +52,16 @@ def boxToTOFThetaPhi(box,peak):
 def fitScaling(n_events, YTOF, YBVG):
     YJOINT = 1.0*YTOF * YBVG
     YJOINT /= 1.0*YJOINT.max() #Joint PDF - max is 1, integral is unknown
-    goodIDX = n_events > 0.5*n_events.max()
+    #goodIDX = n_events > 0.5*n_events.max()
     #goodIDX = YJOINT > 0.5
-    #goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events)
+    goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events)
     p0 = np.array([4*np.max(n_events), 0.])
     weights = np.sqrt(n_events)
     weights[weights<1] = 1.
+    print YJOINT[goodIDX].shape, n_events[goodIDX].shape
     p, cov = curve_fit(fitScalingFunction,YJOINT[goodIDX],n_events[goodIDX],p0=p0)
     
-    #highIDX = np.logical_and(n_events > pp_lambda, YJOINT > 0.7)
+    #highIDX = YJOINT > 0.7
     #p[0] = np.mean(n_events[highIDX] / YJOINT[highIDX])
     print p
     YRET = p[0]*YJOINT #+ p[1] 
@@ -50,7 +71,7 @@ def fitScaling(n_events, YTOF, YBVG):
     chiSq = np.sum((YRET[goodIDX]-n_events[goodIDX])**2 / weights[goodIDX])
     chiSqRed = chiSq / (np.sum(goodIDX) - 2)
     print chiSqRed, 'is chiSqRed' 
-    return YRET, chiSqRed
+    return YRET, chiSqRed, p[0]
    
 def fitScalingFunction(x,a,bg):
     return a*x 
@@ -91,7 +112,7 @@ def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVol
     fitResults,fICC = ICCFT.doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,nBG=nBG,fitOrder=bgPolyOrder)
     for i, param in enumerate(['A','B','R','T0','scale', 'hatWidth', 'k_conv']):
         fICC[param] = mtd['fit_Parameters'].row(i)['Value']
-    print fICC, mtd['fit_Parameters'].row(2)
+    
     tofxx = np.linspace(tofWS.readX(0).min(), tofWS.readX(0).max(),1000)
     tofyy = fICC.function1D(tofxx)
     plt.figure(1); plt.clf(); plt.plot(tofxx,tofyy)
@@ -101,6 +122,13 @@ def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVol
     ftof = interp1d(tofxx, tofyy,bounds_error=False,fill_value=0.0)
     XTOF = boxToTOFThetaPhi(box,peak)[:,:,:,0]
     #XTOF = getXTOF(box,peak)
+    YTOF = ftof(XTOF)
+    return YTOF, fICC, [tofWS.readX(0).min(), tofWS.readX(0).max()]
+
+def getYTOF(fICC, XTOF, xlims):
+    tofxx = np.linspace(xlims[0], xlims[1],10000)
+    tofyy = fICC.function1D(tofxx)
+    ftof = interp1d(tofxx, tofyy,bounds_error=False,fill_value=0.0)
     YTOF = ftof(XTOF)
     return YTOF
 
@@ -306,7 +334,6 @@ def bvgFitFun(x, A, mu0, mu1,sigX,sigY,p,bg):
 
 def bvg(A, mu,sigma,x,y,bg):
     pos = np.empty(x.shape+(2,))
-    print pos.shape
     if pos.ndim == 4:
         pos[:,:,:,0] = x; pos[:,:,:,1] = y
     elif pos.ndim == 3:
@@ -320,5 +347,5 @@ def bvg(A, mu,sigma,x,y,bg):
         rv = multivariate_normal(mu, sigma)
         return A*rv.pdf(pos) +bg
     else:
-        print 'not PSD Matrix'
+        print '   BVGFT:bvg:not PSD Matrix'
         return 0.0*np.ones_like(x)

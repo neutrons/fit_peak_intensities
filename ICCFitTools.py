@@ -221,7 +221,8 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
         boxMeanIDX = np.where(hasEventsIDX)
     boxMeanIDX = np.asarray(boxMeanIDX) 
     useIDX = boxMeanIDX.transpose()
-    
+    print np.sum(hasEventsIDX)
+ 
     #Setup our axes -- ask if there is a way to just get this
     xaxis = box.getXDimension()
     qx = np.linspace(xaxis.getMinimum(), xaxis.getMaximum(), xaxis.getNBins())
@@ -416,7 +417,7 @@ def getSample(run, DetCalFile,  workDir, fileName):
     
     MDdata = ConvertToMD(InputWorkspace = data, QDimensions = 'Q3D', dEAnalysisMode = 'Elastic',
       Q3DFrames = 'Q_sample', QConversionScales = 'Q in A^-1',
-      MinValues = '-5, -5, -5', Maxvalues = '5, 5, 5', MaxRecursionDepth=10)
+      MinValues = '-25, -25, -25', Maxvalues = '25, 25, 25', MaxRecursionDepth=10)
     return MDdata
 
 def plotFitPresentation(filenameFormat, r,tofWS,fICC,runNumber, peakNumber, energy, chiSq,bgFinal, xStart, xStop, bgx0=None):
