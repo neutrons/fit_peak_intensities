@@ -16,6 +16,54 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 # params,h,th,ph = BVGFT.doBVGFit(box)
 # BVGFT.compareBVGFitData(box,params[0])
 
+
+def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxToHistogram=1.0,numTimesToInterpolate=1, plotResults=False,nBG=15):
+    n_events = box.getNumEventsArray()
+    goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events)
+    YTOF, fICC, x_lims = fitTOFCoordinate(box,peak,padeCoefficients,dtSpread=0.03,dtBinWidth=4,qMask=qMask,bgPolyOrder=2,nBG=nBG,zBG=1.96,plotResults=plotResults)
+    X = boxToTOFThetaPhi(box,peak)
+    params,h,t,p = doBVGFit(box,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram)
+    if plotResults:
+        compareBVGFitData(box,params[0],nTheta, nPhi, fracBoxToHistogram=fracBoxToHistogram)
+
+    A = params[0][0]
+    mu0 = params[0][1]
+    mu1 = params[0][2]
+    sigX = params[0][3]
+    sigY = params[0][4]
+    p = params[0][5]
+    sigma = np.array([[sigX**2,p*sigX*sigY], [p*sigX*sigY,sigY**2]])
+    mu = np.array([mu0,mu1])
+
+    XTOF = X[:,:,:,0]
+    XTHETA = X[:,:,:,1]
+    XPHI = X[:,:,:,2]
+    XANGLE = X[:,:,:,1:]
+
+    YBVG= bvg(1.0, mu,sigma,XTHETA,XPHI,0)
+    Y,redChiSq, scaleFactor = fitScaling(n_events, YTOF, YBVG)
+
+    for i in range(numTimesToInterpolate):
+        X = interpolateXGrid(X)
+    
+    XTOF = X[:,:,:,0]
+    XTHETA = X[:,:,:,1]
+    XPHI = X[:,:,:,2]
+    XANGLE = X[:,:,:,1:]
+    YBVG2 = bvg(1.0, mu,sigma,XTHETA,XPHI,0)
+    YTOF2 = getYTOF(fICC, XTOF, x_lims)
+    Y2 = scaleFactor*YTOF2/YTOF2.max()*YBVG2/YBVG2.max()
+
+    return Y2
+
+def integrateJointPDF(Y, pp_lambda, scale, YCutoff=0.05):
+    YPDF = Y/Y.max()
+    goodIDX = YPDF > YCutoff
+    intensity = np.sum(Y[goodIDX]-pp_lambda)/(1.0*scale)
+    bg = pp_lambda*np.sum(goodIDX)
+    sigma = np.sqrt(intensity + 2.0*bg) # = sqrt(OBS + BG)
+    return intensity, sigma
+
 #Linear interpolation - only works for doubling samples in the range
 def interpolateXGrid(X):
     XT = np.zeros(tuple(2*np.array(X.shape[:-1]))+(3,))
@@ -43,6 +91,43 @@ def interpolateXGrid(X):
     XT[:,:,-1,:] = XT[:,:,-2,:]  
     return XT
 
+
+def calcTOFPerPixel(box, peak):
+    xaxis = Box.getXDimension()
+    qx = np.linspace(xaxis.getMinimum(), xaxis.getMaximum(), xaxis.getNBins())
+    yaxis = Box.getYDimension()
+    qy = np.linspace(yaxis.getMinimum(), yaxis.getMaximum(), yaxis.getNBins())
+    zaxis = Box.getZDimension()
+    qz = np.linspace(zaxis.getMinimum(), zaxis.getMaximum(), zaxis.getNBins())
+    QX, QY, QZ = ICCFT.getQXQYQZ(box)
+ 
+    qS0 = peak.getQSampleFrame()
+    qqx = qx[::20] #Points we'll interpolate from for speed
+    qqy = qy[::20]
+    qqz = qz[::20]
+    LLIST = np.zeros([qqx.size, qqy.size, qqz.size])
+    for i, x in enumerate(qqx):
+        print i
+        for j, y in enumerate(qqy):
+            for k, z in enumerate(qqz):
+                qNew = V3D(x,y,z)
+                peak.setQSampleFrame(qNew)
+                L = peak.getL1() + peak.getL2()
+                HALFSCAT = 0.5*peak.getScattering()
+                LLIST[i,j,k] = L*np.sin(HALFSCAT)
+    peak.setQSampleFrame(qS0)
+    LLIST = np.asarray(LLIST)
+    #LLIST[LLIST>19.0] = np.nan
+    QQX,QQY,QQZ = np.meshgrid(qqx,qqy,qqz,indexing='ij',copy=False)
+    cartcoord = list(zip(QQX.flatten(), QQY.flatten(), QQZ.flatten()))
+    nn = LinearNDInterpolator(cartcoord, LLIST.flatten())
+
+    PIXELFACTOR = np.array(nn(QX,QY,QZ)) #=(L1*L2) + sin(theta)
+
+    tofBox = 3176.507 * PIXELFACTOR * 1.0/np.sqrt(QX**2 + QY**2 + QZ**2)
+    tofMask = ~np.isnan(tofBox)
+
+
 def boxToTOFThetaPhi(box,peak):
     QX, QY, QZ = ICCFT.getQXQYQZ(box)
     R, THETA, PHI = ICCFT.cart2sph(QX,QY,QZ)
@@ -61,11 +146,12 @@ def fitScaling(n_events, YTOF, YBVG):
     #goodIDX = n_events > 0.5*n_events.max()
     #goodIDX = YJOINT > 0.5
     goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events)
-    p0 = np.array([4*np.max(n_events), 0.])
+    p0 = np.array([4*np.max(n_events), 0.01])
     weights = np.sqrt(n_events)
     weights[weights<1] = 1.
+    bounds = ([0,0],[np.inf,1.0])
     print YJOINT[goodIDX].shape, n_events[goodIDX].shape
-    p, cov = curve_fit(fitScalingFunction,YJOINT[goodIDX],n_events[goodIDX],p0=p0)
+    p, cov = curve_fit(fitScalingFunction,YJOINT[goodIDX],n_events[goodIDX],p0=p0,bounds=bounds)
     
     #highIDX = YJOINT > 0.7
     #p[0] = np.mean(n_events[highIDX] / YJOINT[highIDX])
@@ -80,7 +166,7 @@ def fitScaling(n_events, YTOF, YBVG):
     return YRET, chiSqRed, p[0]
    
 def fitScalingFunction(x,a,bg):
-    return a*x 
+    return a*x
 
 def xyzlinear(X, a0, a1, a2, a3, a4, a5, a6, a7):
     x = X[0]; y = X[1]; z = X[2];
@@ -104,7 +190,7 @@ def getXTOF(box, peak):
     return tList
 
 
-def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVolumeNormalization=False,minFracPixels=0.01,removeEdges=False,calcTOFPerPixel=False,neigh_length_m=3,zBG=1.96,bgPolyOrder=1,panelDict=None,qMask=None,calibrationDict=None,nBG=15):
+def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVolumeNormalization=False,minFracPixels=0.01,removeEdges=False,calcTOFPerPixel=False,neigh_length_m=3,zBG=1.96,bgPolyOrder=1,panelDict=None,qMask=None,calibrationDict=None,nBG=15, plotResults=False,fracStop=0.01):
     tof = peak.getTOF() #in us
     wavelength = peak.getWavelength() #in Angstrom
     flightPath = peak.getL1() + peak.getL2() #in m
@@ -119,20 +205,38 @@ def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVol
     for i, param in enumerate(['A','B','R','T0','scale', 'hatWidth', 'k_conv']):
         fICC[param] = mtd['fit_Parameters'].row(i)['Value']
     
+    bgParamsRows = [7 + i for i in range(bgPolyOrder+1)]
+    bgCoeffs = []
+    for bgRow in bgParamsRows[::-1]:#reverse for numpy order 
+        bgCoeffs.append(mtd['fit_Parameters'].row(bgRow)['Value'])
+    print bgCoeffs
+    x = tofWS.readX(0)
+    bg = np.polyval(bgCoeffs, x)
+    yFit = mtd['fit_Workspace'].readY(1)
+    yData = tofWS.readY(0)
+    
+    yScaled = (yFit-bg) / np.max(yFit-bg)
+    goodIDX = yScaled > fracStop
+    if np.sum(goodIDX) > 0:
+        iStart = np.min(np.where(goodIDX))
+        iStop = np.max(np.where(goodIDX))
+
+    print 'bg: ', np.sum(bg[iStart:iStop])
+    
     tofxx = np.linspace(tofWS.readX(0).min(), tofWS.readX(0).max(),1000)
     tofyy = fICC.function1D(tofxx)
-    plt.figure(1); plt.clf(); plt.plot(tofxx,tofyy)
-    plt.plot(tofWS.readX(0), tofWS.readY(0),'o')
-    print 'sum:', np.sum(fICC.function1D(tofWS.readX(0)))
-    plt.plot(mtd['fit_Workspace'].readX(1), mtd['fit_Workspace'].readY(1))
+    if plotResults:
+        plt.figure(1); plt.clf(); plt.plot(tofxx,tofyy)
+        plt.plot(tofWS.readX(0), tofWS.readY(0),'o')
+        print 'sum:', np.sum(fICC.function1D(tofWS.readX(0)))
+        plt.plot(mtd['fit_Workspace'].readX(1), mtd['fit_Workspace'].readY(1))
     ftof = interp1d(tofxx, tofyy,bounds_error=False,fill_value=0.0)
     XTOF = boxToTOFThetaPhi(box,peak)[:,:,:,0]
-    #XTOF = getXTOF(box,peak)
     YTOF = ftof(XTOF)
     return YTOF, fICC, [tofWS.readX(0).min(), tofWS.readX(0).max()]
 
 def getYTOF(fICC, XTOF, xlims):
-    tofxx = np.linspace(xlims[0], xlims[1],10000)
+    tofxx = np.linspace(xlims[0], xlims[1],100000)
     tofyy = fICC.function1D(tofxx)
     ftof = interp1d(tofxx, tofyy,bounds_error=False,fill_value=0.0)
     YTOF = ftof(XTOF)
@@ -328,9 +432,8 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0):
     fitIDX = np.ones_like(h).astype(np.bool)
     weights = np.sqrt(h)
     weights[weights<1] = 1 
-    params= curve_fit(bvgFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(), p0=[np.max(h)*50., TH.mean(), PH.mean(), 0.005, 0.005, 0.0005,0.0])
+    params= curve_fit(bvgFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(), p0=[np.max(h)*50., TH.mean(), PH.mean(), 0.005, 0.005, 0.,0.0])
 
-    #params= curve_fit(bvgFitFun, [TH, PH], h.ravel(), p0=[np.max(h)/300., thCenters.mean(), phCenters.mean(), thStd, phStd, 0.05, 0.0] )
     return params, h, thBins, phBins
 
 def bvgFitFun(x, A, mu0, mu1,sigX,sigY,p,bg):
@@ -338,6 +441,9 @@ def bvgFitFun(x, A, mu0, mu1,sigX,sigY,p,bg):
     mu = np.array([mu0,mu1])
     return bvg(A, mu,sigma,x[0],x[1],bg).ravel() 
 
+def is_pos_def(x):
+    return np.all(np.linalg.eigvals(x) > 0)
+ 
 def bvg(A, mu,sigma,x,y,bg):
     pos = np.empty(x.shape+(2,))
     if pos.ndim == 4:
@@ -347,8 +453,6 @@ def bvg(A, mu,sigma,x,y,bg):
     else:
         pos[:,0] = x; pos[:,1] = y
 
-    def is_pos_def(x):
-        return np.all(np.linalg.eigvals(x) > 0)
     if is_pos_def(sigma):
         rv = multivariate_normal(mu, sigma)
         return A*rv.pdf(pos) +bg
