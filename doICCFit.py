@@ -16,10 +16,8 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 
 
 # Some parameters
-dtSpread = [0.015,0.015] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-dtBinWidth = 30 #Width (in us) in TOF profile bins
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
-dQPixel = [0.003,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
+bgPolyOrder = 2 #int- bg order for IC fit
 doVolumeNormalization = False #True if you want to normalize TOF profiles by volume
 refineCenter = False #True if you want to determine new centers - still not very good
 removeEdges = False #True if you want to not consider q-pixels that are off detector faces
@@ -31,6 +29,7 @@ moderatorCoefficientsFile = 'franz_coefficients_2010.dat'
 calibrationDictFile = 'det_calibration/calibration_dictionary.pkl'
 neigh_length_m = 3 #Will average over a (neigh_length_m)**3 box
 zBG = 1.96 #z score to keep this with
+
 '''
 #Scolecite - 2016A
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
@@ -41,10 +40,15 @@ peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K
 UBFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/%i_Niggli.mat'
 UBFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Monoclinic_C.mat'
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
-descriptor = 'scol_removeBG' #Does not end with '/'
-descriptor = 'test'
+qLow = -25.0; qHigh = 25.0
+dtSpread = [0.025,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+dtBinWidth = 4 #Width (in us) in TOF profile bins
+dQPixel = [0.005,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
+descriptor = 'scol_quadBG' #Does not end with '/'
+dQMax = 0.4
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 '''
+
 '''
 #IPTS22331
 loadDir = '/SNS/TOPAZ/IPTS-16903/data/'
@@ -55,6 +59,12 @@ peaksFile = '/SNS/users/ntv/peaks_22331.integrate'
 UBFormat = None
 UBFile = '/SNS/TOPAZ/IPTS-16903/shared/Chunruo/ep_100K_MoTe2_adpQ_find/22331_Niggli.mat'
 DetCalFile = '/SNS/TOPAZ/IPTS-16903/shared/calibration/TOPAZ_2016B.DetCal'
+qLow = -25.0; qHigh = 25.0
+dtSpread = [0.025,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+dtBinWidth = 4 #Width (in us) in TOF profile bins
+dQPixel = [0.005,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
+dQMax = 0.4
+doIterativeBackgroundFitting = False
 descriptor = 'run22331' #Does not end with '/'
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 '''
@@ -68,7 +78,13 @@ peaksFormat = peaksFile
 UBFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
 UBFormat = UBFile
 DetCalFile = None
-descriptor = 'beta_lac_combined_v3' #Does not end with '/'
+qLow = -5.0; qHigh = 5.0
+dtSpread = [0.025,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+dtBinWidth = 25 #Width (in us) in TOF profile bins
+dQPixel = [0.003,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
+dQMax = 0.15 #tune this
+descriptor = 'beta_lac_quadBG' #Does not end with '/'
+doIterativeBackgroundFitting = True
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 
 '''
@@ -78,6 +94,12 @@ nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
 sampleRuns = [8401]
 peaksFile=None#'/SNS/MANDI/IPTS-8776/shared/Natrolite/New/8041_Niggli.integrate'
 DetCalFile = '/SNS/MANDI/shared/calibration/MANDI_500.DetCal'
+qLow = -25.0; qHigh = 25.0
+dtSpread = [0.025,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+dtBinWidth = 4 #Width (in us) in TOF profile bins
+dQPixel = [0.005,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
+dQMax = 0.4
+doIterativeBackgroundFitting = False
 descriptor = 'natrolite' #Does not end with '/'
 '''
 '''
@@ -90,7 +112,13 @@ peaksFormat = peaksFile
 UBFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.mat'
 UBFormat = UBFile
 DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
+qLow = -25.0; qHigh = 25.0
+dtSpread = [0.025,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+dtBinWidth = 4 #Width (in us) in TOF profile bins
+dQPixel = [0.005,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
+dQMax = 0.4
 descriptor = 'si_0p015_removeBG' #Does not end with '/'
+doIterativeBackgroundFitting = False
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 '''
 #==================WORK STARTS HERE==========================================
@@ -107,7 +135,6 @@ if os.path.isdir(workDir + descriptor):
 else:
     os.mkdir(workDir + descriptor)
     os.mkdir(workDir + descriptor + '/figs/')
-
 peaks_ws = LoadIsawPeaks(Filename = peaksFile)
 LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFile)
 UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
@@ -121,7 +148,7 @@ if peaksFile is not None:
     LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFile)
     UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
     dQ = np.abs(ICCFT.getDQFracHKL(UBMatrix, frac=fracHKL))
-    dQ[dQ>0.5] = 0.5
+    dQ[dQ>dQMax] = dQMax
     qMask = list()
     for dQP in dQPixel:
         print 'Getting qMask for dQPixel=%f'%dQP
@@ -159,7 +186,7 @@ for sampleRun in sampleRuns:
         panelDict = EdgeTools.getPanelDictionary(instrumentFile)
 
     #Conver the sample to reciprocal space
-    MDdata = ICCFT.getSample(sampleRun, DetCalFile, workDir, fileName)
+    MDdata = ICCFT.getSample(sampleRun, DetCalFile, workDir, fileName, qLow=qLow, qHigh=qHigh)
     
 
     #Load the new UB and find peaks in this run if we need to.
@@ -171,9 +198,8 @@ for sampleRun in sampleRuns:
     #    LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFormat%sampleRun)
     #    UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
 
-    0/0
     #Do the actual integration
-    peaks_ws,paramList,fitDict = ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients,parameterDict, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.01, fracStop=fracStop, removeEdges=removeEdges, calibrationDict=calibrationDict,dQPixel=dQPixel, calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG)
+    peaks_ws,paramList,fitDict = ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients,parameterDict, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.01, fracStop=fracStop, removeEdges=removeEdges, calibrationDict=calibrationDict,dQPixel=dQPixel, calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG, bgPolyOrder=bgPolyOrder, doIterativeBackgroundFitting=doIterativeBackgroundFitting)
 
     #Save the results and delete the leftovers
     SaveIsawPeaks(InputWorkspace='peaks_ws', Filename=workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))

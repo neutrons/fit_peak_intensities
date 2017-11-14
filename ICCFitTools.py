@@ -408,7 +408,7 @@ def getInitialGuess(tofWS, paramNames, energy, flightPath, padeCoefficients,detN
 # DetCalFile is a string for the file containng the detector calibration
 # workDir is not used
 # loadDir is the directory to extract the data from
-def getSample(run, DetCalFile,  workDir, fileName):
+def getSample(run, DetCalFile,  workDir, fileName, qLow=-25, qHigh=25):
     #data
     print 'Loading file', fileName
     data = Load(Filename = fileName)
@@ -417,7 +417,7 @@ def getSample(run, DetCalFile,  workDir, fileName):
     
     MDdata = ConvertToMD(InputWorkspace = data, QDimensions = 'Q3D', dEAnalysisMode = 'Elastic',
       Q3DFrames = 'Q_sample', QConversionScales = 'Q in A^-1',
-      MinValues = '-25, -25, -25', Maxvalues = '25, 25, 25', MaxRecursionDepth=10)
+      MinValues = '%f, %f, %f'%(qLow, qLow, qLow), Maxvalues = '%f, %f, %f'%(qHigh, qHigh, qHigh), MaxRecursionDepth=10)
     return MDdata
 
 def plotFitPresentation(filenameFormat, r,tofWS,fICC,runNumber, peakNumber, energy, chiSq,bgFinal, xStart, xStop, bgx0=None):
@@ -583,7 +583,7 @@ def doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibration
     if constraintScheme == 1:
         fICC.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0,1.0e10],k_conv0=[5,500],penalty=1.0e20)
     if constraintScheme == 2:
-        fICC2.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.00, 1.], T00=[0,1.0e10], k_conv0=[5.,500], penalty=1.0e20)
+        fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.00, 1.], T00=[0,1.0e10], k_conv0=[5.,500], penalty=1.0e20)
     f = FunctionWrapper(fICC)
     bg = Polynomial(n=fitOrder)
     print bgx0
@@ -595,8 +595,9 @@ def doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibration
     return fitResults, fICC
 
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
-def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients, parameterDict, figsFormat=None, dtBinWidth = 4, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, doVolumeNormalization=False, minFracPixels=0.0000, fracStop = 0.01, removeEdges=False, calibrationDict=None,dQPixel=0.005,calcTOFPerPixel=False, p=None,neigh_length_m=0,zBG=-1.0,bgPolyOrder=1):
+def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients, parameterDict, figsFormat=None, dtBinWidth = 4, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, doVolumeNormalization=False, minFracPixels=0.0000, fracStop = 0.01, removeEdges=False, calibrationDict=None,dQPixel=0.005,calcTOFPerPixel=False, p=None,neigh_length_m=0,zBG=-1.0,bgPolyOrder=1, doIterativeBackgroundFitting=False):
     if removeEdges is True and panelDict is None:
+
         print 'REMOVE EDGES WITHOUT panelDict - IMPOSSIBLE!!'
         0/0
     if p is None:
@@ -631,8 +632,22 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                         tofWS,ppl = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG)
                 else:
                     tofWS,ppl = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG)
-
-                fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,nBG=nBG,fitOrder=bgPolyOrder,constraintScheme=1) 
+                if doIterativeBackgroundFitting:
+                    nBGToTry = range(2,tofWS.readX(0).size,4)
+                    lowChiSq = 1.0e99
+                    lowNBG = 0
+                    for nBG in nBGToTry:
+                        fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,nBG=nBG,fitOrder=bgPolyOrder,constraintScheme=1) 
+                        fitStatus = fitResults.OutputStatus
+                        chiSq = fitResults.OutputChi2overDoF
+                        if chiSq<lowChiSq:
+                            lowChiSq = chiSq
+                            lownBG = nBG
+                        if chiSq < 2.0:
+                            break
+                else:
+                   lownBG = nBG
+                fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,nBG=lownBG,fitOrder=bgPolyOrder,constraintScheme=1)
                 fitStatus = fitResults.OutputStatus
                 chiSq = fitResults.OutputChi2overDoF
 
@@ -640,7 +655,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
 
  
                 chiSq2  = 1.0e99
-                if chiSq > 2.0: #The initial fit isn't great - let's see if we can do better
+                if (chiSq > 3.0) and (tofWS.readY(0).max() > 10): #The initial fit isn't great - let's see if we can do better
                     Box = getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel[1])
 
                     if removeEdges:
@@ -654,43 +669,12 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
 
 
                     print '############REFITTING########### on %4.4f'%chiSq
-                    '''
-                    #x0 = getInitialGuessByDetector(tofWS,paramNames,energy,flightPath, detNumber, parameterDict)
-                    x0 = getInitialGuess(tofWS2,paramNames,energy,flightPath,padeCoefficients,detNumber,calibrationDict)
-                    fICC2 = ICC.IkedaCarpenterConvoluted()
-                    fICC2.init()
-                    [fICC2.setParameter(iii,v) for iii,v in enumerate(x0[:fICC2.numParams()])]
-                    #fICC2.setParameter(3,fICC.getParamValue(3))
-
-                    x = tofWS2.readX(0)
-                    y = tofWS2.readY(0)
-                    nPts=x.size
-                    bgx0 = np.polyfit(x[np.r_[0:nBG,-nBG:0]], y[np.r_[0:nBG,-nBG:0]], 2)
-
-
-                    scaleFactor = np.max((y-np.polyval(bgx0,x))[nPts//3:2*nPts//3])/np.max(fICC2.function1D(x)[nPts//3:2*nPts//3])
-                    x0[4] = x0[4]*scaleFactor
-                    fICC2.setParameter(4,x0[4])
-                    #fICC2.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0,1.0e10],k_conv0=[50,500],penalty=1.0e20)
-                    fICC2.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.00, 1.], T00=[0,1.0e10], k_conv0=[5.,500], penalty=1.0e20)
-                    f = FunctionWrapper(fICC2)
-                    bg = Quadratic(A0=bgx0[2], A1=bgx0[1],A2=bgx0[0])
-                    #bg.constrain('-1.0 < A1 < 1.0')
-                    fitFun = f + bg
                     try:
-                            #fitStatus, chiSq2, covarianceTable, paramTable, fitWorkspace = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit2') #Antiquated, Sept 25 2017
-                        #fitResults2 = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit2')
-                        fitResults2 = Fit(Function=fitFun, InputWorkspace='tofWS2', Output='fit2')
+                        fitResults2,fICC2 = doICCFit(tofWS2, energy, flightPath, padeCoefficients, detNumber, calibrationDict,nBG=nBG,outputWSName='fit2',fitOrder=bgPolyOrder,constraintScheme=2) 
                         fitStatus2 = fitResults2.OutputStatus
                         chiSq2 = fitResults2.OutputChi2overDoF
-                    except:
-                            print 'CANNOT DO SECOND FIT, GOING BACK TO FIRST!'
-                '''
-                try:
-                    fitResults2,fICC2 = doICCFit(tofWS2, energy, flightPath, padeCoefficients, detNumber, calibrationDict,nBG=nBG,outputWSName='fit2',fitOrder=bgPolyOrder,constraintScheme=2) 
-                    fitStatus2 = fitResults2.OutputStatus
-                    chiSq2 = fitResults2.OutputChi2overDoF
-                except: print 'CANNOT DO SECOND FIT, GOING BACK TO FIRST!!'
+                    except: 
+                        print 'CANNOT DO SECOND FIT, GOING BACK TO FIRST!!'
                 if(chiSq < chiSq2):
                     r = mtd['fit_Workspace']
                     param = mtd['fit_Parameters']
@@ -705,11 +689,12 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     ppl = ppl2
 
                 iii = fICC.numParams() - 1
-                #fitBG = [param.cell(iii+3,1), param.cell(iii+2,1),param.cell(iii+1,1)]
-                fitBG = [param.cell(int(iii+i+1),1) for i in range(bgPolyOrder)]
+                fitBG = [param.row(int(iii+i+1))['Value'] for i in range(bgPolyOrder+1)]
+
                 #Set the intensity before moving on to the next peak
                 icProfile = r.readY(1)
-                bgCoefficients = fitBG
+                bgCoefficients = fitBG[::-1]
+
                 #peak.setSigmaIntensity(np.sqrt(np.sum(icProfile)))i
                 t0 = param.row(3)['Value']
                 intensity, sigma, xStart, xStop = integratePeak(r.readX(0), icProfile,r.readY(0), np.polyval(bgCoefficients, r.readX(1)), pp_lambda=ppl, fracStop=fracStop)
@@ -730,7 +715,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 print 'KeyboardInterrupt: Exiting Program!!!!!!!'
                 sys.exit()
             except: #Error with fitting
-                raise
+                #raise
                 peak.setIntensity(0)
                 peak.setSigmaIntensity(1)
                 print 'Error with peak ' + str(i)

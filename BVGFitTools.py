@@ -17,10 +17,10 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 # BVGFT.compareBVGFitData(box,params[0])
 
 
-def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxToHistogram=1.0,numTimesToInterpolate=1, plotResults=False,nBG=15):
+def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxToHistogram=1.0,numTimesToInterpolate=1, plotResults=False,nBG=15, dtBinWidth=4):
     n_events = box.getNumEventsArray()
     goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events)
-    YTOF, fICC, x_lims = fitTOFCoordinate(box,peak,padeCoefficients,dtSpread=0.03,dtBinWidth=4,qMask=qMask,bgPolyOrder=2,nBG=nBG,zBG=1.96,plotResults=plotResults)
+    YTOF, fICC, x_lims = fitTOFCoordinate(box,peak,padeCoefficients,dtSpread=0.03,dtBinWidth=dtBinWidth,qMask=qMask,bgPolyOrder=2,nBG=nBG,zBG=1.96,plotResults=plotResults)
     X = boxToTOFThetaPhi(box,peak)
     params,h,t,p = doBVGFit(box,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram)
     if plotResults:
