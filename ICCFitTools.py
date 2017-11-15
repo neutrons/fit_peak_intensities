@@ -106,7 +106,7 @@ def getQuickTOFWS(box, peak, goodIDX=None, dtSpread=0.03, dtBinWidth=30, qMask=N
 
 
 #Must give this a peak, box, and qMask to do iterative pp_lambda
-def getBGRemovedIndices(n_events,zBG=1.96,neigh_length_m=3,qMask=None, peak=None, box=None, pp_lambda=None,peakNumber=-1):
+def getBGRemovedIndices(n_events,zBG=1.96,neigh_length_m=3,dtBinWidth=4, qMask=None, peak=None, box=None, pp_lambda=None,peakNumber=-1):
         
     hasEventsIDX = n_events>0
     #Set up some things to only consider good pixels
@@ -133,7 +133,7 @@ def getBGRemovedIndices(n_events,zBG=1.96,neigh_length_m=3,qMask=None, peak=None
         for i, pp_lambda in enumerate(pp_lambda_toCheck):
             try:
                 goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
-                chiSq, h = getQuickTOFWS(box, peak, goodIDX=goodIDX,qMask=qMask,pp_lambda=pp_lambda)
+                chiSq, h = getQuickTOFWS(box, peak, goodIDX=goodIDX,qMask=qMask,pp_lambda=pp_lambda,dtBinWidth=dtBinWidth)
                 chiSqList[i] = chiSq
                 print '--------', chiSq, pp_lambda
                 if chiSq<1.5 or len(h[0])<15:
@@ -149,12 +149,6 @@ def getBGRemovedIndices(n_events,zBG=1.96,neigh_length_m=3,qMask=None, peak=None
         goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
 
         chiSq, h = getQuickTOFWS(box, peak, goodIDX=goodIDX,qMask=qMask,pp_lambda=pp_lambda)
-        #plt.close('all')
-        plt.figure(1); plt.clf()
-        plt.plot(mtd['fit_Workspace'].readX(0), mtd['fit_Workspace'].readY(0))
-        plt.plot(mtd['fit_Workspace'].readX(0), mtd['fit_Workspace'].readY(1))
-        plt.title('Chi Sq: %f, Peak Number: '%chiSq + str(peakNumber))
-        plt.pause(0.01)
         print '################### USING ', pp_lambda, 'WITH CHI SQ:', chiSqList[use_ppl], np.sum(goodIDX)
 
     else: #No peak given, just do it the old way
@@ -340,7 +334,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
     maxBin = np.shape(n_events)
 
     if zBG >= 0:
-        goodIDX, pp_lambda= getBGRemovedIndices(n_events,box=box, qMask=qMask, peak=peak, pp_lambda=pp_lambda, peakNumber=peakNumber)
+        goodIDX, pp_lambda= getBGRemovedIndices(n_events,box=box, qMask=qMask, peak=peak, pp_lambda=pp_lambda, peakNumber=peakNumber,dtBinWidth=dtBinWidth)
         print 'XXXXXXX', np.sum(goodIDX), ' is ppl'
         #qMask = np.ones_like(qMask).astype(np.bool)
         hasEventsIDX = np.logical_and(goodIDX, qMask) #TODO bad naming, but a lot of the naming in this function assumes it
@@ -784,6 +778,12 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 chiSq = fitResults.OutputChi2overDoF
 
 
+                #plt.close('all')
+                plt.figure(1); plt.clf()
+                plt.plot(mtd['fit_Workspace'].readX(0), mtd['fit_Workspace'].readY(0))
+                plt.plot(mtd['fit_Workspace'].readX(0), mtd['fit_Workspace'].readY(1))
+                plt.title('Chi Sq: %f, Peak Number: '%chiSq + str(i))
+                plt.pause(0.01)
 
  
                 chiSq2  = 1.0e99

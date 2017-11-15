@@ -45,7 +45,7 @@ qLow = -15.0; qHigh = 15.0
 dtSpread = [0.025,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
 dtBinWidth = 4 #Width (in us) in TOF profile bins
 dQPixel = [0.005,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
-descriptor = 'scol_quadBG' #Does not end with '/'
+descriptor = 'scol_dynamicQuadBG' #Does not end with '/'
 dQMax = 0.4
 doIterativeBackgroundFitting = False
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
@@ -88,6 +88,7 @@ dQMax = 0.15 #tune this
 descriptor = 'beta_lac_dynamicQuadBG' #Does not end with '/'
 doIterativeBackgroundFitting = False
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
+
 
 '''
 #Natrolite - 2016 - MANDI
