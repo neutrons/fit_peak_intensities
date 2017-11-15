@@ -70,8 +70,23 @@ def getQXQYQZ(box):
     QX, QY, QZ = np.meshgrid(qx, qy, qz,indexing='ij',copy=False)
     return QX, QY, QZ
 
-def getQuickTOFWS(box, peak, goodIDX=None, dtSpread=0.03, dtBinWidth=4):
-    print box
+def getQuickTOFWS(box, peak, goodIDX=None, dtSpread=0.03, dtBinWidth=30, qMask=None, pp_lambda=None):
+    padeCoefficients = getModeratorCoefficients('/SNS/users/ntv/integrate/franz_coefficients_2017.dat')
+    nBG = 15
+    tof = peak.getTOF() #in us
+    wavelength = peak.getWavelength() #in Angstrom
+    flightPath = peak.getL1() + peak.getL2() #in m
+    scatteringHalfAngle = 0.5*peak.getScattering()
+    energy = 81.804 / wavelength**2 / 1000.0 #in eV
+    detNumber = 0#EdgeTools.getDetectorBank(panelDict, peak.getDetectorID())['bankNumber']
+    if qMask is None:
+        qMask = np.ones_like(box.getNumEventsArray()).astype(np.bool)
+   
+    tofWS,ppl = getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, None, 0, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=False, minFracPixels=0.005, removeEdges=False,calcTOFPerPixel=False,neigh_length_m=3,zBG=1.96,pp_lambda=pp_lambda)
+    h = [tofWS.readY(0), tofWS.readX(0)]
+    fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=nBG,fitOrder=1)
+    chiSq = fitResults.OutputChi2overDoF
+    '''
     QX, QY, QZ = getQXQYQZ(box)
     n_events = box.getNumEventsArray()
     if goodIDX is None:
@@ -80,42 +95,92 @@ def getQuickTOFWS(box, peak, goodIDX=None, dtSpread=0.03, dtBinWidth=4):
     flightPath = peak.getL1() + peak.getL2()
     scatteringHalfAngle = 0.5*peak.getScattering()
     TOF = 3176.507 * flightPath *np.sin(scatteringHalfAngle) * 1/np.abs(R)
-    dtMin = (1.0-dtSpread) * peak.getTOF()
-    dtMax = (1.0+dtSpread) * peak.getTOF()
+    dtMin = max((1.0-dtSpread/2.0) * peak.getTOF(), TOF[qMask*goodIDX].min())
+    dtMax = min((1.0+dtSpread/2.0) * peak.getTOF(), TOF[qMask*goodIDX].max())
     tBins = np.arange(dtMin, dtMax, dtBinWidth)
     h = np.histogram(TOF[goodIDX],tBins, weights=n_events[goodIDX])
-    return h 
+    '''
+    return chiSq, [h[0], h[1]] 
 
-def getBGRemovedIndices(n_events,zBG=1.96,neigh_length_m=3, peak=None, box=None):
+
+
+
+def getBGRemovedIndices(n_events,zBG=1.96,neigh_length_m=3,qMask=None, peak=None, box=None, pp_lambda=None):
+        
     hasEventsIDX = n_events>0
     #Set up some things to only consider good pixels
     N = np.shape(n_events)[0]
     neigh_length_m = neigh_length_m #Set to zero for "this pixel only" mode - performance is optimized for neigh_length_m=0 
     maxBin = np.shape(n_events)
 
-    pp_lambda = get_pp_lambda(n_events,hasEventsIDX) #Get the most probably number of events
-    pp_lambda = 1.75
     found_pp_lambda = False
     convBox = 1.0*np.ones([neigh_length_m, neigh_length_m,neigh_length_m]) / neigh_length_m**3
     conv_n_events = convolve(n_events,convBox)
     allEvents = np.sum(n_events[hasEventsIDX])
+
+    if pp_lambda is not None:
+        goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
+        return goodIDX, pp_lambda
+
+    pp_lambda = get_pp_lambda(n_events,hasEventsIDX) #Get the most probably number of events
+#    pp_lambda = 1.75
+#    goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
+#    return goodIDX, pp_lambda
+    if peak is not None:
+        pp_lambda_toCheck = np.linspace(pp_lambda, conv_n_events.max(), 100)
+        chiSqList = 1.0e99*np.ones_like(pp_lambda_toCheck)
+        for i, pp_lambda in enumerate(pp_lambda_toCheck):
+            try:
+                goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
+                chiSq, h = getQuickTOFWS(box, peak, goodIDX=goodIDX,qMask=qMask,pp_lambda=pp_lambda)
+                chiSqList[i] = chiSq
+                if chiSq<1.5:
+                     break
+            except RuntimeError:
+                #This is caused by there being fewer datapoints remaining than parameters.  For now, we just hope
+                # we found a satisfactory answer.  TODO: we can rebin and try that, though it may not help much.
+                break
+            except KeyboardInterrupt:
+                import sys
+                sys.exit(0) 
+                
+        use_ppl = np.argmin(chiSqList)
+        pp_lambda = pp_lambda_toCheck[use_ppl]
+        goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
+
+    else: #No peak given, just do it the old way
+        while not found_pp_lambda and pp_lambda < 3.0:
+            goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
+            boxMean = n_events[goodIDX]
+            boxMeanIDX = np.where(goodIDX)
+            if allEvents > np.sum(boxMean):
+                found_pp_lambda = True
+            else:
+                pp_lambda *= 1.05
+    return goodIDX, pp_lambda
+'''
     if allEvents > 0:
         while not found_pp_lambda and pp_lambda < 3.0:
             goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
             boxMean = n_events[goodIDX]
             boxMeanIDX = np.where(goodIDX)
             if peak is not None:
-                h = getQuickTOFWS(box, peak, goodIDX=goodIDX)
-                if np.sum(h[0][:10] < 3):
+                chiSq, h = getQuickTOFWS(box, peak, goodIDX=goodIDX,qMask=qMask,pp_lambda=pp_lambda)
+                if chiSq<2.1:
+                    print 'FOUND IT!', pp_lambda, np.sum(h[0][:10])
+                    plt.figure(14); plt.clf(); plt.plot(h[1], h[0])
                     found_pp_lambda = True
                 else:
+                    print pp_lambda, np.median(h[0])
+                    plt.figure(13); plt.clf(); plt.plot(h[1], h[0]); plt.title(chiSq)
+                    plt.pause(0.10)
                     pp_lambda *= 1.05
             else:
                 if allEvents > np.sum(boxMean):
                     found_pp_lambda = True
                 else:
                     pp_lambda *= 1.05
-    return goodIDX, pp_lambda
+'''
 
 def getDQTOF(peak, dtSpread=0.03, maxDQ=0.5):
     dQ=np.zeros(3)
@@ -255,7 +320,7 @@ def get_pp_lambda(n_events, hasEventsIDX ):
 #Output:
 #    tofWS: a Workspace2D containing the TOF profile.  X-axis is TOF (units: us) and
 #           Y-axis is the number of events.
-def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, peakNumber, qMask, dtBinWidth=2, zBG=-1.0, dtSpread = 0.02, doVolumeNormalization=False, minFracPixels = 0.005, removeEdges=False, edgesToCheck=None, calcTOFPerPixel=False, workspaceNumber=None,neigh_length_m=0):
+def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, peakNumber, qMask, dtBinWidth=2, zBG=-1.0, dtSpread = 0.02, doVolumeNormalization=False, minFracPixels = 0.005, removeEdges=False, edgesToCheck=None, calcTOFPerPixel=False, workspaceNumber=None,neigh_length_m=0, pp_lambda=None):
     #Find the qVoxels to use
     n_events = box.getNumEventsArray()
     hasEventsIDX = np.logical_and(n_events>0,qMask)
@@ -267,7 +332,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
     maxBin = np.shape(n_events)
 
     if zBG >= 0:
-        goodIDX, pp_lambda= getBGRemovedIndices(n_events)
+        goodIDX, pp_lambda= getBGRemovedIndices(n_events,pp_lambda=pp_lambda)
         hasEventsIDX = np.logical_and(goodIDX, qMask) #TODO bad naming, but a lot of the naming in this function assumes it
         boxMean = n_events[hasEventsIDX]
         boxMeanIDX = np.where(hasEventsIDX)
