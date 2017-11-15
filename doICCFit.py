@@ -17,7 +17,7 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 
 # Some parameters
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
-bgPolyOrder = 2 #int- bg order for IC fit
+bgPolyOrder = 1 #int- bg order for IC fit
 doVolumeNormalization = False #True if you want to normalize TOF profiles by volume
 refineCenter = False #True if you want to determine new centers - still not very good
 removeEdges = False #True if you want to not consider q-pixels that are off detector faces
@@ -31,6 +31,7 @@ neigh_length_m = 3 #Will average over a (neigh_length_m)**3 box
 zBG = 1.96 #z score to keep this with
 
 
+'''
 #Scolecite - 2016A
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
@@ -48,6 +49,7 @@ descriptor = 'scol_quadBG' #Does not end with '/'
 dQMax = 0.4
 doIterativeBackgroundFitting = False
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
+'''
 
 
 '''
@@ -69,7 +71,6 @@ doIterativeBackgroundFitting = False
 descriptor = 'run22331' #Does not end with '/'
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 '''
-'''
 #Beta lactamase - 2016 - MANDI
 loadDir = '/SNS/MANDI/IPTS-15000/data/'
 nxsTemplate = loadDir+'MANDI_%i_event.nxs'
@@ -80,14 +81,13 @@ UBFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
 UBFormat = UBFile
 DetCalFile = None
 qLow = -5.0; qHigh = 5.0
-dtSpread = [0.025,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-dtBinWidth = 25 #Width (in us) in TOF profile bins
+dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+dtBinWidth = 15 #Width (in us) in TOF profile bins
 dQPixel = [0.003,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
 dQMax = 0.15 #tune this
-descriptor = 'beta_lac_quadBG' #Does not end with '/'
-doIterativeBackgroundFitting = True
+descriptor = 'beta_lac_dynamicQuadBG' #Does not end with '/'
+doIterativeBackgroundFitting = False
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
-'''
 
 '''
 #Natrolite - 2016 - MANDI

@@ -197,7 +197,11 @@ def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVol
         qMask = np.ones_like(box.getNumEventsArray()).astype(np.bool) 
     tofWS,ppl = ICCFT.getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, panelDict, 0, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG,pp_lambda=pp_lambda)
 
-    fitResults,fICC = ICCFT.doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,nBG=nBG,fitOrder=bgPolyOrder)
+    try:
+        fitResults,fICC = ICCFT.doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,nBG=nBG,fitOrder=bgPolyOrder,constraintScheme=2)
+    except:
+        fitResults,fICC = ICCFT.doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,nBG=nBG,fitOrder=bgPolyOrder)
+    
     for i, param in enumerate(['A','B','R','T0','scale', 'hatWidth', 'k_conv']):
         fICC[param] = mtd['fit_Parameters'].row(i)['Value']
     

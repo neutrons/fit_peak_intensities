@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+plt.ion()
 import numpy as np
 import sys
 import os
@@ -104,8 +105,8 @@ def getQuickTOFWS(box, peak, goodIDX=None, dtSpread=0.03, dtBinWidth=30, qMask=N
 
 
 
-
-def getBGRemovedIndices(n_events,zBG=1.96,neigh_length_m=3,qMask=None, peak=None, box=None, pp_lambda=None):
+#Must give this a peak, box, and qMask to do iterative pp_lambda
+def getBGRemovedIndices(n_events,zBG=1.96,neigh_length_m=3,qMask=None, peak=None, box=None, pp_lambda=None,peakNumber=-1):
         
     hasEventsIDX = n_events>0
     #Set up some things to only consider good pixels
@@ -127,26 +128,34 @@ def getBGRemovedIndices(n_events,zBG=1.96,neigh_length_m=3,qMask=None, peak=None
 #    goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
 #    return goodIDX, pp_lambda
     if peak is not None:
-        pp_lambda_toCheck = np.linspace(pp_lambda, conv_n_events.max(), 100)
+        pp_lambda_toCheck = np.linspace(pp_lambda, conv_n_events.max(), 200)
         chiSqList = 1.0e99*np.ones_like(pp_lambda_toCheck)
         for i, pp_lambda in enumerate(pp_lambda_toCheck):
             try:
                 goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
                 chiSq, h = getQuickTOFWS(box, peak, goodIDX=goodIDX,qMask=qMask,pp_lambda=pp_lambda)
                 chiSqList[i] = chiSq
-                if chiSq<1.5:
+                print '--------', chiSq, pp_lambda
+                if chiSq<1.5 or len(h[0])<15:
                      break
             except RuntimeError:
                 #This is caused by there being fewer datapoints remaining than parameters.  For now, we just hope
                 # we found a satisfactory answer.  TODO: we can rebin and try that, though it may not help much.
                 break
             except KeyboardInterrupt:
-                import sys
-                sys.exit(0) 
-                
-        use_ppl = np.argmin(chiSqList)
+                0/0 
+        use_ppl = np.argmin(np.abs(chiSqList-1.0))
         pp_lambda = pp_lambda_toCheck[use_ppl]
         goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
+
+        chiSq, h = getQuickTOFWS(box, peak, goodIDX=goodIDX,qMask=qMask,pp_lambda=pp_lambda)
+        #plt.close('all')
+        plt.figure(1); plt.clf()
+        plt.plot(mtd['fit_Workspace'].readX(0), mtd['fit_Workspace'].readY(0))
+        plt.plot(mtd['fit_Workspace'].readX(0), mtd['fit_Workspace'].readY(1))
+        plt.title('Chi Sq: %f, Peak Number: '%chiSq + str(peakNumber))
+        plt.pause(0.01)
+        print '################### USING ', pp_lambda, 'WITH CHI SQ:', chiSqList[use_ppl], np.sum(goodIDX)
 
     else: #No peak given, just do it the old way
         while not found_pp_lambda and pp_lambda < 3.0:
@@ -328,11 +337,12 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
 
     #Set up some things to only consider good pixels
     N = np.shape(n_events)[0]
-    neigh_length_m = neigh_length_m #Set to zero for "this pixel only" mode - performance is optimized for neigh_length_m=0 
     maxBin = np.shape(n_events)
 
     if zBG >= 0:
-        goodIDX, pp_lambda= getBGRemovedIndices(n_events,pp_lambda=pp_lambda)
+        goodIDX, pp_lambda= getBGRemovedIndices(n_events,box=box, qMask=qMask, peak=peak, pp_lambda=pp_lambda, peakNumber=peakNumber)
+        print 'XXXXXXX', np.sum(goodIDX), ' is ppl'
+        #qMask = np.ones_like(qMask).astype(np.bool)
         hasEventsIDX = np.logical_and(goodIDX, qMask) #TODO bad naming, but a lot of the naming in this function assumes it
         boxMean = n_events[hasEventsIDX]
         boxMeanIDX = np.where(hasEventsIDX)
@@ -687,7 +697,6 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.00
 
 def doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,constraintScheme=None,nBG=15, outputWSName='fit', fitOrder=1):
     #Set up our inital guess
-    print nBG, ' is nBG'
     fICC = ICC.IkedaCarpenterConvoluted()
     fICC.init()
     paramNames = [fICC.getParamName(x) for x in range(fICC.numParams())]
@@ -770,7 +779,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                             break
                 else:
                    lownBG = nBG
-                fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,nBG=lownBG,fitOrder=bgPolyOrder,constraintScheme=1)
+                fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=lownBG,fitOrder=bgPolyOrder,constraintScheme=2)
                 fitStatus = fitResults.OutputStatus
                 chiSq = fitResults.OutputChi2overDoF
 
@@ -778,7 +787,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
 
  
                 chiSq2  = 1.0e99
-                if (chiSq > 3.0) and (tofWS.readY(0).max() > 10): #The initial fit isn't great - let's see if we can do better
+                if (chiSq > 100) and (tofWS.readY(0).max() > 10): #The initial fit isn't great - let's see if we can do better
                     Box = getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel[1])
 
                     if removeEdges:
