@@ -17,10 +17,11 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 # BVGFT.compareBVGFitData(box,params[0])
 
 
-def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxToHistogram=1.0,numTimesToInterpolate=1, plotResults=False,nBG=15, dtBinWidth=4):
+def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxToHistogram=1.0,numTimesToInterpolate=1, plotResults=False,nBG=15, dtBinWidth=4,zBG=1.96,bgPolyOrder=1):
     n_events = box.getNumEventsArray()
-    goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events)
-    YTOF, fICC, x_lims = fitTOFCoordinate(box,peak,padeCoefficients,dtSpread=0.03,dtBinWidth=dtBinWidth,qMask=qMask,bgPolyOrder=2,nBG=nBG,zBG=1.96,plotResults=plotResults)
+    #goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events)
+    goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events, peak=peak, box=box)
+    YTOF, fICC, x_lims = fitTOFCoordinate(box,peak,padeCoefficients,dtSpread=0.03,dtBinWidth=dtBinWidth,qMask=qMask,bgPolyOrder=bgPolyOrder,nBG=nBG,zBG=zBG,plotResults=plotResults)
     X = boxToTOFThetaPhi(box,peak)
     params,h,t,p = doBVGFit(box,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram)
     if plotResults:
@@ -92,41 +93,36 @@ def interpolateXGrid(X):
     return XT
 
 
-def calcTOFPerPixel(box, peak):
-    xaxis = Box.getXDimension()
+def calcTOFPerPixel(box, peak, refitIDX = None):
+    xaxis = box.getXDimension()
     qx = np.linspace(xaxis.getMinimum(), xaxis.getMaximum(), xaxis.getNBins())
-    yaxis = Box.getYDimension()
+    yaxis = box.getYDimension()
     qy = np.linspace(yaxis.getMinimum(), yaxis.getMaximum(), yaxis.getNBins())
-    zaxis = Box.getZDimension()
+    zaxis = box.getZDimension()
     qz = np.linspace(zaxis.getMinimum(), zaxis.getMaximum(), zaxis.getNBins())
     QX, QY, QZ = ICCFT.getQXQYQZ(box)
- 
-    qS0 = peak.getQSampleFrame()
-    qqx = qx[::20] #Points we'll interpolate from for speed
-    qqy = qy[::20]
-    qqz = qz[::20]
-    LLIST = np.zeros([qqx.size, qqy.size, qqz.size])
-    for i, x in enumerate(qqx):
-        print i
-        for j, y in enumerate(qqy):
-            for k, z in enumerate(qqz):
-                qNew = V3D(x,y,z)
-                peak.setQSampleFrame(qNew)
-                L = peak.getL1() + peak.getL2()
-                HALFSCAT = 0.5*peak.getScattering()
-                LLIST[i,j,k] = L*np.sin(HALFSCAT)
-    peak.setQSampleFrame(qS0)
-    LLIST = np.asarray(LLIST)
-    #LLIST[LLIST>19.0] = np.nan
-    QQX,QQY,QQZ = np.meshgrid(qqx,qqy,qqz,indexing='ij',copy=False)
-    cartcoord = list(zip(QQX.flatten(), QQY.flatten(), QQZ.flatten()))
-    nn = LinearNDInterpolator(cartcoord, LLIST.flatten())
 
-    PIXELFACTOR = np.array(nn(QX,QY,QZ)) #=(L1*L2) + sin(theta)
+    if refitIDX  is None:
+        refitIDX = np.ones_like(QX).astype(np.bool)
+
+    from mantid.kernel import V3D 
+    qS0 = peak.getQSampleFrame()
+    PIXELFACTOR = np.ones_like(QX)*(peak.getL1() + peak.getL2())*np.sin(0.5*peak.getScattering())
+    for i, x in enumerate(qx):
+        print i
+        for j, y in enumerate(qy):
+            for k, z in enumerate(qz):
+                if refitIDX[i,j,k]:
+                    qNew = V3D(x,y,z)
+                    peak.setQSampleFrame(qNew)
+                    L = peak.getL1() + peak.getL2()
+                    HALFSCAT = 0.5*peak.getScattering()
+                    PIXELFACTOR[i,j,k] = L*np.sin(HALFSCAT)
+    peak.setQSampleFrame(qS0)
+
 
     tofBox = 3176.507 * PIXELFACTOR * 1.0/np.sqrt(QX**2 + QY**2 + QZ**2)
-    tofMask = ~np.isnan(tofBox)
-
+    return tofBox
 
 def boxToTOFThetaPhi(box,peak):
     QX, QY, QZ = ICCFT.getQXQYQZ(box)
@@ -143,10 +139,10 @@ def boxToTOFThetaPhi(box,peak):
 def fitScaling(n_events, YTOF, YBVG):
     YJOINT = 1.0*YTOF * YBVG
     YJOINT /= 1.0*YJOINT.max() #Joint PDF - max is 1, integral is unknown
-    #goodIDX = n_events > 0.5*n_events.max()
-    #goodIDX = YJOINT > 0.5
-    goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events)
-    p0 = np.array([4*np.max(n_events), 0.01])
+    #goodIDX = n_events > -1.0
+    goodIDX = YJOINT > 0.5
+    #goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events)
+    p0 = np.array([np.max(n_events), 0.01])
     weights = np.sqrt(n_events)
     weights[weights<1] = 1.
     bounds = ([0,0],[np.inf,1.0])
@@ -166,7 +162,7 @@ def fitScaling(n_events, YTOF, YBVG):
     return YRET, chiSqRed, p[0]
    
 def fitScalingFunction(x,a,bg):
-    return a*x
+    return a*x# + bg
 
 def xyzlinear(X, a0, a1, a2, a3, a4, a5, a6, a7):
     x = X[0]; y = X[1]; z = X[2];

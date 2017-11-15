@@ -20,6 +20,38 @@ from timeit import default_timer as timer
 from scipy.ndimage.filters import convolve
 
 
+def calcSomeTOF(box, peak, refitIDX = None):
+    xaxis = box.getXDimension()
+    qx = np.linspace(xaxis.getMinimum(), xaxis.getMaximum(), xaxis.getNBins())
+    yaxis = box.getYDimension()
+    qy = np.linspace(yaxis.getMinimum(), yaxis.getMaximum(), yaxis.getNBins())
+    zaxis = box.getZDimension()
+    qz = np.linspace(zaxis.getMinimum(), zaxis.getMaximum(), zaxis.getNBins())
+    QX, QY, QZ = getQXQYQZ(box)
+
+    if refitIDX  is None:
+        refitIDX = np.ones_like(QX).astype(np.bool)
+
+    from mantid.kernel import V3D
+    qS0 = peak.getQSampleFrame()
+    PIXELFACTOR = np.ones_like(QX)*(peak.getL1() + peak.getL2())*np.sin(0.5*peak.getScattering())
+    for i, x in enumerate(qx):
+        print i
+        for j, y in enumerate(qy):
+            for k, z in enumerate(qz):
+                if refitIDX[i,j,k]:
+                    qNew = V3D(x,y,z)
+                    peak.setQSampleFrame(qNew)
+                    L = peak.getL1() + peak.getL2()
+                    HALFSCAT = 0.5*peak.getScattering()
+                    PIXELFACTOR[i,j,k] = L*np.sin(HALFSCAT)
+    peak.setQSampleFrame(qS0)
+
+
+    tofBox = 3176.507 * PIXELFACTOR * 1.0/np.sqrt(QX**2 + QY**2 + QZ**2)
+    return tofBox
+
+
 # (x,y,z) -> (r,phi,theta)
 def cart2sph(x,y,z):
     hxy = np.hypot(x, y)
@@ -38,7 +70,23 @@ def getQXQYQZ(box):
     QX, QY, QZ = np.meshgrid(qx, qy, qz,indexing='ij',copy=False)
     return QX, QY, QZ
 
-def getBGRemovedIndices(n_events,zBG=1.96,neigh_length_m=3):
+def getQuickTOFWS(box, peak, goodIDX=None, dtSpread=0.03, dtBinWidth=4):
+    print box
+    QX, QY, QZ = getQXQYQZ(box)
+    n_events = box.getNumEventsArray()
+    if goodIDX is None:
+        goodIDX = np.ones_like(QX).astype(np.bool)
+    R = np.sqrt(QX**2 + QY**2 + QZ**2)
+    flightPath = peak.getL1() + peak.getL2()
+    scatteringHalfAngle = 0.5*peak.getScattering()
+    TOF = 3176.507 * flightPath *np.sin(scatteringHalfAngle) * 1/np.abs(R)
+    dtMin = (1.0-dtSpread) * peak.getTOF()
+    dtMax = (1.0+dtSpread) * peak.getTOF()
+    tBins = np.arange(dtMin, dtMax, dtBinWidth)
+    h = np.histogram(TOF[goodIDX],tBins, weights=n_events[goodIDX])
+    return h 
+
+def getBGRemovedIndices(n_events,zBG=1.96,neigh_length_m=3, peak=None, box=None):
     hasEventsIDX = n_events>0
     #Set up some things to only consider good pixels
     N = np.shape(n_events)[0]
@@ -46,6 +94,7 @@ def getBGRemovedIndices(n_events,zBG=1.96,neigh_length_m=3):
     maxBin = np.shape(n_events)
 
     pp_lambda = get_pp_lambda(n_events,hasEventsIDX) #Get the most probably number of events
+    pp_lambda = 1.75
     found_pp_lambda = False
     convBox = 1.0*np.ones([neigh_length_m, neigh_length_m,neigh_length_m]) / neigh_length_m**3
     conv_n_events = convolve(n_events,convBox)
@@ -55,10 +104,17 @@ def getBGRemovedIndices(n_events,zBG=1.96,neigh_length_m=3):
             goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
             boxMean = n_events[goodIDX]
             boxMeanIDX = np.where(goodIDX)
-            if allEvents > np.sum(boxMean):
-                found_pp_lambda = True
+            if peak is not None:
+                h = getQuickTOFWS(box, peak, goodIDX=goodIDX)
+                if np.sum(h[0][:10] < 3):
+                    found_pp_lambda = True
+                else:
+                    pp_lambda *= 1.05
             else:
-                pp_lambda *= 1.05
+                if allEvents > np.sum(boxMean):
+                    found_pp_lambda = True
+                else:
+                    pp_lambda *= 1.05
     return goodIDX, pp_lambda
 
 def getDQTOF(peak, dtSpread=0.03, maxDQ=0.5):
@@ -236,7 +292,9 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
     if calcTOFPerPixel == False:
         tList = 1.0/np.sqrt(QX[hasEventsIDX]**2 + QY[hasEventsIDX]**2 + QZ[hasEventsIDX]**2)
         tList = 3176.507 * flightPath * np.sin(scatteringHalfAngle) * tList #convert to microseconds
-    
+        #refitIDX = hasEventsIDX
+        #tList = calcSomeTOF(box, peak, refitIDX=refitIDX)
+        #tList=tList[hasEventsIDX] 
     if calcTOFPerPixel == True:
         origFlightPath = flightPath
         origScatteringHalfAngle = scatteringHalfAngle
