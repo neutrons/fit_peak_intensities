@@ -145,7 +145,6 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
     #goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
     goodIDX, _ = getBGRemovedIndices(n_events, pp_lambda=pp_lambda)
 
-    chiSq, h = getQuickTOFWS(box, peak, padeCoefficients, goodIDX=goodIDX,qMask=qMask,pp_lambda=pp_lambda)
     print 'USING PP_LAMBDA', pp_lambda, 'WITH CHISQ:', chiSqList[use_ppl]
     chiSq, h = getQuickTOFWS(box, peak, padeCoefficients, goodIDX=goodIDX,qMask=qMask,pp_lambda=pp_lambda,dtBinWidth=dtBinWidth,nBG=nBG)
     return goodIDX, pp_lambda
@@ -335,7 +334,6 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
         if pp_lambda is None:
             calc_pp_lambda=True
         goodIDX, pp_lambda= getBGRemovedIndices(n_events,box=box, qMask=qMask, peak=peak, pp_lambda=pp_lambda, peakNumber=peakNumber,dtBinWidth=dtBinWidth, calc_pp_lambda=calc_pp_lambda, padeCoefficients=padeCoefficients)
-        #qMask = np.ones_like(qMask).astype(np.bool)
         hasEventsIDX = np.logical_and(goodIDX, qMask) #TODO bad naming, but a lot of the naming in this function assumes it
         boxMean = n_events[hasEventsIDX]
         boxMeanIDX = np.where(hasEventsIDX)
@@ -726,10 +724,8 @@ def doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibration
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
 def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients, parameterDict, figsFormat=None, dtBinWidth = 4, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, doVolumeNormalization=False, minFracPixels=0.0000, fracStop = 0.01, removeEdges=False, calibrationDict=None,dQPixel=0.005,calcTOFPerPixel=False, p=None,neigh_length_m=0,zBG=-1.0,bgPolyOrder=1, doIterativeBackgroundFitting=False):
     if removeEdges is True and panelDict is None:
-
-        print 'REMOVE EDGES WITHOUT panelDict - IMPOSSIBLE!!'
         import sys
-        sys.exit(-1)
+        sys.exit('ICCFT:integrateSample - trying to remove edges without a panelDict, this is impossible!')
     
     if p is None:
         p = range(peaks_ws.getNumberPeaks())
@@ -764,9 +760,11 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     else:
                         tofWS,ppl = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG,pp_lambda=pp_lambda)
                 else:
-                    tofWS,pp_lambda = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG,pp_lambda=pp_lambda)
-                print pp_lambda, 'is ppl'
+                    #tofWS,pp_lambda = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG,pp_lambda=pp_lambda)
+                    tofWS = mtd['tofWS'] # --IN PRINCIPLE!!! WE CALCULATE THIS BEFORE GETTING HERE
+                    #TODO: Make sure we calculate it here - it seems to not work well for scolecute, but works for beta lac?
 
+                print pp_lambda, 'is ppl'
                 if doIterativeBackgroundFitting:
                     nBGToTry = range(2,tofWS.readX(0).size,4)
                     lowChiSq = 1.0e99
@@ -786,13 +784,14 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 fitStatus = fitResults.OutputStatus
                 chiSq = fitResults.OutputChi2overDoF
 
-
                 #plt.close('all')
                 plt.figure(1); plt.clf()
                 plt.plot(mtd['fit_Workspace'].readX(0), mtd['fit_Workspace'].readY(0))
                 plt.plot(mtd['fit_Workspace'].readX(0), mtd['fit_Workspace'].readY(1))
                 plt.title('Chi Sq: %f, Peak Number: '%chiSq + str(i))
                 plt.pause(0.01)
+            
+
 
  
                 chiSq2  = 1.0e99
@@ -832,6 +831,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 iii = fICC.numParams() - 1
                 fitBG = [param.row(int(iii+i+1))['Value'] for i in range(bgPolyOrder+1)]
 
+
                 #Set the intensity before moving on to the next peak
                 icProfile = r.readY(1)
                 bgCoefficients = fitBG[::-1]
@@ -856,14 +856,16 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 print 'KeyboardInterrupt: Exiting Program!!!!!!!'
                 sys.exit()
             except: #Error with fitting
-                raise
+                #raise
+                import sys
                 peak.setIntensity(0)
                 peak.setSigmaIntensity(1)
                 print 'Error with peak ' + str(i)
+                paramList.append([i, energy, 0.0, 1.0e10,1.0e10] + [0 for i in range(mtd['fit_parameters'].rowCount())]+[0])
+                continue
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 print(exc_type, fname, exc_tb.tb_lineno)
-                paramList.append([i, energy, 0.0, 1.0e10,1.0e10] + [0 for i in range(mtd['fit_parameters'].rowCount())]+[0])
         mtd.remove('MDbox_'+str(run)+'_'+str(i))
     return peaks_ws, paramList, fitDict
 

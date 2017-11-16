@@ -22,7 +22,6 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
     #goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events)
     goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events, peak=peak, box=box,qMask=qMask, calc_pp_lambda=True, padeCoefficients=padeCoefficients, dtBinWidth=dtBinWidth,nBG=nBG)
     YTOF, fICC, x_lims = fitTOFCoordinate(box,peak,padeCoefficients,dtSpread=0.03,dtBinWidth=dtBinWidth,qMask=qMask,bgPolyOrder=bgPolyOrder,nBG=nBG,zBG=zBG,plotResults=plotResults, pp_lambda=pp_lambda)
-    0/0
     X = boxToTOFThetaPhi(box,peak)
     params,h,t,p = doBVGFit(box,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram)
     if plotResults:
@@ -229,9 +228,10 @@ def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVol
         iStop = np.max(np.where(goodIDX))
 
     print 'bg: ', np.sum(bg[iStart:iStop])
-    
-    tofxx = np.linspace(tofWS.readX(0).min(), tofWS.readX(0).max(),100)
-    tofyy = fICC.function1D(tofxx)
+   
+    interpF = interp1d(x, yFit, kind='cubic')
+    tofxx = np.linspace(tofWS.readX(0).min(), tofWS.readX(0).max(),1000)
+    tofyy = interpF(tofxx)
     if plotResults:
         plt.figure(1); plt.clf(); 
         plt.plot(tofxx,tofyy,label='Interpolated')
