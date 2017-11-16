@@ -21,29 +21,36 @@ class IkedaCarpenterConvoluted(IFunction1D):
         self.declareParameter("hatWidth") #c[5]
         self.declareParameter("k_conv") #c[6]
 
-
+    #n.b. pass penalty=None to not use default mantid penalty - useful for development
     def setPenalizedConstraints(self, A0=None, B0=None, R0=None, T00=None, scale0=None, hatWidth0=None, k_conv0=None, penalty=1.0e10):
         if A0 is not None:
             self.addConstraints("{:4.4e} < A < {:4.4e}".format(A0[0], A0[1]))
-            self.setConstraintPenaltyFactor("A", penalty)
+            if penalty is not None:
+                self.setConstraintPenaltyFactor("A", penalty)
         if B0 is not None:
             self.addConstraints("{:4.4e} < B < {:4.4e}".format(B0[0], B0[1]))
-            self.setConstraintPenaltyFactor("B", penalty)
+            if penalty is not None:
+                self.setConstraintPenaltyFactor("B", penalty)
         if R0 is not None:
             self.addConstraints("{:4.4e} < R < {:4.4e}".format(R0[0], R0[1]))
-            self.setConstraintPenaltyFactor("R", penalty)
+            if penalty is not None:
+                self.setConstraintPenaltyFactor("R", penalty)
         if T00 is not None:
             self.addConstraints("{:4.4e} < T0 < {:4.4e}".format(T00[0], T00[1]))
-            self.setConstraintPenaltyFactor("T0", penalty)
+            if penalty is not None:
+                self.setConstraintPenaltyFactor("T0", penalty)
         if scale0 is not None:
             self.addConstraints("{:4.4e} < scale < {:4.4e}".format(scale0[0], scale0[1]))
-            self.setConstraintPenaltyFactor("scale", penalty)
+            if penalty is not None:
+                self.setConstraintPenaltyFactor("scale", penalty)
         if hatWidth0 is not None:
             self.addConstraints("{:4.4e} < hatWidth < {:4.4e}".format(hatWidth0[0], hatWidth0[1]))
-            self.setConstraintPenaltyFactor("hatWidth", penalty)
+            if penalty is not None:
+                self.setConstraintPenaltyFactor("hatWidth", penalty)
         if k_conv0 is not None:
             self.addConstraints("{:4.4e} < k_conv < {:4.4e}".format(k_conv0[0], k_conv0[1]))
-            self.setConstraintPenaltyFactor("k_conv", penalty)
+            if penalty is not None:
+                self.setConstraintPenaltyFactor("k_conv", penalty)
     
     #Evaluate the function
     def function1D(self, t):

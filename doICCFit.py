@@ -24,8 +24,8 @@ removeEdges = False #True if you want to not consider q-pixels that are off dete
 calcTOFPerPixel = False #True to calculate TOF for each pixel in a qBox - uses interpolation for volNorm (if doVolumeNormalization is True)
 fracHKL = 0.5 #Fraction of HKL to look on either side
 fracStop = 0.01 #Fraction of max counts to include in peak selection
-#moderatorCoefficientsFile = 'franz_coefficients_2017.dat'
-moderatorCoefficientsFile = 'franz_coefficients_2010.dat'
+moderatorCoefficientsFile = 'franz_coefficients_2017.dat'
+#moderatorCoefficientsFile = 'franz_coefficients_2010.dat'
 calibrationDictFile = 'det_calibration/calibration_dictionary.pkl'
 neigh_length_m = 3 #Will average over a (neigh_length_m)**3 box
 zBG = 1.96 #z score to keep this with
@@ -82,11 +82,12 @@ UBFormat = UBFile
 DetCalFile = None
 qLow = -5.0; qHigh = 5.0
 dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-dtBinWidth = 15 #Width (in us) in TOF profile bins
+dtBinWidth = 30 #Width (in us) in TOF profile bins
 dQPixel = [0.003,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
 dQMax = 0.15 #tune this
 descriptor = 'beta_lac_dynamicQuadBG' #Does not end with '/'
 doIterativeBackgroundFitting = False
+nBG=5
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 
 
@@ -202,7 +203,7 @@ for sampleRun in sampleRuns:
     #    UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
 
     #Do the actual integration
-    peaks_ws,paramList,fitDict = ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients,parameterDict, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.01, fracStop=fracStop, removeEdges=removeEdges, calibrationDict=calibrationDict,dQPixel=dQPixel, calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG, bgPolyOrder=bgPolyOrder, doIterativeBackgroundFitting=doIterativeBackgroundFitting)
+    peaks_ws,paramList,fitDict = ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients,parameterDict, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.01, fracStop=fracStop, removeEdges=removeEdges, calibrationDict=calibrationDict,dQPixel=dQPixel, calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG, bgPolyOrder=bgPolyOrder, nBG=nBG, doIterativeBackgroundFitting=doIterativeBackgroundFitting)
 
     #Save the results and delete the leftovers
     SaveIsawPeaks(InputWorkspace='peaks_ws', Filename=workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))

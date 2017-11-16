@@ -20,8 +20,9 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxToHistogram=1.0,numTimesToInterpolate=1, plotResults=False,nBG=15, dtBinWidth=4,zBG=1.96,bgPolyOrder=1):
     n_events = box.getNumEventsArray()
     #goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events)
-    goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events, peak=peak, box=box,qMask=qMask)
+    goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events, peak=peak, box=box,qMask=qMask, calc_pp_lambda=True, padeCoefficients=padeCoefficients, dtBinWidth=dtBinWidth,nBG=nBG)
     YTOF, fICC, x_lims = fitTOFCoordinate(box,peak,padeCoefficients,dtSpread=0.03,dtBinWidth=dtBinWidth,qMask=qMask,bgPolyOrder=bgPolyOrder,nBG=nBG,zBG=zBG,plotResults=plotResults, pp_lambda=pp_lambda)
+    0/0
     X = boxToTOFThetaPhi(box,peak)
     params,h,t,p = doBVGFit(box,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram)
     if plotResults:
@@ -187,14 +188,20 @@ def getXTOF(box, peak):
 
 
 def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVolumeNormalization=False,minFracPixels=0.01,removeEdges=False,calcTOFPerPixel=False,neigh_length_m=3,zBG=1.96,bgPolyOrder=1,panelDict=None,qMask=None,calibrationDict=None,nBG=15, plotResults=False,fracStop=0.01, pp_lambda=None):
+    
+    #Get info from the peak
     tof = peak.getTOF() #in us
     wavelength = peak.getWavelength() #in Angstrom
     flightPath = peak.getL1() + peak.getL2() #in m
     scatteringHalfAngle = 0.5*peak.getScattering()
     energy = 81.804 / wavelength**2 / 1000.0 #in eV
     detNumber = 0#EdgeTools.getDetectorBank(panelDict, peak.getDetectorID())['bankNumber']
+
+    #Set the qMask
     if qMask is None:
         qMask = np.ones_like(box.getNumEventsArray()).astype(np.bool) 
+    
+    #Calculate the optimal pp_lambda and 
     tofWS,ppl = ICCFT.getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, panelDict, 0, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG,pp_lambda=pp_lambda)
 
     try:
@@ -223,13 +230,16 @@ def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVol
 
     print 'bg: ', np.sum(bg[iStart:iStop])
     
-    tofxx = np.linspace(tofWS.readX(0).min(), tofWS.readX(0).max(),1000)
+    tofxx = np.linspace(tofWS.readX(0).min(), tofWS.readX(0).max(),100)
     tofyy = fICC.function1D(tofxx)
     if plotResults:
-        plt.figure(1); plt.clf(); plt.plot(tofxx,tofyy)
-        plt.plot(tofWS.readX(0), tofWS.readY(0),'o')
+        plt.figure(1); plt.clf(); 
+        plt.plot(tofxx,tofyy,label='Interpolated')
+        plt.plot(tofWS.readX(0), tofWS.readY(0),'o',label='Data')
         print 'sum:', np.sum(fICC.function1D(tofWS.readX(0)))
-        plt.plot(mtd['fit_Workspace'].readX(1), mtd['fit_Workspace'].readY(1))
+        plt.plot(mtd['fit_Workspace'].readX(1), mtd['fit_Workspace'].readY(1),label='Fit')
+        plt.title(fitResults.OutputChi2overDoF)
+        plt.legend(loc='best')
     ftof = interp1d(tofxx, tofyy,bounds_error=False,fill_value=0.0)
     XTOF = boxToTOFThetaPhi(box,peak)[:,:,:,0]
     YTOF = ftof(XTOF)
