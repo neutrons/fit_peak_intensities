@@ -85,11 +85,11 @@ def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, dtBi
     if pp_lambda is None:
         calc_pp_lambda=True
     tofWS,ppl = getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, None, 0, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=False, minFracPixels=0.01, removeEdges=False,calcTOFPerPixel=False,neigh_length_m=3,zBG=1.96,pp_lambda=pp_lambda,calc_pp_lambda=calc_pp_lambda)
-    h = [tofWS.readY(0), tofWS.readX(0)]
     fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=nBG,fitOrder=1,constraintScheme=2)
+    h = [tofWS.readY(0).copy(), tofWS.readX(0).copy(), mtd['fit_Workspace'].readY(1).copy()]
     chiSq = fitResults.OutputChi2overDoF
     
-    return chiSq, [h[0], h[1]] 
+    return chiSq, [h[0], h[1], h[2]] 
 
 
 def getPoissionGoodIDX(n_events, zBG=1.96, neigh_length_m=3):
@@ -127,11 +127,13 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
 
     pp_lambda_toCheck = np.linspace(pp_lambda, conv_n_events.max(), 200)
     chiSqList = 1.0e99*np.ones_like(pp_lambda_toCheck)
+    hList = []
     for i, pp_lambda in enumerate(pp_lambda_toCheck):
         try:
             goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
             chiSq, h = getQuickTOFWS(box, peak, padeCoefficients, goodIDX=goodIDX,qMask=qMask,pp_lambda=pp_lambda,dtBinWidth=dtBinWidth,nBG=nBG)
             chiSqList[i] = chiSq
+            hList.append((pp_lambda, chiSq, h))
             if chiSq<1.5 or len(h[0])<15:
                  break
         except RuntimeError:
@@ -139,7 +141,8 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
             # we found a satisfactory answer.  TODO: we can rebin and try that, though it may not help much.
             break
         except KeyboardInterrupt:
-            0/0 
+            0/0
+    pickle.dump(hList, open('/home/ntv/analysis/data/hList_beta_lac_peak2.pkl','wb'))
     use_ppl = np.argmin(np.abs(chiSqList-1.0))
     pp_lambda = pp_lambda_toCheck[use_ppl]
     #goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))

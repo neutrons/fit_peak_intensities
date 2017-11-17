@@ -55,7 +55,7 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
     YTOF2 = getYTOF(fICC, XTOF, x_lims)
     Y2 = scaleFactor*YTOF2/YTOF2.max()*YBVG2/YBVG2.max()
 
-    return Y2
+    return Y2, goodIDX, pp_lambda
 
 def integrateJointPDF(Y, pp_lambda, scale, YCutoff=0.05):
     YPDF = Y/Y.max()
