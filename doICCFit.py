@@ -30,7 +30,7 @@ calibrationDictFile = 'det_calibration/calibration_dictionary.pkl'
 neigh_length_m = 3 #Will average over a (neigh_length_m)**3 box
 zBG = 1.96 #z score to keep this with
 
-
+'''
 #Scolecite - 2016A
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
@@ -44,12 +44,12 @@ qLow = -15.0; qHigh = 15.0
 dtSpread = [0.025,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
 dtBinWidth = 4 #Width (in us) in TOF profile bins
 dQPixel = [0.005,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
-descriptor = 'scol_dynamicQuadBG' #Does not end with '/'
+descriptor = 'scol_dynamicQuadBG_constraints' #Does not end with '/'
 dQMax = 0.4
 doIterativeBackgroundFitting = False
 nBG=5
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
-
+'''
 
 '''
 #IPTS22331
@@ -70,7 +70,6 @@ doIterativeBackgroundFitting = False
 descriptor = 'run22331' #Does not end with '/'
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 '''
-'''
 #Beta lactamase - 2016 - MANDI
 loadDir = '/SNS/MANDI/IPTS-15000/data/'
 nxsTemplate = loadDir+'MANDI_%i_event.nxs'
@@ -85,11 +84,10 @@ dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for e
 dtBinWidth = 30 #Width (in us) in TOF profile bins
 dQPixel = [0.003,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
 dQMax = 0.15 #tune this
-descriptor = 'beta_lac_dynamicQuadBG' #Does not end with '/'
+descriptor = 'beta_lac_dynamicQuadBG_constraints' #Does not end with '/'
 doIterativeBackgroundFitting = False
 nBG=5
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
-'''
 
 
 '''
