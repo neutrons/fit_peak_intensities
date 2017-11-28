@@ -84,7 +84,7 @@ dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for e
 dtBinWidth = 30 #Width (in us) in TOF profile bins
 dQPixel = [0.003,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
 dQMax = 0.15 #tune this
-descriptor = 'beta_lac_dynamicQuadBG_constraints' #Does not end with '/'
+descriptor = 'beta_lac_minmaxppl' #Does not end with '/'
 doIterativeBackgroundFitting = False
 nBG=5
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
@@ -126,7 +126,7 @@ parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scoleci
 '''
 #==================WORK STARTS HERE==========================================
 figsFormat = None# workDir + descriptor+'/figs/mantid_%i_%i.png'
-
+'''
 if os.path.isdir(workDir + descriptor):
     inp = raw_input('!!!!!! WARNING: PATH %s ALREADY EXIST!!!!! CONTINUE? (Y/<n>):'%(workDir + descriptor))
     print inp
@@ -141,7 +141,7 @@ else:
 peaks_ws = LoadIsawPeaks(Filename = peaksFile)
 LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFile)
 UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
-
+'''
 
 
 #Load our peaks files and detector fitting parameters
@@ -164,7 +164,7 @@ calibrationDict = pickle.load(open(calibrationDictFile, 'rb'))
 logFile = workDir + descriptor + '/log.log'
 ICFitLog.writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, fracStop, refineCenter, removeEdges, doVolumeNormalization, peaksFormat, UBFormat, DetCalFile, moderatorCoefficientsFile, calibrationDictFile, descriptor,zBG,neigh_length_m)
 
-for sampleRun in sampleRuns:
+for sampleRun in [sampleRuns[4]]:
     
     #Set up a few things for the run
     paramList = list()

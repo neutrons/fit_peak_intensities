@@ -89,7 +89,7 @@ def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, dtBi
 
     tofWS,ppl = getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, None, 0, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=False, minFracPixels=0.01, removeEdges=False,calcTOFPerPixel=False,neigh_length_m=3,zBG=1.96,pp_lambda=pp_lambda,calc_pp_lambda=calc_pp_lambda)
     print 'ySum:', np.sum(tofWS.readY(0))
-    fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=nBG,fitOrder=1,constraintScheme=2)
+    fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=nBG,fitOrder=1,constraintScheme=-2)
     h = [tofWS.readY(0), tofWS.readX(0)]
     chiSq = fitResults.OutputChi2overDoF
     
@@ -150,14 +150,13 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
     pp_lambda_toCheck = np.unique(conv_n_events)
     pp_lambda_toCheck = pp_lambda_toCheck[1:][np.diff(pp_lambda_toCheck)>0.001]
     if peak is not None: #TODO: This MUST be parameterized, keep it hard coded ONLY for testing
-        minppl = 0.75*scatFun(peak.getScattering()/peak.getWavelength(), 5.24730283,  7.23719321,  0.27449887) 
+        minppl = 0.95*scatFun(peak.getScattering()/peak.getWavelength(), 5.24730283,  7.23719321,  0.27449887) 
+        maxppl = 1.3*scatFun(peak.getScattering()/peak.getWavelength(), 5.24730283,  7.23719321,  0.27449887) 
     else:
         minppl=0
     pp_lambda_toCheck = pp_lambda_toCheck[pp_lambda_toCheck > minppl]
-    if pp_lambda_toCheck.size < 20000:
-        zBG = 1.001
-    else:
-        pp_lambda_toCheck = np.linspace(pp_lambda, conv_n_events.max(), 50)
+    pp_lambda_toCheck = pp_lambda_toCheck[pp_lambda_toCheck < maxppl]
+    zBG = 1.000
 
     chiSqList = 1.0e30*np.ones_like(pp_lambda_toCheck)
     ISIGList = 1.0e-30*np.ones_like(pp_lambda_toCheck)
@@ -178,7 +177,7 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
             chiSqList[i] = chiSq
             ISIGList[i] = intens/sigma
             #hList.append((pp_lambda, chiSq, h))
-            if chiSq<1.0 or len(h[0])<10 or np.sum(h[0])<10: #or (chiSq > 100 and np.min(chiSqList)<5):
+            if len(h[0])<10:#or np.sum(h[0])<10: #or (chiSq > 100 and np.min(chiSqList)<5):
                  break
         except RuntimeError:
             #This is caused by there being fewer datapoints remaining than parameters.  For now, we just hope
@@ -830,7 +829,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                             break
                 else:
                    lownBG = nBG
-                fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=lownBG,fitOrder=bgPolyOrder,constraintScheme=2)
+                fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=lownBG,fitOrder=bgPolyOrder,constraintScheme=-2)
                 fitStatus = fitResults.OutputStatus
                 chiSq = fitResults.OutputChi2overDoF
 
