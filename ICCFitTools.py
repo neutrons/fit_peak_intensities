@@ -20,7 +20,10 @@ from scipy.interpolate import LinearNDInterpolator
 from timeit import default_timer as timer
 from scipy.ndimage.filters import convolve
 
-def scatFun(x,A,k,bg):
+def scatFun(x, A, bg):
+    return A/x+bg
+
+def oldScatFun(x,A,k,bg):
     return 1.0*A*np.exp(-k*x) + bg
 
 def calcSomeTOF(box, peak, refitIDX = None):
@@ -89,7 +92,7 @@ def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, dtBi
 
     tofWS,ppl = getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, None, 0, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=False, minFracPixels=0.01, removeEdges=False,calcTOFPerPixel=False,neigh_length_m=3,zBG=1.96,pp_lambda=pp_lambda,calc_pp_lambda=calc_pp_lambda)
     print 'ySum:', np.sum(tofWS.readY(0))
-    fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=nBG,fitOrder=1,constraintScheme=-2)
+    fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=nBG,fitOrder=1,constraintScheme=2)
     h = [tofWS.readY(0), tofWS.readX(0)]
     chiSq = fitResults.OutputChi2overDoF
     
@@ -108,7 +111,7 @@ def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, dtBi
 
     #peak.setSigmaIntensity(np.sqrt(np.sum(icProfile)))i
     t0 = param.row(3)['Value']
-    intensity, sigma, xStart, xStop = integratePeak(r.readX(0), icProfile,r.readY(0), np.polyval(bgCoefficients, r.readX(1)), pp_lambda=pp_lambda, fracStop=0.01,totEvents=np.sum(n_events[goodIDX]), bgEvents=np.sum(goodIDX)*pp_lambda)
+    intensity, sigma, xStart, xStop = integratePeak(r.readX(0), icProfile,r.readY(0), np.polyval(bgCoefficients, r.readX(1)), pp_lambda=pp_lambda, fracStop=0.01,totEvents=np.sum(n_events[goodIDX*qMask]), bgEvents=np.sum(goodIDX*qMask)*pp_lambda)
 
  
     return chiSq, h, intensity, sigma
@@ -150,16 +153,20 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
     pp_lambda_toCheck = np.unique(conv_n_events)
     pp_lambda_toCheck = pp_lambda_toCheck[1:][np.diff(pp_lambda_toCheck)>0.001]
     if peak is not None: #TODO: This MUST be parameterized, keep it hard coded ONLY for testing
-        minppl = 0.95*scatFun(peak.getScattering()/peak.getWavelength(), 5.24730283,  7.23719321,  0.27449887) 
-        maxppl = 1.3*scatFun(peak.getScattering()/peak.getWavelength(), 5.24730283,  7.23719321,  0.27449887) 
+        pred_ppl = scatFun(np.sin(0.5*peak.getScattering())**2/peak.getWavelength()**4, 0.00122958,  0.29769245)
+        pred_ppl = oldScatFun(peak.getScattering()/peak.getWavelength(),5.24730283,  7.23719321,  0.27449887) 
+        minppl = 0.8*pred_ppl
+        maxppl = 1.5*pred_ppl 
     else:
         minppl=0
+        maxppl = pp_lambda_toCheck.max() + 0.5 #add some just to make sure we don't skip any
     pp_lambda_toCheck = pp_lambda_toCheck[pp_lambda_toCheck > minppl]
     pp_lambda_toCheck = pp_lambda_toCheck[pp_lambda_toCheck < maxppl]
-    zBG = 1.000
+#    zBG = 1.000
 
     chiSqList = 1.0e30*np.ones_like(pp_lambda_toCheck)
     ISIGList = 1.0e-30*np.ones_like(pp_lambda_toCheck)
+    IList = 1.0e-30*np.ones_like(pp_lambda_toCheck)
     #hList = []
     oldGoodIDXSum = -1.0
     for i, pp_lambda in enumerate(pp_lambda_toCheck):
@@ -176,6 +183,7 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
                 break
             chiSqList[i] = chiSq
             ISIGList[i] = intens/sigma
+            IList[i] = intens
             #hList.append((pp_lambda, chiSq, h))
             if len(h[0])<10:#or np.sum(h[0])<10: #or (chiSq > 100 and np.min(chiSqList)<5):
                  break
@@ -186,14 +194,22 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
         except KeyboardInterrupt:
             0/0
     #pickle.dump(hList, open('/home/ntv/analysis/data/hList_beta_lac_peak2.pkl','wb'))
-    print chiSqList[:i+1], 'is chiSqList'
-    use_ppl = np.argmin(np.abs(chiSqList[:i+1]-1.0))
-    #use_ppl = np.argmax(ISIGList[:i+1]/np.abs(chiSqList[:i+1]-1.0))
-    pp_lambda = pp_lambda_toCheck[use_ppl]
+    #print chiSqList[:i+1], 'is chiSqList'
+    #print ISIGList[:i+1], 'is ISIG'
+    #print IList[:i+1], 'is Intens'
+    print '\n'.join([str(v) for v in zip(chiSqList[:i+1], ISIGList[:i+1], IList[:i+1])])
+    chiSqConsider = np.logical_and(chiSqList < 1.4, chiSqList>0.9)
+    if np.sum(chiSqConsider) > 1.0:
+        use_ppl = np.argmax(ISIGList[chiSqConsider])
+        pp_lambda = pp_lambda_toCheck[chiSqConsider][use_ppl]
+        print 'USING PP_LAMBDA', pp_lambda, 'WITH CHISQ:', chiSqList[chiSqConsider][use_ppl]
+    else:
+        use_ppl = np.argmin(np.abs(chiSqList[:i+1]-1.0))
+        pp_lambda = pp_lambda_toCheck[use_ppl]
+        print 'USING PP_LAMBDA', pp_lambda, 'WITH CHISQ:', chiSqList[use_ppl]
     #goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
     goodIDX, _ = getBGRemovedIndices(n_events, pp_lambda=pp_lambda)
 
-    print 'USING PP_LAMBDA', pp_lambda, 'WITH CHISQ:', chiSqList[use_ppl]
     chiSq, h, intens, sigma = getQuickTOFWS(box, peak, padeCoefficients, goodIDX=goodIDX,qMask=qMask,pp_lambda=pp_lambda,dtBinWidth=dtBinWidth,nBG=nBG)
     return goodIDX, pp_lambda
  
@@ -325,7 +341,7 @@ def integratePeak(x, yFit, yData, bg, pp_lambda=0, fracStop = 0.01,totEvents=1, 
     bgSum = np.abs(np.sum(bg[iStart:iStop]))
     #varFit = np.average((yData-yFit)**2,weights=(yData-bg))   
     #sigma = np.sqrt(varFit + bgSum)
-    sigma = np.sqrt(totEvents + bgEvents) #TODO calculate - 0.1 is an estimate
+    sigma = np.sqrt(totEvents + bgEvents) 
     #sigma = np.sqrt(totEvents)
     print 'Intensity: ', intensity, 'Sigma: ', sigma, 'pp_lambda:', pp_lambda
     return intensity, sigma, xStart, xStop
@@ -430,9 +446,10 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
     tMin = np.min(tList)
     tMax = np.max(tList)
     dt = tofPeak*dtSpread #time in us on either side of the peak position to consider
-    dt = max(dt, 100)
-    tMin = max(tMin, tofPeak - dt)
-    tMax = min(tMax, tofPeak + dt)
+    dt = max(dt, 400)
+    tMin = min(tMin, tofPeak - dt)
+    tMax = max(tMax, tofPeak + dt)
+    
     tBins = np.arange(tMin, tMax, dtBinWidth)
     weightList = n_events[hasEventsIDX] #- pp_lambda
     if removeEdges:
@@ -568,6 +585,7 @@ def getInitialGuess(tofWS, paramNames, energy, flightPath, padeCoefficients,detN
     x0[0] /= 1.2
     x0[2] += 0.05
     x0[3] -= 10 #This is lazy - we can do it detector-by-detector
+    x0[3] = x[np.argmax(y)]
     x0[4] = (np.max(y))/x0[0]*2*2.5  #Amplitude
     x0[5] = 0.5 #hat width in IDX units
     x0[6] = 120.0 #Exponential decay rate for convolution
@@ -757,9 +775,9 @@ def doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibration
             fICC.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0,1.0e10],k_conv0=[5,500],penalty=None)
     if constraintScheme == 2:
         try:
-            fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.00, 1.], T00=[0,1.0e10], k_conv0=[5.,500], penalty=1.0e20)
+            fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.00, 1.], scale0=[0.0, 1.0e10],T00=[0,1.0e10], k_conv0=[5.,500], penalty=1.0e20)
         except:
-            fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.00, 1.], T00=[0,1.0e10], k_conv0=[5.,500], penalty=None)
+            fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.00, 1.], scale0=[0.0, 1.0e10], T00=[0,1.0e10], k_conv0=[5.,500], penalty=None)
     f = FunctionWrapper(fICC)
     bg = Polynomial(n=fitOrder)
     
@@ -829,16 +847,16 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                             break
                 else:
                    lownBG = nBG
-                fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=lownBG,fitOrder=bgPolyOrder,constraintScheme=-2)
+                fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=lownBG,fitOrder=bgPolyOrder,constraintScheme=2)
                 fitStatus = fitResults.OutputStatus
                 chiSq = fitResults.OutputChi2overDoF
 
                 #plt.close('all')
-                plt.figure(1); plt.clf()
-                plt.plot(mtd['fit_Workspace'].readX(0), mtd['fit_Workspace'].readY(0))
-                plt.plot(mtd['fit_Workspace'].readX(0), mtd['fit_Workspace'].readY(1))
-                plt.title('Chi Sq: %f, Peak Number: '%chiSq + str(i))
-                plt.pause(0.01)
+                #plt.figure(1); plt.clf()
+                #plt.plot(mtd['fit_Workspace'].readX(0), mtd['fit_Workspace'].readY(0))
+                #plt.plot(mtd['fit_Workspace'].readX(0), mtd['fit_Workspace'].readY(1))
+                #plt.title('Chi Sq: %f, Peak Number: '%chiSq + str(i))
+                #plt.pause(0.01)
             
 
 
@@ -888,11 +906,13 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 #peak.setSigmaIntensity(np.sqrt(np.sum(icProfile)))i
                 t0 = param.row(3)['Value']
                 
-                from scipy.ndimage import label
-                g = label(goodIDX)
-                bgPixels = np.sort(np.bincount(g[0].ravel()))[-2] #num bg pixels - -1 is 0s
-                
-                intensity, sigma, xStart, xStop = integratePeak(r.readX(0), icProfile,r.readY(0), np.polyval(bgCoefficients, r.readX(1)), pp_lambda=pp_lambda, fracStop=fracStop,totEvents=np.sum(n_events[goodIDX]), bgEvents=bgPixels*pp_lambda)
+                #from scipy.ndimage import label
+                #g = label(goodIDX*qMask)
+                #bgPixels = np.sort(np.bincount(g[0].ravel()))[-2] #num bg pixels - -1 is 0s
+                #bgIDX = np.argsort(np.bincount(g[0].ravel()))[-2] #num bg pixels - -1 is 0s
+
+                 
+                intensity, sigma, xStart, xStop = integratePeak(r.readX(0), icProfile,r.readY(0), np.polyval(bgCoefficients, r.readX(1)), pp_lambda=pp_lambda, fracStop=fracStop,totEvents=np.sum(n_events[goodIDX*qMask[0]]), bgEvents=np.sum(goodIDX*qMask[0])*pp_lambda*(neigh_length_m)**3/8)
                 #print '~~~ ', intensity, sigma
                 icProfile = icProfile - np.polyval(bgCoefficients, r.readX(1)) #subtract background
                 peak.setIntensity(intensity)
@@ -915,13 +935,13 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 peak.setIntensity(0)
                 peak.setSigmaIntensity(1)
                 print 'Error with peak ' + str(i)
-                paramList.append([i, energy, 0.0, 1.0e10,1.0e10] + [0 for i in range(mtd['fit_parameters'].rowCount())]+[0])
+                paramList.append([i, energy, 0.0, 1.0e10,1.0e10] + [0 for i in range(10)]+[0])
+                #paramList.append([i, energy, 0.0, 1.0e10,1.0e10] + [0 for i in range(mtd['fit_parameters'].rowCount())]+[0])
                 continue
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 print(exc_type, fname, exc_tb.tb_lineno)
         mtd.remove('MDbox_'+str(run)+'_'+str(i))
     return peaks_ws, paramList, fitDict
-
 
 
