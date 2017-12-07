@@ -130,7 +130,7 @@ def getPoissionGoodIDX(n_events, zBG=1.96, neigh_length_m=3):
     conv_n_events = convolve(n_events,convBox)
     allEvents = np.sum(n_events[hasEventsIDX])
     if allEvents > 0:
-        while not found_pp_lambda and pp_lambda < 3.0:
+        while not found_pp_lambda:
             goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
             boxMean = n_events[goodIDX]
             boxMeanIDX = np.where(goodIDX)
@@ -156,7 +156,8 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
         pred_ppl = scatFun(np.sin(0.5*peak.getScattering())**2/peak.getWavelength()**4, 0.00122958,  0.29769245)
         pred_ppl = oldScatFun(peak.getScattering()/peak.getWavelength(),5.24730283,  7.23719321,  0.27449887) 
         minppl = 0.8*pred_ppl
-        maxppl = 1.5*pred_ppl 
+        maxppl = 2.5*pred_ppl 
+
     else:
         minppl=0
         maxppl = pp_lambda_toCheck.max() + 0.5 #add some just to make sure we don't skip any
@@ -211,6 +212,8 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
     goodIDX, _ = getBGRemovedIndices(n_events, pp_lambda=pp_lambda)
 
     chiSq, h, intens, sigma = getQuickTOFWS(box, peak, padeCoefficients, goodIDX=goodIDX,qMask=qMask,pp_lambda=pp_lambda,dtBinWidth=dtBinWidth,nBG=nBG)
+    if qMask is not None:
+        return goodIDX*qMask, pp_lambda
     return goodIDX, pp_lambda
  
 
@@ -446,10 +449,21 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
     tMin = np.min(tList)
     tMax = np.max(tList)
     dt = tofPeak*dtSpread #time in us on either side of the peak position to consider
-    dt = max(dt, 400)
     tMin = min(tMin, tofPeak - dt)
     tMax = max(tMax, tofPeak + dt)
-    
+
+    qCorners = np.array([[qx[v[0]], qy[v[1]], qz[v[2]]] for v in itertools.product((1,-1), repeat=3)])
+    qMagCorn = np.array([np.sqrt(q[0]*q[0] + q[1]*q[1] + q[2]*q[2]) for q in qCorners])
+    tofCorners = 3176.507 * flightPath * np.sin(scatteringHalfAngle) / qMagCorn
+    tMin = np.min(tofCorners)
+    tMax = np.max(tofCorners)
+    #TRIAL: set dtBinWidth as the resolution at the center of the box
+    tC = 3176.507 * flightPath * np.sin(scatteringHalfAngle)/np.linalg.norm([qx[qx.shape[0]//2], qy[qy.shape[0]//2], qz[qz.shape[0]//2]])
+    tD = 3176.507 * flightPath * np.sin(scatteringHalfAngle)/np.linalg.norm([qx[qx.shape[0]//2 + 1], qy[qy.shape[0]//2+1], qz[qz.shape[0]//2+1]])
+    dtBinWidth = np.abs(tD-tC)
+    dtBinWidth = max(15, dtBinWidth)
+    print '$$$$$$$ setting dtBinWidth to %f'%dtBinWidth
+     
     tBins = np.arange(tMin, tMax, dtBinWidth)
     weightList = n_events[hasEventsIDX] #- pp_lambda
     if removeEdges:
