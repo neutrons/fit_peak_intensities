@@ -140,7 +140,7 @@ def getPoissionGoodIDX(n_events, zBG=1.96, neigh_length_m=3):
                 pp_lambda *= 1.05
     return goodIDX, pp_lambda
 
-def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,dtBinWidth=4, qMask=None, peak=None, box=None, pp_lambda=None,peakNumber=-1,nBG=15):
+def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,dtBinWidth=4, qMask=None, peak=None, box=None, pp_lambda=None,peakNumber=-1,nBG=15, minppl_frac=0.8, maxppl_frac=1.5):
     #Set up some things to only consider good pixels
     hasEventsIDX = n_events>0
     N = np.shape(n_events)[0]
@@ -155,8 +155,8 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
     if peak is not None: #TODO: This MUST be parameterized, keep it hard coded ONLY for testing
         pred_ppl = scatFun(np.sin(0.5*peak.getScattering())**2/peak.getWavelength()**4, 0.00122958,  0.29769245)
         pred_ppl = oldScatFun(peak.getScattering()/peak.getWavelength(),5.24730283,  7.23719321,  0.27449887) 
-        minppl = 0.8*pred_ppl
-        maxppl = 2.5*pred_ppl 
+        minppl = minppl_frac*pred_ppl
+        maxppl = maxppl_frac*pred_ppl 
 
     else:
         minppl=0
@@ -199,7 +199,7 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
     #print ISIGList[:i+1], 'is ISIG'
     #print IList[:i+1], 'is Intens'
     print '\n'.join([str(v) for v in zip(chiSqList[:i+1], ISIGList[:i+1], IList[:i+1])])
-    chiSqConsider = np.logical_and(chiSqList < 1.4, chiSqList>0.9)
+    chiSqConsider = np.logical_and(chiSqList < 1.2, chiSqList>0.8)
     if np.sum(chiSqConsider) > 1.0:
         use_ppl = np.argmax(ISIGList[chiSqConsider])
         pp_lambda = pp_lambda_toCheck[chiSqConsider][use_ppl]
@@ -246,8 +246,13 @@ def getBGRemovedIndices(n_events,zBG=1.96,calc_pp_lambda=False, neigh_length_m=3
         return getPoissionGoodIDX(n_events, zBG=zBG, neigh_length_m=neigh_length_m) 
     
     if peak is not None and box is not None and padeCoefficients is not None:
-        return getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=neigh_length_m,
-            dtBinWidth=dtBinWidth, qMask=qMask, peak=peak, box=box, pp_lambda=pp_lambda,peakNumber=peakNumber,nBG=nBG)
+        pplmin_frac = 0.8
+        while pplmin_frac >= 0.0:
+            try:
+                return getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=neigh_length_m, minppl_frac=pplmin_frac,
+                    dtBinWidth=dtBinWidth, qMask=qMask, peak=peak, box=box, pp_lambda=pp_lambda,peakNumber=peakNumber,nBG=nBG)
+            except:
+                pplmin_frac -= 0.1
     print 'ERROR WITH ICCFT:getBGRemovedIndices!' 
 
 def getDQTOF(peak, dtSpread=0.03, maxDQ=0.5):
