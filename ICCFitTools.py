@@ -150,20 +150,25 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
     conv_n_events = convolve(n_events,convBox)
     pp_lambda = get_pp_lambda(n_events,hasEventsIDX) #Get the most probable number of events
     print pp_lambda, conv_n_events.max(), '~~~~~~'
+
     pp_lambda_toCheck = np.unique(conv_n_events)
     pp_lambda_toCheck = pp_lambda_toCheck[1:][np.diff(pp_lambda_toCheck)>0.001]
+
+    
     if peak is not None: #TODO: This MUST be parameterized, keep it hard coded ONLY for testing
         pred_ppl = scatFun(np.sin(0.5*peak.getScattering())**2/peak.getWavelength()**4, 0.00122958,  0.29769245)
         pred_ppl = oldScatFun(peak.getScattering()/peak.getWavelength(),5.24730283,  7.23719321,  0.27449887) 
         minppl = minppl_frac*pred_ppl
         maxppl = maxppl_frac*pred_ppl 
-
+        if pred_ppl > 2.0:
+            maxppl = 2.0/1.5*maxppl_frac*pred_ppl 
     else:
         minppl=0
         maxppl = pp_lambda_toCheck.max() + 0.5 #add some just to make sure we don't skip any
+
     pp_lambda_toCheck = pp_lambda_toCheck[pp_lambda_toCheck > minppl]
     pp_lambda_toCheck = pp_lambda_toCheck[pp_lambda_toCheck < maxppl]
-#    zBG = 1.000
+
 
     chiSqList = 1.0e30*np.ones_like(pp_lambda_toCheck)
     ISIGList = 1.0e-30*np.ones_like(pp_lambda_toCheck)
@@ -194,10 +199,6 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
             break
         except KeyboardInterrupt:
             0/0
-    #pickle.dump(hList, open('/home/ntv/analysis/data/hList_beta_lac_peak2.pkl','wb'))
-    #print chiSqList[:i+1], 'is chiSqList'
-    #print ISIGList[:i+1], 'is ISIG'
-    #print IList[:i+1], 'is Intens'
     print '\n'.join([str(v) for v in zip(chiSqList[:i+1], ISIGList[:i+1], IList[:i+1])])
     chiSqConsider = np.logical_and(chiSqList < 1.2, chiSqList>0.8)
     if np.sum(chiSqConsider) > 1.0:
@@ -351,6 +352,7 @@ def integratePeak(x, yFit, yData, bg, pp_lambda=0, fracStop = 0.01,totEvents=1, 
     #sigma = np.sqrt(varFit + bgSum)
     sigma = np.sqrt(totEvents + bgEvents) 
     #sigma = np.sqrt(totEvents)
+    print xStart, xStop
     print 'Intensity: ', intensity, 'Sigma: ', sigma, 'pp_lambda:', pp_lambda
     return intensity, sigma, xStart, xStop
 
@@ -604,7 +606,7 @@ def getInitialGuess(tofWS, paramNames, energy, flightPath, padeCoefficients,detN
     x0[0] /= 1.2
     x0[2] += 0.05
     x0[3] -= 10 #This is lazy - we can do it detector-by-detector
-    x0[3] = x[np.argmax(y)]
+    x0[3] = np.mean(x[np.argsort(y)[::-1][:min(3,np.sum(y>0))]])
     x0[4] = (np.max(y))/x0[0]*2*2.5  #Amplitude
     x0[5] = 0.5 #hat width in IDX units
     x0[6] = 120.0 #Exponential decay rate for convolution
@@ -794,9 +796,9 @@ def doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibration
             fICC.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0,1.0e10],k_conv0=[5,500],penalty=None)
     if constraintScheme == 2:
         try:
-            fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.00, 1.], scale0=[0.0, 1.0e10],T00=[0,1.0e10], k_conv0=[5.,500], penalty=1.0e20)
+            fICC.setPenalizedConstraints(A0=[0.02, 1.0], B0=[0.005, 1.5], R0=[0.00, 1.], scale0=[0.0, 1.0e10],T00=[0,1.0e10], k_conv0=[100.,140], penalty=1.0e20)
         except:
-            fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.00, 1.], scale0=[0.0, 1.0e10], T00=[0,1.0e10], k_conv0=[5.,500], penalty=None)
+            fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.00, 1.], scale0=[0.0, 1.0e10], T00=[0,1.0e10], k_conv0=[100,140], penalty=None)
     f = FunctionWrapper(fICC)
     bg = Polynomial(n=fitOrder)
     
@@ -930,8 +932,11 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 #bgPixels = np.sort(np.bincount(g[0].ravel()))[-2] #num bg pixels - -1 is 0s
                 #bgIDX = np.argsort(np.bincount(g[0].ravel()))[-2] #num bg pixels - -1 is 0s
 
-                 
-                intensity, sigma, xStart, xStop = integratePeak(r.readX(0), icProfile,r.readY(0), np.polyval(bgCoefficients, r.readX(1)), pp_lambda=pp_lambda, fracStop=fracStop,totEvents=np.sum(n_events[goodIDX*qMask[0]]), bgEvents=np.sum(goodIDX*qMask[0])*pp_lambda*(neigh_length_m)**3/8)
+                convBox = 1.0*np.ones([neigh_length_m, neigh_length_m,neigh_length_m]) / neigh_length_m**3
+                conv_n_events = convolve(n_events,convBox)
+                bgEvents = np.mean(n_events[np.logical_and(~goodIDX, np.logical_and(qMask[0],conv_n_events>0))])*np.sum(goodIDX*qMask[0])
+                
+                intensity, sigma, xStart, xStop = integratePeak(r.readX(0), icProfile,r.readY(0), np.polyval(bgCoefficients, r.readX(1)), pp_lambda=pp_lambda, fracStop=fracStop,totEvents=np.sum(n_events[goodIDX*qMask[0]]), bgEvents=bgEvents)
                 #print '~~~ ', intensity, sigma
                 icProfile = icProfile - np.polyval(bgCoefficients, r.readX(1)) #subtract background
                 peak.setIntensity(intensity)
