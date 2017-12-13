@@ -90,7 +90,7 @@ for sampleRun in sampleRuns[2:]:
         peak = peaks_ws.getPeak(peakNumber)
         print peakNumber, peak.getIntensity()
         try:
-            if peak.getRunNumber() == sampleRun and peak.getIntensity()>300:
+            if peak.getRunNumber() == sampleRun:
                 print 'Integrating peak %i'%peakNumber
                 box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel)
                 Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=70, nPhi=70, plotResults=False,nBG=5, dtBinWidth=dtBinWidth,zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1,numTimesToInterpolate=numTimesToInterpolate, fICCParams=ICCFitParams[peakNumber], oldICCFit=ICCFitDict[peakNumber], strongPeakParams=strongPeakParams)
