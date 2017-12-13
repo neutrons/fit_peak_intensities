@@ -1,7 +1,9 @@
 import matplotlib.pyplot as plt
+plt.ion()
 import numpy as np
 import sys
 import os
+from scipy.interpolate import interp1d
 from scipy.misc import factorial
 from scipy.optimize import curve_fit
 sys.path.append("/opt/mantidnightly/bin")
@@ -16,7 +18,243 @@ reload(EdgeTools)
 import itertools
 from scipy.interpolate import LinearNDInterpolator
 from timeit import default_timer as timer
+from scipy.ndimage.filters import convolve
 
+def scatFun(x, A, bg):
+    return A/x+bg
+
+def oldScatFun(x,A,k,bg):
+    return 1.0*A*np.exp(-k*x) + bg
+
+def calcSomeTOF(box, peak, refitIDX = None):
+    xaxis = box.getXDimension()
+    qx = np.linspace(xaxis.getMinimum(), xaxis.getMaximum(), xaxis.getNBins())
+    yaxis = box.getYDimension()
+    qy = np.linspace(yaxis.getMinimum(), yaxis.getMaximum(), yaxis.getNBins())
+    zaxis = box.getZDimension()
+    qz = np.linspace(zaxis.getMinimum(), zaxis.getMaximum(), zaxis.getNBins())
+    QX, QY, QZ = getQXQYQZ(box)
+
+    if refitIDX  is None:
+        refitIDX = np.ones_like(QX).astype(np.bool)
+
+    from mantid.kernel import V3D
+    qS0 = peak.getQSampleFrame()
+    PIXELFACTOR = np.ones_like(QX)*(peak.getL1() + peak.getL2())*np.sin(0.5*peak.getScattering())
+    for i, x in enumerate(qx):
+        print i
+        for j, y in enumerate(qy):
+            for k, z in enumerate(qz):
+                if refitIDX[i,j,k]:
+                    qNew = V3D(x,y,z)
+                    peak.setQSampleFrame(qNew)
+                    L = peak.getL1() + peak.getL2()
+                    HALFSCAT = 0.5*peak.getScattering()
+                    PIXELFACTOR[i,j,k] = L*np.sin(HALFSCAT)
+    peak.setQSampleFrame(qS0)
+
+
+    tofBox = 3176.507 * PIXELFACTOR * 1.0/np.sqrt(QX**2 + QY**2 + QZ**2)
+    return tofBox
+
+
+# (x,y,z) -> (r,phi,theta)
+def cart2sph(x,y,z):
+    hxy = np.hypot(x, y)
+    r = np.hypot(hxy, z)
+    el = np.arctan2(z, hxy)
+    az = np.arctan2(y, x)
+    return r, az, el
+
+def getQXQYQZ(box):
+    xaxis = box.getXDimension()
+    qx = np.linspace(xaxis.getMinimum(), xaxis.getMaximum(), xaxis.getNBins())
+    yaxis = box.getYDimension()
+    qy = np.linspace(yaxis.getMinimum(), yaxis.getMaximum(), yaxis.getNBins())
+    zaxis = box.getZDimension()
+    qz = np.linspace(zaxis.getMinimum(), zaxis.getMaximum(), zaxis.getNBins())
+    QX, QY, QZ = np.meshgrid(qx, qy, qz,indexing='ij',copy=False)
+    return QX, QY, QZ
+
+def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, dtBinWidth=30, qMask=None, pp_lambda=None, nBG=15):
+    tof = peak.getTOF() #in us
+    wavelength = peak.getWavelength() #in Angstrom
+    flightPath = peak.getL1() + peak.getL2() #in m
+    scatteringHalfAngle = 0.5*peak.getScattering()
+    energy = 81.804 / wavelength**2 / 1000.0 #in eV
+    detNumber = 0#EdgeTools.getDetectorBank(panelDict, peak.getDetectorID())['bankNumber']
+    if qMask is None:
+        qMask = np.ones_like(box.getNumEventsArray()).astype(np.bool)
+  
+    calc_pp_lambda=False
+    if pp_lambda is None:
+        calc_pp_lambda=True
+
+    tofWS,ppl = getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, None, 0, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=False, minFracPixels=0.01, removeEdges=False,calcTOFPerPixel=False,neigh_length_m=3,zBG=1.96,pp_lambda=pp_lambda,calc_pp_lambda=calc_pp_lambda)
+    print 'ySum:', np.sum(tofWS.readY(0))
+    fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=nBG,fitOrder=1,constraintScheme=2)
+    h = [tofWS.readY(0), tofWS.readX(0)]
+    chiSq = fitResults.OutputChi2overDoF
+    
+    r = mtd['fit_Workspace']
+    param = mtd['fit_Parameters']
+    n_events = box.getNumEventsArray()
+     
+ 
+    iii = fICC.numParams() - 1
+    fitBG = [param.row(int(iii+i+1))['Value'] for i in range(1+1)]
+
+
+    #Set the intensity before moving on to the next peak
+    icProfile = r.readY(1)
+    bgCoefficients = fitBG[::-1]
+
+    #peak.setSigmaIntensity(np.sqrt(np.sum(icProfile)))i
+    t0 = param.row(3)['Value']
+    intensity, sigma, xStart, xStop = integratePeak(r.readX(0), icProfile,r.readY(0), np.polyval(bgCoefficients, r.readX(1)), pp_lambda=pp_lambda, fracStop=0.01,totEvents=np.sum(n_events[goodIDX*qMask]), bgEvents=np.sum(goodIDX*qMask)*pp_lambda)
+
+ 
+    return chiSq, h, intensity, sigma
+
+
+def getPoissionGoodIDX(n_events, zBG=1.96, neigh_length_m=3):
+    hasEventsIDX = n_events>0
+    #Set up some things to only consider good pixels
+    N = np.shape(n_events)[0]
+    neigh_length_m = neigh_length_m #Set to zero for "this pixel only" mode - performance is optimized for neigh_length_m=0 
+    maxBin = np.shape(n_events)
+
+    pp_lambda = get_pp_lambda(n_events,hasEventsIDX) #Get the most probably number of events
+    found_pp_lambda = False
+    convBox = 1.0*np.ones([neigh_length_m, neigh_length_m,neigh_length_m]) / neigh_length_m**3
+    conv_n_events = convolve(n_events,convBox)
+    allEvents = np.sum(n_events[hasEventsIDX])
+    if allEvents > 0:
+        while not found_pp_lambda:
+            goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
+            boxMean = n_events[goodIDX]
+            boxMeanIDX = np.where(goodIDX)
+            if allEvents > np.sum(boxMean):
+                found_pp_lambda = True
+            else:
+                pp_lambda *= 1.05
+    return goodIDX, pp_lambda
+
+def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,dtBinWidth=4, qMask=None, peak=None, box=None, pp_lambda=None,peakNumber=-1,nBG=15, minppl_frac=0.8, maxppl_frac=1.5):
+    #Set up some things to only consider good pixels
+    hasEventsIDX = n_events>0
+    N = np.shape(n_events)[0]
+    neigh_length_m = neigh_length_m #Set to zero for "this pixel only" mode - performance is optimized for neigh_length_m=0 
+    found_pp_lambda = False
+    convBox = 1.0*np.ones([neigh_length_m, neigh_length_m,neigh_length_m]) / neigh_length_m**3
+    conv_n_events = convolve(n_events,convBox)
+    pp_lambda = get_pp_lambda(n_events,hasEventsIDX) #Get the most probable number of events
+    print pp_lambda, conv_n_events.max(), '~~~~~~'
+
+    pp_lambda_toCheck = np.unique(conv_n_events)
+    pp_lambda_toCheck = pp_lambda_toCheck[1:][np.diff(pp_lambda_toCheck)>0.001]
+
+    
+    if peak is not None: #TODO: This MUST be parameterized, keep it hard coded ONLY for testing
+        pred_ppl = scatFun(np.sin(0.5*peak.getScattering())**2/peak.getWavelength()**4, 0.00122958,  0.29769245)
+        pred_ppl = oldScatFun(peak.getScattering()/peak.getWavelength(),5.24730283,  7.23719321,  0.27449887) 
+        minppl = minppl_frac*pred_ppl
+        maxppl = maxppl_frac*pred_ppl 
+        if pred_ppl > 2.0:
+            maxppl = 2.0/1.5*maxppl_frac*pred_ppl 
+    else:
+        minppl=0
+        maxppl = pp_lambda_toCheck.max() + 0.5 #add some just to make sure we don't skip any
+
+    pp_lambda_toCheck = pp_lambda_toCheck[pp_lambda_toCheck > minppl]
+    pp_lambda_toCheck = pp_lambda_toCheck[pp_lambda_toCheck < maxppl]
+
+
+    chiSqList = 1.0e30*np.ones_like(pp_lambda_toCheck)
+    ISIGList = 1.0e-30*np.ones_like(pp_lambda_toCheck)
+    IList = 1.0e-30*np.ones_like(pp_lambda_toCheck)
+    #hList = []
+    oldGoodIDXSum = -1.0
+    for i, pp_lambda in enumerate(pp_lambda_toCheck):
+        try:
+            goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
+            if np.sum(goodIDX) == oldGoodIDXSum: #No new points removed, we skip this
+                #print '#############skipping pp_lambda=%4.4f because no new entries'%pp_lambda
+                continue
+            else:
+                oldGoodIDXSum = np.sum(goodIDX)
+            try: 
+                chiSq, h, intens, sigma = getQuickTOFWS(box, peak, padeCoefficients, goodIDX=goodIDX,qMask=qMask,pp_lambda=pp_lambda,dtBinWidth=dtBinWidth,nBG=nBG)
+            except:
+                break
+            chiSqList[i] = chiSq
+            ISIGList[i] = intens/sigma
+            IList[i] = intens
+            #hList.append((pp_lambda, chiSq, h))
+            if len(h[0])<10:#or np.sum(h[0])<10: #or (chiSq > 100 and np.min(chiSqList)<5):
+                 break
+        except RuntimeError:
+            #This is caused by there being fewer datapoints remaining than parameters.  For now, we just hope
+            # we found a satisfactory answer.  TODO: we can rebin and try that, though it may not help much.
+            break
+        except KeyboardInterrupt:
+            0/0
+    print '\n'.join([str(v) for v in zip(chiSqList[:i+1], ISIGList[:i+1], IList[:i+1])])
+    chiSqConsider = np.logical_and(chiSqList < 1.2, chiSqList>0.8)
+    if np.sum(chiSqConsider) > 1.0:
+        use_ppl = np.argmax(ISIGList[chiSqConsider])
+        pp_lambda = pp_lambda_toCheck[chiSqConsider][use_ppl]
+        print 'USING PP_LAMBDA', pp_lambda, 'WITH CHISQ:', chiSqList[chiSqConsider][use_ppl]
+    else:
+        use_ppl = np.argmin(np.abs(chiSqList[:i+1]-1.0))
+        pp_lambda = pp_lambda_toCheck[use_ppl]
+        print 'USING PP_LAMBDA', pp_lambda, 'WITH CHISQ:', chiSqList[use_ppl]
+    #goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
+    goodIDX, _ = getBGRemovedIndices(n_events, pp_lambda=pp_lambda)
+
+    chiSq, h, intens, sigma = getQuickTOFWS(box, peak, padeCoefficients, goodIDX=goodIDX,qMask=qMask,pp_lambda=pp_lambda,dtBinWidth=dtBinWidth,nBG=nBG)
+    if qMask is not None:
+        return goodIDX*qMask, pp_lambda
+    return goodIDX, pp_lambda
+ 
+
+
+#Must give this a peak, box, and qMask to do iterative pp_lambda
+def getBGRemovedIndices(n_events,zBG=1.96,calc_pp_lambda=False, neigh_length_m=3,dtBinWidth=4, qMask=None, 
+                        peak=None, box=None, pp_lambda=None,peakNumber=-1, padeCoefficients=None,nBG=15):
+
+    if calc_pp_lambda is True and pp_lambda is not None:
+        import sys
+        sys.exit('Error in ICCFT:getBGRemovedIndices: You should not calculate and specify pp_lambda.')
+
+    if calc_pp_lambda is True and padeCoefficients is None:
+        import sys
+        sys.exit('Error in ICCFT:getBGRemovedIndices: calc_pp_lambda is True, but no moderator coefficients are provided.')
+
+
+    if pp_lambda is not None:
+        #Set up some things to only consider good pixels
+        hasEventsIDX = n_events>0
+        N = np.shape(n_events)[0]
+        neigh_length_m = neigh_length_m #Set to zero for "this pixel only" mode - performance is optimized for neigh_length_m=0 
+        convBox = 1.0*np.ones([neigh_length_m, neigh_length_m,neigh_length_m]) / neigh_length_m**3
+        conv_n_events = convolve(n_events,convBox)
+        goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
+        return goodIDX, pp_lambda
+
+
+    if calc_pp_lambda is False:
+        return getPoissionGoodIDX(n_events, zBG=zBG, neigh_length_m=neigh_length_m) 
+    
+    if peak is not None and box is not None and padeCoefficients is not None:
+        pplmin_frac = 0.8
+        while pplmin_frac >= 0.0:
+            try:
+                return getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=neigh_length_m, minppl_frac=pplmin_frac,
+                    dtBinWidth=dtBinWidth, qMask=qMask, peak=peak, box=box, pp_lambda=pp_lambda,peakNumber=peakNumber,nBG=nBG)
+            except:
+                pplmin_frac -= 0.1
+    print 'ERROR WITH ICCFT:getBGRemovedIndices!' 
 
 def getDQTOF(peak, dtSpread=0.03, maxDQ=0.5):
     dQ=np.zeros(3)
@@ -91,7 +329,7 @@ def padeWrapper(x,a,b,c,d,f,g,h,i,j,k):
 def pade(c,x): #c are coefficients, x is the energy in eV
     return c[0]*x**c[1]*(1+c[2]*x+c[3]*x**2+(x/c[4])**c[5])/(1+c[6]*x+c[7]*x**2+(x/c[8])**c[9])
 
-def integratePeak(x, yFit, yData, bg, fracStop = 0.01):
+def integratePeak(x, yFit, yData, bg, pp_lambda=0, fracStop = 0.01,totEvents=1, bgEvents=1):
     #Find out start/stop point
     yScaled = (yFit-bg) / np.max(yFit-bg)
     goodIDX = yScaled > fracStop
@@ -101,7 +339,7 @@ def integratePeak(x, yFit, yData, bg, fracStop = 0.01):
         xStart = x[iStart]
         xStop = x[iStop]
     else:
-        print 'THIS IS BAD - NO GOOD START/STOP POINT!!'
+        print 'ICCFITTOOLS:integratePeak - NO GOOD START/STOP POINT!!'
         return 0.0, 1.0, x[0], x[-1]
  
     #Do the integration
@@ -109,10 +347,13 @@ def integratePeak(x, yFit, yData, bg, fracStop = 0.01):
 
     #Calculate the background sigma = sqrt(var(Fit) + sum(BG))
     yFitSum = np.sum(yFit[iStart:iStop])
-    bgSum = np.sum(bg[iStart:iStop])
+    bgSum = np.abs(np.sum(bg[iStart:iStop]))
     #varFit = np.average((yData-yFit)**2,weights=(yData-bg))   
     #sigma = np.sqrt(varFit + bgSum)
-    sigma = np.sqrt(yFitSum + bgSum)
+    sigma = np.sqrt(totEvents + bgEvents) 
+    #sigma = np.sqrt(totEvents)
+    print xStart, xStop
+    print 'Intensity: ', intensity, 'Sigma: ', sigma, 'pp_lambda:', pp_lambda
     return intensity, sigma, xStart, xStop
 
 #Poission distribution
@@ -132,7 +373,6 @@ def normPoiss(k,lam,eventHist):
 #the most likely number of events.
 def get_pp_lambda(n_events, hasEventsIDX ):
 
-    
     eventValues = n_events[hasEventsIDX]
     numEvents = np.sum(eventValues)
     eventHist = np.bincount(eventValues.astype('int'))[1:]
@@ -156,37 +396,29 @@ def get_pp_lambda(n_events, hasEventsIDX ):
 #Output:
 #    tofWS: a Workspace2D containing the TOF profile.  X-axis is TOF (units: us) and
 #           Y-axis is the number of events.
-def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, peakNumber, qMask, dtBinWidth=2, zBG=-1.0, dtSpread = 0.02, doVolumeNormalization=False, minFracPixels = 0.005, removeEdges=False, edgesToCheck=None, calcTOFPerPixel=False, workspaceNumber=None):
+def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, peakNumber, qMask, dtBinWidth=2, zBG=-1.0, dtSpread = 0.02, doVolumeNormalization=False, minFracPixels = 0.005, removeEdges=False, edgesToCheck=None, calcTOFPerPixel=False, workspaceNumber=None,neigh_length_m=0, pp_lambda=None, calc_pp_lambda=False, padeCoefficients=None):
     #Find the qVoxels to use
     n_events = box.getNumEventsArray()
     hasEventsIDX = np.logical_and(n_events>0,qMask)
-    print '~~~ ', np.sum(n_events), np.sum(n_events[qMask]), np.sum(n_events[hasEventsIDX])
+    #print '~~~ ', np.sum(n_events), np.sum(n_events[qMask]), np.sum(n_events[hasEventsIDX])
 
     #Set up some things to only consider good pixels
     N = np.shape(n_events)[0]
-    neigh_length_m = 0 #Set to zero for "this pixel only" mode - performance is optimized for neigh_length_m=0 
     maxBin = np.shape(n_events)
-
     if zBG >= 0:
-        hasEventsIDX = np.where(hasEventsIDX)
-        boxMean = np.zeros(hasEventsIDX.size)
-        boxMeanIDX = list()
-        pp_lambda = get_pp_lambda(n_events,hasEventsIDX) #Get the most probably number of events
-        #Determine which pixels we want by considering the surrounding box
-        for i,idx in enumerate(np.array(hasEventsIDX).transpose()):
-            dataBox = n_events[max(idx[0] - neigh_length_m,0):min(idx[0] + neigh_length_m+1, maxBin[0]),
-                                           max(idx[1] - neigh_length_m,0):min(idx[1] + neigh_length_m+1, maxBin[1]),
-                                           max(idx[2] - neigh_length_m,0):min(idx[2] + neigh_length_m+1, maxBin[2])]
-            boxMean[i] = np.mean(dataBox)
-            boxMean[i] = n_events[idx[0],idx[1],idx[2]]
-            boxMeanIDX.append(idx)
-        signalIDX = np.where(boxMean > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
-    else: #don't do background removal - just consider one pixel at a time 
+        if pp_lambda is None:
+            calc_pp_lambda=True
+        goodIDX, pp_lambda= getBGRemovedIndices(n_events,box=box, qMask=qMask, peak=peak, pp_lambda=pp_lambda, peakNumber=peakNumber,dtBinWidth=dtBinWidth, calc_pp_lambda=calc_pp_lambda, padeCoefficients=padeCoefficients)
+        hasEventsIDX = np.logical_and(goodIDX, qMask) #TODO bad naming, but a lot of the naming in this function assumes it
+        boxMean = n_events[hasEventsIDX]
+        boxMeanIDX = np.where(hasEventsIDX)
+    else: #don't do background removal - just consider one pixel at a time
+        pp_lambda = 0 
         boxMean = n_events[hasEventsIDX]
         boxMeanIDX = np.where(hasEventsIDX)
     boxMeanIDX = np.asarray(boxMeanIDX) 
     useIDX = boxMeanIDX.transpose()
-    
+ 
     #Setup our axes -- ask if there is a way to just get this
     xaxis = box.getXDimension()
     qx = np.linspace(xaxis.getMinimum(), xaxis.getMaximum(), xaxis.getNBins())
@@ -200,7 +432,9 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
     if calcTOFPerPixel == False:
         tList = 1.0/np.sqrt(QX[hasEventsIDX]**2 + QY[hasEventsIDX]**2 + QZ[hasEventsIDX]**2)
         tList = 3176.507 * flightPath * np.sin(scatteringHalfAngle) * tList #convert to microseconds
-    
+        #refitIDX = hasEventsIDX
+        #tList = calcSomeTOF(box, peak, refitIDX=refitIDX)
+        #tList=tList[hasEventsIDX] 
     if calcTOFPerPixel == True:
         origFlightPath = flightPath
         origScatteringHalfAngle = scatteringHalfAngle
@@ -218,16 +452,27 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
             return tList
             
         tList = getTList(peak, qx, qy, qz, boxMeanIDX)
-        print tList
     #Set up our bins for histogramming
     tMin = np.min(tList)
     tMax = np.max(tList)
     dt = tofPeak*dtSpread #time in us on either side of the peak position to consider
-    dt = max(dt, 100)
-    tMin = max(tMin, tofPeak - dt)
-    tMax = min(tMax, tofPeak + dt)
+    tMin = min(tMin, tofPeak - dt)
+    tMax = max(tMax, tofPeak + dt)
+
+    qCorners = np.array([[qx[v[0]], qy[v[1]], qz[v[2]]] for v in itertools.product((1,-1), repeat=3)])
+    qMagCorn = np.array([np.sqrt(q[0]*q[0] + q[1]*q[1] + q[2]*q[2]) for q in qCorners])
+    tofCorners = 3176.507 * flightPath * np.sin(scatteringHalfAngle) / qMagCorn
+    tMin = np.min(tofCorners)
+    tMax = np.max(tofCorners)
+    #TRIAL: set dtBinWidth as the resolution at the center of the box
+    tC = 3176.507 * flightPath * np.sin(scatteringHalfAngle)/np.linalg.norm([qx[qx.shape[0]//2], qy[qy.shape[0]//2], qz[qz.shape[0]//2]])
+    tD = 3176.507 * flightPath * np.sin(scatteringHalfAngle)/np.linalg.norm([qx[qx.shape[0]//2 + 1], qy[qy.shape[0]//2+1], qz[qz.shape[0]//2+1]])
+    dtBinWidth = np.abs(tD-tC)
+    dtBinWidth = max(15, dtBinWidth)
+    print '$$$$$$$ setting dtBinWidth to %f'%dtBinWidth
+     
     tBins = np.arange(tMin, tMax, dtBinWidth)
-    weightList = n_events[hasEventsIDX]
+    weightList = n_events[hasEventsIDX] #- pp_lambda
     if removeEdges:
         mask = EdgeTools.getMask(peak, box, panelDict,qMask, edgesToCheck=edgesToCheck)
         print np.shape(mask), np.shape(useIDX), np.shape(useIDX[0])
@@ -302,7 +547,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, pea
         tofWS = CreateWorkspace(OutputWorkspace='tofWS', DataX=tPoints, DataY=yPoints, DataE=np.sqrt(yPoints))
     else:
         tofWS = CreateWorkspace(OutputWorkspace='tofWS%i'%workspaceNumber, DataX=tPoints, DataY=yPoints, DataE=np.sqrt(yPoints))
-    return tofWS
+    return tofWS, float(pp_lambda)
 
 #Determines the T0 shift for comparing moderator simulations (done at L=0)
 # to our data (measured at L=L1+L2).  E is the neutron energy (units: eV)
@@ -361,6 +606,7 @@ def getInitialGuess(tofWS, paramNames, energy, flightPath, padeCoefficients,detN
     x0[0] /= 1.2
     x0[2] += 0.05
     x0[3] -= 10 #This is lazy - we can do it detector-by-detector
+    x0[3] = np.mean(x[np.argsort(y)[::-1][:min(3,np.sum(y>0))]])
     x0[4] = (np.max(y))/x0[0]*2*2.5  #Amplitude
     x0[5] = 0.5 #hat width in IDX units
     x0[6] = 120.0 #Exponential decay rate for convolution
@@ -372,14 +618,17 @@ def getInitialGuess(tofWS, paramNames, energy, flightPath, padeCoefficients,detN
 # DetCalFile is a string for the file containng the detector calibration
 # workDir is not used
 # loadDir is the directory to extract the data from
-def getSample(run, DetCalFile,  workDir, fileName):
+def getSample(run, DetCalFile,  workDir, fileName, qLow=-25, qHigh=25):
     #data
     print 'Loading file', fileName
     data = Load(Filename = fileName)
-    LoadIsawDetCal(InputWorkspace = data, Filename = DetCalFile)
+    if DetCalFile is not None:
+        LoadIsawDetCal(InputWorkspace = data, Filename = DetCalFile)
+    
     MDdata = ConvertToMD(InputWorkspace = data, QDimensions = 'Q3D', dEAnalysisMode = 'Elastic',
       Q3DFrames = 'Q_sample', QConversionScales = 'Q in A^-1',
-      MinValues = '-25, -25, -25', Maxvalues = '25, 25, 25')
+      MinValues = '%f, %f, %f'%(qLow, qLow, qLow), Maxvalues = '%f, %f, %f'%(qHigh, qHigh, qHigh), MaxRecursionDepth=10,
+        LorentzCorrection=True)
     return MDdata
 
 def plotFitPresentation(filenameFormat, r,tofWS,fICC,runNumber, peakNumber, energy, chiSq,bgFinal, xStart, xStop, bgx0=None):
@@ -524,11 +773,49 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.00
     return Box
 
 
+def doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,constraintScheme=None,nBG=15, outputWSName='fit', fitOrder=1):
+    #Set up our inital guess
+    fICC = ICC.IkedaCarpenterConvoluted()
+    fICC.init()
+    paramNames = [fICC.getParamName(x) for x in range(fICC.numParams())]
+    x0 = getInitialGuess(tofWS,paramNames,energy,flightPath,padeCoefficients,detNumber,calibrationDict)
+    [fICC.setParameter(iii,v) for iii,v in enumerate(x0[:fICC.numParams()])]
+    x = tofWS.readX(0)
+    y = tofWS.readY(0)
+    if len(y)//2 < nBG: nBG = len(y)//2
+    bgx0 = np.polyfit(x[np.r_[0:nBG,-nBG:0]], y[np.r_[0:nBG,-nBG:0]], fitOrder)
+
+    nPts = x.size                
+    scaleFactor = np.max((y-np.polyval(bgx0,x))[nPts//3:2*nPts//3])/np.max(fICC.function1D(x)[nPts//3:2*nPts//3])
+    x0[4] = x0[4]*scaleFactor
+    fICC.setParameter(4,x0[4])
+    #fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.01, 1.0], T00=[0,1.0e10], k_conv0=[10,500],penalty=1.0e20)
+    if constraintScheme == 1:
+        try:
+            fICC.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0,1.0e10],k_conv0=[5,500],penalty=1.0e20)
+        except:
+            fICC.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0,1.0e10],k_conv0=[5,500],penalty=None)
+    if constraintScheme == 2:
+        try:
+            fICC.setPenalizedConstraints(A0=[0.02, 1.0], B0=[0.005, 1.5], R0=[0.00, 1.], scale0=[0.0, 1.0e10],T00=[0,1.0e10], k_conv0=[100.,140], penalty=1.0e20)
+        except:
+            fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.00, 1.], scale0=[0.0, 1.0e10], T00=[0,1.0e10], k_conv0=[100,140], penalty=None)
+    f = FunctionWrapper(fICC)
+    bg = Polynomial(n=fitOrder)
+    
+    for i in range(fitOrder+1):
+        bg['A'+str(fitOrder-i)] = bgx0[i]
+    bg.constrain('-1.0 < A%i < 1.0'%fitOrder)
+    fitFun = f + bg
+    fitResults = Fit(Function=fitFun, InputWorkspace='tofWS', Output=outputWSName)
+    return fitResults, fICC
+
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
-def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients, parameterDict, figsFormat=None, dtBinWidth = 4, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, doVolumeNormalization=False, minFracPixels=0.0000, fracStop = 0.01, removeEdges=False, calibrationDict=None,dQPixel=0.005,calcTOFPerPixel=False, p=None):
+def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients, parameterDict, figsFormat=None, dtBinWidth = 4, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, doVolumeNormalization=False, minFracPixels=0.0000, fracStop = 0.01, removeEdges=False, calibrationDict=None,dQPixel=0.005,calcTOFPerPixel=False, p=None,neigh_length_m=0,zBG=-1.0,bgPolyOrder=1, doIterativeBackgroundFitting=False):
     if removeEdges is True and panelDict is None:
-        print 'REMOVE EDGES WITHOUT panelDict - IMPOSSIBLE!!'
-        0/0
+        import sys
+        sys.exit('ICCFT:integrateSample - trying to remove edges without a panelDict, this is impossible!')
+    
     if p is None:
         p = range(peaks_ws.getNumberPeaks())
     fitDict = {}
@@ -542,96 +829,81 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 energy = 81.804 / wavelength**2 / 1000.0 #in eV
                 flightPath = peak.getL1() + peak.getL2() #in m
                 scatteringHalfAngle = 0.5*peak.getScattering()
-                detNumber = EdgeTools.getDetectorBank(panelDict, peak.getDetectorID())['bankNumber']
+                detNumber = 0#EdgeTools.getDetectorBank(panelDict, peak.getDetectorID())['bankNumber']
                 print '---fitting peak ' + str(i) + '  Num events: ' + str(Box.getNEvents()), ' ', peak.getHKL()
                 if Box.getNEvents() < 1 or np.all(np.abs(peak.getHKL())==0):
                     print "Peak %i has 0 events or is HKL=000. Skipping!"%i
                     peak.setIntensity(0)
                     peak.setSigmaIntensity(1)
-                    paramList.append([i, energy, 0.0, 1.0e10,1.0e10] + [0 for i in range(mtd['fit_parameters'].rowCount())])
+                    paramList.append([i, energy, 0.0, 1.0e10,1.0e10] + [0 for i in range(mtd['fit_parameters'].rowCount())]+[0])
+
                     mtd.remove('MDbox_'+str(run)+'_'+str(i))
                     continue
+                n_events = Box.getNumEventsArray()
+                goodIDX, pp_lambda = getBGRemovedIndices(n_events, peak=peak, box=Box,qMask=qMask[0], calc_pp_lambda=True, padeCoefficients=padeCoefficients, dtBinWidth=dtBinWidth,nBG=nBG)
                 #Do background removal (optionally) and construct the TOF workspace for fitting
                 if removeEdges:
                     edgesToCheck = EdgeTools.needsEdgeRemoval(Box,panelDict,peak) 
                     if edgesToCheck != []: #At least one plane intersects so we have to fit
-                        tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=calcTOFPerPixel)
+                        tofWS,ppl = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG,pp_lambda=pp_lambda)
                     else:
-                        tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel)
+                        tofWS,ppl = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG,pp_lambda=pp_lambda)
                 else:
-                    tofWS = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel)
-                #Set up our inital guess
-                fICC = ICC.IkedaCarpenterConvoluted()
-                fICC.init()
-                paramNames = [fICC.getParamName(x) for x in range(fICC.numParams())]
-                x0 = getInitialGuess(tofWS,paramNames,energy,flightPath,padeCoefficients,detNumber,calibrationDict)
-                [fICC.setParameter(iii,v) for iii,v in enumerate(x0[:fICC.numParams()])]
-                x = tofWS.readX(0)
-                y = tofWS.readY(0)
-                if len(y)//2 < nBG: nBG = len(y)//2
-                bgx0 = np.polyfit(x[np.r_[0:nBG,-nBG:0]], y[np.r_[0:nBG,-nBG:0]], 1)
+                    #tofWS,pp_lambda = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG,pp_lambda=pp_lambda)
+                    tofWS = mtd['tofWS'] # --IN PRINCIPLE!!! WE CALCULATE THIS BEFORE GETTING HERE
+                    #TODO: Make sure we calculate it here - it seems to not work well for scolecute, but works for beta lac?
 
-                nPts = x.size                
-                scaleFactor = np.max((y-np.polyval(bgx0,x))[nPts//3:2*nPts//3])/np.max(fICC.function1D(x)[nPts//3:2*nPts//3])
-                x0[4] = x0[4]*scaleFactor
-                fICC.setParameter(4,x0[4])
-                #fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.01, 1.0], T00=[0,1.0e10], k_conv0=[50,500],penalty=1.0e20)
-                fICC.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0,1.0e10],k_conv0=[10,500],penalty=1.0e20)
-
-                f = FunctionWrapper(fICC)
-                bg = LinearBackground(A0=bgx0[1], A1=bgx0[0])
-                bg.constrain('-1.0 < A1 < 1.0')
-                fitFun = f + bg
-                fitResults = Fit(Function=fitFun, InputWorkspace='tofWS', Output='fit')
+                print pp_lambda, 'is ppl'
+                if doIterativeBackgroundFitting:
+                    nBGToTry = range(2,tofWS.readX(0).size,4)
+                    lowChiSq = 1.0e99
+                    lowNBG = 0
+                    for nBG in nBGToTry:
+                        fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,nBG=nBG,fitOrder=bgPolyOrder,constraintScheme=1) 
+                        fitStatus = fitResults.OutputStatus
+                        chiSq = fitResults.OutputChi2overDoF
+                        if chiSq<lowChiSq:
+                            lowChiSq = chiSq
+                            lownBG = nBG
+                        if chiSq < 2.0:
+                            break
+                else:
+                   lownBG = nBG
+                fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=lownBG,fitOrder=bgPolyOrder,constraintScheme=2)
                 fitStatus = fitResults.OutputStatus
                 chiSq = fitResults.OutputChi2overDoF
-    
+
+                #plt.close('all')
+                #plt.figure(1); plt.clf()
+                #plt.plot(mtd['fit_Workspace'].readX(0), mtd['fit_Workspace'].readY(0))
+                #plt.plot(mtd['fit_Workspace'].readX(0), mtd['fit_Workspace'].readY(1))
+                #plt.title('Chi Sq: %f, Peak Number: '%chiSq + str(i))
+                #plt.pause(0.01)
+            
+
+
+ 
                 chiSq2  = 1.0e99
-                if chiSq > 2.0: #The initial fit isn't great - let's see if we can do better
+                if (chiSq > 1.0e99) and (tofWS.readY(0).max() > 10): #The initial fit isn't great - let's see if we can do better
                     Box = getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel[1])
 
                     if removeEdges:
                         if edgesToCheck != []: #At least one plane intersects so we have to fit
-                            tofWS2 = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[1], dtBinWidth=dtBinWidth,dtSpread=dtSpread[1], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=calcTOFPerPixel, workspaceNumber=2)
+                            tofWS2,ppl2 = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[1], dtBinWidth=dtBinWidth,dtSpread=dtSpread[1], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=calcTOFPerPixel, workspaceNumber=2,neigh_length_m=neigh_length_m,zBG=zBG)
                         else:
-                            tofWS2 = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[1], dtBinWidth=dtBinWidth,dtSpread=dtSpread[1], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel, workspaceNumber=2)
+                            tofWS2,ppl2 = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[1], dtBinWidth=dtBinWidth,dtSpread=dtSpread[1], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel, workspaceNumber=2,neigh_length_m=neigh_length_m,zBG=zBG)
                     else:
-                        tofWS2 = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[1], dtBinWidth=dtBinWidth,dtSpread=dtSpread[1], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,workspaceNumber=2)
+                        tofWS2,ppl2 = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, i, qMask[1], dtBinWidth=dtBinWidth,dtSpread=dtSpread[1], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,workspaceNumber=2,neigh_length_m=neigh_length_m,zBG=zBG)
 
 
 
                     print '############REFITTING########### on %4.4f'%chiSq
-                    #x0 = getInitialGuessByDetector(tofWS,paramNames,energy,flightPath, detNumber, parameterDict)
-                    x0 = getInitialGuess(tofWS2,paramNames,energy,flightPath,padeCoefficients,detNumber,calibrationDict)
-                    fICC2 = ICC.IkedaCarpenterConvoluted()
-                    fICC2.init()
-                    [fICC2.setParameter(iii,v) for iii,v in enumerate(x0[:fICC2.numParams()])]
-                    #fICC2.setParameter(3,fICC.getParamValue(3))
-
-                    x = tofWS2.readX(0)
-                    y = tofWS2.readY(0)
-                    nPts=x.size
-                    bgx0 = np.polyfit(x[np.r_[0:nBG,-nBG:0]], y[np.r_[0:nBG,-nBG:0]], 1)
-
-
-                    scaleFactor = np.max((y-np.polyval(bgx0,x))[nPts//3:2*nPts//3])/np.max(fICC2.function1D(x)[nPts//3:2*nPts//3])
-                    x0[4] = x0[4]*scaleFactor
-                    fICC2.setParameter(4,x0[4])
-                    #fICC2.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0,1.0e10],k_conv0=[50,500],penalty=1.0e20)
-                    fICC2.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.01, 1.0], T00=[0,1.0e10], k_conv0=[10,500], penalty=1.0e20)
-                    f = FunctionWrapper(fICC2)
-                    bg = LinearBackground(A0=bgx0[1], A1=bgx0[0])
-                    #bg.constrain('-1.0 < A1 < 1.0')
-                    fitFun = f + bg
                     try:
-                            #fitStatus, chiSq2, covarianceTable, paramTable, fitWorkspace = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit2') #Antiquated, Sept 25 2017
-                        #fitResults2 = Fit(Function=functionString, InputWorkspace='tofWS', Output='fit2')
-                        fitResults2 = Fit(Function=fitFun, InputWorkspace='tofWS2', Output='fit2')
+                        fitResults2,fICC2 = doICCFit(tofWS2, energy, flightPath, padeCoefficients, detNumber, calibrationDict,nBG=nBG,outputWSName='fit2',fitOrder=bgPolyOrder,constraintScheme=2) 
                         fitStatus2 = fitResults2.OutputStatus
                         chiSq2 = fitResults2.OutputChi2overDoF
-                    except:
-                            print 'CANNOT DO SECOND FIT, GOING BACK TO FIRST!'
-                
+                    except: 
+                        print 'CANNOT DO SECOND FIT, GOING BACK TO FIRST!!'
                 if(chiSq < chiSq2):
                     r = mtd['fit_Workspace']
                     param = mtd['fit_Parameters']
@@ -643,22 +915,38 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     chiSq = chiSq2
                     fICC = fICC2
                     tofWS = mtd['tofWS2']
+                    ppl = ppl2
 
-                fitBG = [param.cell(iii+2,1),param.cell(iii+1,1)]
+                iii = fICC.numParams() - 1
+                fitBG = [param.row(int(iii+bgIDX+1))['Value'] for bgIDX in range(bgPolyOrder+1)]
+
+
                 #Set the intensity before moving on to the next peak
                 icProfile = r.readY(1)
-                bgCoefficients = fitBG
+                bgCoefficients = fitBG[::-1]
+
                 #peak.setSigmaIntensity(np.sqrt(np.sum(icProfile)))i
                 t0 = param.row(3)['Value']
-                intensity, sigma, xStart, xStop = integratePeak(r.readX(0), icProfile,r.readY(0), np.polyval(bgCoefficients, r.readX(1)), fracStop=fracStop)
+                
+                #from scipy.ndimage import label
+                #g = label(goodIDX*qMask)
+                #bgPixels = np.sort(np.bincount(g[0].ravel()))[-2] #num bg pixels - -1 is 0s
+                #bgIDX = np.argsort(np.bincount(g[0].ravel()))[-2] #num bg pixels - -1 is 0s
+
+                convBox = 1.0*np.ones([neigh_length_m, neigh_length_m,neigh_length_m]) / neigh_length_m**3
+                conv_n_events = convolve(n_events,convBox)
+                bgEvents = np.mean(n_events[np.logical_and(~goodIDX, np.logical_and(qMask[0],conv_n_events>0))])*np.sum(goodIDX*qMask[0])
+                
+                intensity, sigma, xStart, xStop = integratePeak(r.readX(0), icProfile,r.readY(0), np.polyval(bgCoefficients, r.readX(1)), pp_lambda=pp_lambda, fracStop=fracStop,totEvents=np.sum(n_events[goodIDX*qMask[0]]), bgEvents=bgEvents)
+                #print '~~~ ', intensity, sigma
                 icProfile = icProfile - np.polyval(bgCoefficients, r.readX(1)) #subtract background
                 peak.setIntensity(intensity)
                 peak.setSigmaIntensity(sigma)
                 if figsFormat is not None:
-                    plotFit(figsFormat, r,tofWS,fICC,peak.getRunNumber(), i, energy, chiSq,fitBG, xStart, xStop, bgx0)
+                    plotFit(figsFormat, r,tofWS,fICC,peak.getRunNumber(), i, energy, chiSq,fitBG, xStart, xStop, bgx0=None)
                     #plotFitPresentation('/SNS/users/ntv/med_peak.pdf', r, tofWS,fICC,peak.getRunNumber(), i, energy, chiSq,fitBG, xStart, xStop, bgx0)
                 fitDict[i] = np.array([r.readX(0),r.readY(0), r.readY(1), r.readY(2)])
-                paramList.append([i, energy, np.sum(icProfile), 0.0,chiSq] + [param.row(i)['Value'] for i in range(param.rowCount())])
+                paramList.append([i, energy, np.sum(icProfile), 0.0,chiSq] + [param.row(i)['Value'] for i in range(param.rowCount())]+[pp_lambda])
                 if param.row(2)['Value'] < 0:
                     print i, [param.row(i)['Value'] for i in range(param.rowCount())]
                 mtd.remove('MDbox_'+str(run)+'_'+str(i))
@@ -668,15 +956,17 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 sys.exit()
             except: #Error with fitting
                 #raise
+                import sys
                 peak.setIntensity(0)
                 peak.setSigmaIntensity(1)
                 print 'Error with peak ' + str(i)
+                paramList.append([i, energy, 0.0, 1.0e10,1.0e10] + [0 for i in range(10)]+[0])
+                #paramList.append([i, energy, 0.0, 1.0e10,1.0e10] + [0 for i in range(mtd['fit_parameters'].rowCount())]+[0])
+                continue
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                 print(exc_type, fname, exc_tb.tb_lineno)
-                paramList.append([i, energy, 0.0, 1.0e10,1.0e10] + [0 for i in range(mtd['fit_parameters'].rowCount())])
         mtd.remove('MDbox_'+str(run)+'_'+str(i))
     return peaks_ws, paramList, fitDict
-
 
 
