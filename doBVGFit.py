@@ -5,6 +5,7 @@ import BVGFitTools as BVGFT
 reload(BVGFT)
 import sys
 sys.path.append("/opt/mantidnightly/bin")
+sys.path.append("./analysis")
 from mantid.simpleapi import *
 import os 
 import pickle
