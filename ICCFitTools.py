@@ -935,9 +935,12 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
 
                 convBox = 1.0*np.ones([neigh_length_m, neigh_length_m,neigh_length_m]) / neigh_length_m**3
                 conv_n_events = convolve(n_events,convBox)
-                bgEvents = np.mean(n_events[np.logical_and(~goodIDX, np.logical_and(qMask[0],conv_n_events>0))])*np.sum(goodIDX*qMask[0])
                 
-                intensity, sigma, xStart, xStop = integratePeak(r.readX(0), icProfile,r.readY(0), np.polyval(bgCoefficients, r.readX(1)), pp_lambda=pp_lambda, fracStop=fracStop,totEvents=np.sum(n_events[goodIDX*qMask[0]]), bgEvents=bgEvents)
+                totEvents = np.sum(n_events[goodIDX*qMask[0]])
+                bgIDX = reduce(np.logical_and,[~goodIDX, qmask[0], conv_n_events>0])
+                bgEvents = np.mean(n_events[bgIDX])*np.sum(goodIDX*qMask[0])
+                
+                intensity, sigma, xStart, xStop = integratePeak(r.readX(0), icProfile,r.readY(0), np.polyval(bgCoefficients, r.readX(1)), pp_lambda=pp_lambda, fracStop=fracStop,totEvents=totEvents, bgEvents=bgEvents)
                 #print '~~~ ', intensity, sigma
                 icProfile = icProfile - np.polyval(bgCoefficients, r.readX(1)) #subtract background
                 peak.setIntensity(intensity)
