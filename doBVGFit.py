@@ -51,7 +51,7 @@ qLow = -5.0; qHigh = 5.0
 dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
 dtBinWidth = 40 #Width (in us) in TOF profile bins
 dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
-descriptor = 'beta_lac_3D2' #Does not end with '/'
+descriptor = 'beta_lac_3D_full' #Does not end with '/'
 doIterativeBackgroundFitting = False
 nBG=5
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
@@ -72,13 +72,13 @@ qMask = ICCFT.getHKLMask(UBMatrix, frac=fracHKL, dQPixel=dQPixel,dQ=dQ)
 padeCoefficients = ICCFT.getModeratorCoefficients('franz_coefficients_2017.dat')
 ICCFitParams = ICAT.getFitParameters(workDir, descriptorRead, sampleRuns[0], sampleRuns[-1], sampleRuns=sampleRuns)
 ICCFitDict = ICAT.getFitDicts(workDir, descriptorRead,sampleRuns[0], sampleRuns[-1], sampleRuns=sampleRuns)
-strongPeakParams = pickle.load(open('strongPeakParams.pkl', 'wb'))
+strongPeakParams = pickle.load(open('strongPeakParams.pkl', 'rb'))
 
 from timeit import default_timer as timer
 
 badFits = []
 oldNewList = []
-for sampleRun in sampleRuns[2:]:
+for sampleRun in sampleRuns:
     fileName = nxsTemplate%sampleRun
     MDdata = ICCFT.getSample(sampleRun, DetCalFile, workDir, fileName,qLow=qLow, qHigh=qHigh)
     t1 = timer()

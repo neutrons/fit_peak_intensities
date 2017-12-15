@@ -17,7 +17,7 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 # BVGFT.compareBVGFitData(box,params[0])
 
 
-def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxToHistogram=1.0,numTimesToInterpolate=1, plotResults=False,nBG=15, dtBinWidth=4,zBG=1.96,bgPolyOrder=1, fICCParams = None, oldICCFit=None, strongPeakParams=None, forceCutoff=250):
+def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxToHistogram=1.0,numTimesToInterpolate=1, plotResults=False,nBG=15, dtBinWidth=4,zBG=1.96,bgPolyOrder=1, fICCParams = None, oldICCFit=None, strongPeakParams=None, forceCutoff=250, edgeCutoff=15):
     n_events = box.getNumEventsArray()
 
     if fICCParams is None:
@@ -43,7 +43,9 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
         YTOF = ftof(XTOF)
 
     X = boxToTOFThetaPhi(box,peak)
-    if strongPeakParams is not None and peak.getIntensity() < forceCutoff:
+    dEdge = edgeCutoff
+    useForceParams = peak.getIntensity() < forceCutoff or peak.getRow() <= dEdge or peak.getRow() >= 255-dEdge or peak.getCol() <= dEdge or peak.getCol() >= 255-dEdge
+    if strongPeakParams is not None and useForceParams:
         q = peak.getQSampleFrame()
         print peak.getQSampleFrame()
         th = np.arctan2(q[1],q[0])
@@ -206,20 +208,21 @@ def fitScaling(n_events,box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
 
     #goodIDX = n_events > -1.0
     QX, QY, QZ = ICCFT.getQXQYQZ(box)
-    dP = 7
+    dP = 8
     fitMaxIDX = tuple(np.array(np.unravel_index(YJOINT.argmax(), YJOINT.shape)))
-    goodIDX = np.zeros_like(YJOINT).astype(np.bool)
-    goodIDX[fitMaxIDX[0]-dP:fitMaxIDX[0]+dP, fitMaxIDX[1]-dP:fitMaxIDX[1]+dP,fitMaxIDX[2]-dP:fitMaxIDX[2]+dP] = True
-    goodIDX = np.logical_and(goodIDX, conv_n_events>0)
-    #goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events)
-    #goodIDX = np.logical_and(goodIDX, n_events>0)
+    if goodIDX is None:
+        goodIDX = np.zeros_like(YJOINT).astype(np.bool)
+        goodIDX[fitMaxIDX[0]-dP:fitMaxIDX[0]+dP, fitMaxIDX[1]-dP:fitMaxIDX[1]+dP,fitMaxIDX[2]-dP:fitMaxIDX[2]+dP] = True
+        goodIDX = np.logical_and(goodIDX, conv_n_events>0)
+        #goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events)
+        #goodIDX = np.logical_and(goodIDX, n_events>0)
 
     p0 = np.array([np.max(n_events), np.mean(n_events)])
     weights = np.sqrt(n_events).copy()
     weights[weights<1] = 1.
     bounds = ([0,0],[np.inf,np.inf])
 
-    p, cov = curve_fit(fitScalingFunction,convYJOINT[goodIDX],conv_n_events[goodIDX],p0=p0)#,bounds=bounds,sigma=np.sqrt(weights[goodIDX]))
+    p, cov = curve_fit(fitScalingFunction,convYJOINT[goodIDX],conv_n_events[goodIDX],p0=p0)#, sigma=np.sqrt(weights[goodIDX]))
     
     #highIDX = YJOINT > 0.7
     #p[0] = np.mean(n_events[highIDX] / YJOINT[highIDX])
@@ -537,12 +540,12 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
             meanPH = PH.mean()
             sigX0 = np.polyval([ 0.00173264,  0.0002208 ,  0.00185031, -0.00012078,  0.00189967], meanPH)
             sigY0 = np.polyval([ 0.00045678, -0.0017618 ,  0.0045013 , -0.00480677,  0.00376619], meanTH)
-            
+             
             p0=[np.max(h), meanTH, meanPH, sigX0, sigY0, 0.00,0.0]
             print p0 
             bounds = ([0.0, thBins[thBins.size//2 - 2], phBins[phBins.size//2 - 2], 0.000, 0.000, -np.inf, 0], 
                     [np.inf, thBins[thBins.size//2 + 2], phBins[phBins.size//2 + 2], 0.02, 0.02, np.inf, np.inf])
-            params= curve_fit(bvgFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(),p0=p0, bounds=bounds)
+            params= curve_fit(bvgFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(),p0=p0, bounds=bounds, sigma=np.sqrt(weights[fitIDX]))
             print params[0]
 
     elif forceParams is not None:
