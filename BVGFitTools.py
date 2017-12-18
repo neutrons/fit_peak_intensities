@@ -17,11 +17,11 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 # BVGFT.compareBVGFitData(box,params[0])
 
 
-def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxToHistogram=1.0,numTimesToInterpolate=1, plotResults=False,nBG=15, dtBinWidth=4,zBG=1.96,bgPolyOrder=1, fICCParams = None, oldICCFit=None, strongPeakParams=None, forceCutoff=250, edgeCutoff=15):
+def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxToHistogram=1.0,numTimesToInterpolate=1, plotResults=False,nBG=15, dtBinWidth=4,zBG=1.96,bgPolyOrder=1, fICCParams = None, oldICCFit=None, strongPeakParams=None, forceCutoff=250, edgeCutoff=15, predCoefficients=None):
     n_events = box.getNumEventsArray()
 
     if fICCParams is None:
-        goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events, peak=peak, box=box,qMask=qMask, calc_pp_lambda=True, padeCoefficients=padeCoefficients, dtBinWidth=dtBinWidth,nBG=nBG)
+        goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events, peak=peak, box=box,qMask=qMask, calc_pp_lambda=True, padeCoefficients=padeCoefficients, dtBinWidth=dtBinWidth,nBG=nBG, predCoefficients=predCoefficients)
         YTOF, fICC, x_lims = fitTOFCoordinate(box,peak,padeCoefficients,dtSpread=0.03,dtBinWidth=dtBinWidth,qMask=qMask,bgPolyOrder=bgPolyOrder,nBG=nBG,zBG=zBG,plotResults=plotResults, pp_lambda=pp_lambda)
 
     else: #we already did I-C profile, so we'll just read the parameters
@@ -35,7 +35,7 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
         fICC['scale'] = fICCParams[9]  
         fICC['hatWidth'] = fICCParams[10]  
         fICC['k_conv'] = fICCParams[11]  
-        goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events, pp_lambda=pp_lambda)
+        goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events, pp_lambda=pp_lambda,predCoefficients=predCoefficients)
         x_lims = [np.min(oldICCFit[0]), np.max(oldICCFit[0])]
         tofxx = oldICCFit[0]; tofyy = oldICCFit[1]
         ftof = interp1d(tofxx, tofyy,bounds_error=False,fill_value=0.0)

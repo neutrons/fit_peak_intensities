@@ -90,7 +90,7 @@ descriptor = 'beta_lac_predpws5_lorentz' #Does not end with '/'
 doIterativeBackgroundFitting = False
 nBG=5
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
-
+predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 
 '''
 #Natrolite - 2016 - MANDI
@@ -204,7 +204,7 @@ for sampleRun in [sampleRuns[4]]:
     #    UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
 
     #Do the actual integration
-    peaks_ws,paramList,fitDict = ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients,parameterDict, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.01, fracStop=fracStop, removeEdges=removeEdges, calibrationDict=calibrationDict,dQPixel=dQPixel, calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG, bgPolyOrder=bgPolyOrder, nBG=nBG, doIterativeBackgroundFitting=doIterativeBackgroundFitting)
+    peaks_ws,paramList,fitDict = ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients,parameterDict, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.01, fracStop=fracStop, removeEdges=removeEdges, calibrationDict=calibrationDict,dQPixel=dQPixel, calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG, bgPolyOrder=bgPolyOrder, nBG=nBG, doIterativeBackgroundFitting=doIterativeBackgroundFitting,predCoefficients=predpplCoefficients)
 
     #Save the results and delete the leftovers
     SaveIsawPeaks(InputWorkspace='peaks_ws', Filename=workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))

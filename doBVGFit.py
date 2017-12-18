@@ -59,7 +59,7 @@ parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scoleci
 numTimesToInterpolate=0
 workDir = '/SNS/users/ntv/dropbox/'
 descriptorRead = 'beta_lac_predpws5'
-
+predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 
 
 peaks_ws = LoadIsawPeaks(Filename = peaksFile)
@@ -94,7 +94,7 @@ for sampleRun in sampleRuns:
             if peak.getRunNumber() == sampleRun:
                 print 'Integrating peak %i'%peakNumber
                 box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel)
-                Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=70, nPhi=70, plotResults=False,nBG=5, dtBinWidth=dtBinWidth,zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1,numTimesToInterpolate=numTimesToInterpolate, fICCParams=ICCFitParams[peakNumber], oldICCFit=ICCFitDict[peakNumber], strongPeakParams=strongPeakParams)
+                Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=70, nPhi=70, plotResults=False,nBG=5, dtBinWidth=dtBinWidth,zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1,numTimesToInterpolate=numTimesToInterpolate, fICCParams=ICCFitParams[peakNumber], oldICCFit=ICCFitDict[peakNumber], strongPeakParams=strongPeakParams, predCoefficients=predpplCoefficients)
 
                 intensity = np.sum(Y3D[Y3D/Y3D.max() >0.05])/2**(3*numTimesToInterpolate)
                 skipIDX = 2**numTimesToInterpolate
