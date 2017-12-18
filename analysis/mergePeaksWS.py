@@ -1,6 +1,7 @@
 import numpy as np
 from mantid.simpleapi import *
 import matplotlib.pyplot as plt
+import sys
 import ICCAnalysisTools as ICAT
 sampleRuns = range(4999,5003+1)
 workDir = '/SNS/users/ntv/dropbox/'
