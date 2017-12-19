@@ -91,7 +91,7 @@ def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, dtBi
         calc_pp_lambda=True
 
     tofWS,ppl = getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, None, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=False, minFracPixels=0.01, removeEdges=False,calcTOFPerPixel=False,neigh_length_m=3,zBG=1.96,pp_lambda=pp_lambda,calc_pp_lambda=calc_pp_lambda)
-    fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=nBG,fitOrder=1,constraintScheme=2)
+    fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=nBG,fitOrder=1,constraintScheme=1)
     h = [tofWS.readY(0), tofWS.readX(0)]
     chiSq = fitResults.OutputChi2overDoF
     
@@ -590,16 +590,18 @@ def getInitialGuess(tofWS, paramNames, energy, flightPath, padeCoefficients,detN
     x0[1] = pade(padeCoefficients['B'], energy)
     x0[2] = pade(padeCoefficients['R'], energy)
     #x0[3] = oneOverXSquared(energy, calibDict['det_%i'%detNumber]['T0'][0], calibDict['det_%i'%detNumber]['T0'][1])
-    x0[3] = pade(padeCoefficients['T0'], energy) + getT0Shift(energy, flightPath) #extra is for ~18m downstream we are
+    #x0[3] = pade(padeCoefficients['T0'], energy) + getT0Shift(energy, flightPath) #extra is for ~18m downstream we are
 
     #These are still phenomenological
-    x0[0] /= 1.2
-    x0[2] += 0.05
-    x0[3] -= 10 #This is lazy - we can do it detector-by-detector
-    x0[3] = np.mean(x[np.argsort(y)[::-1][:min(3,np.sum(y>0))]])
-    x0[4] = (np.max(y))/x0[0]*2*2.5  #Amplitude
+    #x0[0] /= 1.2
+    #x0[2] += 0.05
+    #x0[3] -= 10 #This is lazy - we can do it detector-by-detector
+    x0[3] = np.mean(x[np.argsort(y)[::-1][:min(5,np.sum(y>0))]])
+    x0[4] = (np.max(y))/x0[0]*2*2.5  #Amplitude - gets rescaled later anyway
+
     x0[5] = 0.5 #hat width in IDX units
     x0[6] = 120.0 #Exponential decay rate for convolution
+
     return x0
 
 #Get sample loads the NeXus evnts file and converts from detector space to
@@ -731,10 +733,6 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.00
     Qx = QSample[0]
     Qy = QSample[1]
     Qz = QSample[2]
-    #dQ = np.abs(getDQFracHKL(UBMatrix, frac = fracHKL))
-    #print dQ
-    #dQ = np.abs(getDQTOF(peak))
-    #dQPixel = getPixelStep(peak)
     dQ = np.abs(dQ)
     dQ[dQ>0.5] = 0.5
     nPtsQ = np.round(np.sum(dQ/dQPixel,axis=1)).astype(int)
@@ -771,7 +769,6 @@ def doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibration
     y = tofWS.readY(0)
     if len(y)//2 < nBG: nBG = len(y)//2
     bgx0 = np.polyfit(x[np.r_[0:nBG,-nBG:0]], y[np.r_[0:nBG,-nBG:0]], fitOrder)
-
     nPts = x.size                
     scaleFactor = np.max((y-np.polyval(bgx0,x))[nPts//3:2*nPts//3])/np.max(fICC.function1D(x)[nPts//3:2*nPts//3])
     x0[4] = x0[4]*scaleFactor
@@ -779,9 +776,9 @@ def doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibration
     #fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.01, 1.0], T00=[0,1.0e10], k_conv0=[10,500],penalty=1.0e20)
     if constraintScheme == 1:
         try:
-            fICC.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0,1.0e10],k_conv0=[5,500],penalty=1.0e20)
+            fICC.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0,1.0e10],k_conv0=[100,140],penalty=1.0e10)
         except:
-            fICC.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0,1.0e10],k_conv0=[5,500],penalty=None)
+            fICC.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0,1.0e10],k_conv0=[100,140],penalty=None)
     if constraintScheme == 2:
         try:
             fICC.setPenalizedConstraints(A0=[0.02, 1.0], B0=[0.005, 1.5], R0=[0.00, 1.], scale0=[0.0, 1.0e10],T00=[0,1.0e10], k_conv0=[100.,140], penalty=1.0e20)
@@ -840,68 +837,14 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     tofWS = mtd['tofWS'] # --IN PRINCIPLE!!! WE CALCULATE THIS BEFORE GETTING HERE
                     #TODO: Make sure we calculate it here - it seems to not work well for scolecute, but works for beta lac?
 
-                if doIterativeBackgroundFitting:
-                    nBGToTry = range(2,tofWS.readX(0).size,4)
-                    lowChiSq = 1.0e99
-                    lowNBG = 0
-                    for nBG in nBGToTry:
-                        fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,nBG=nBG,fitOrder=bgPolyOrder,constraintScheme=1) 
-                        fitStatus = fitResults.OutputStatus
-                        chiSq = fitResults.OutputChi2overDoF
-                        if chiSq<lowChiSq:
-                            lowChiSq = chiSq
-                            lownBG = nBG
-                        if chiSq < 2.0:
-                            break
-                else:
-                   lownBG = nBG
-                fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=lownBG,fitOrder=bgPolyOrder,constraintScheme=2)
+
+                fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=nBG,fitOrder=bgPolyOrder,constraintScheme=1)
                 fitStatus = fitResults.OutputStatus
                 chiSq = fitResults.OutputChi2overDoF
 
-                #plt.close('all')
-                #plt.figure(1); plt.clf()
-                #plt.plot(mtd['fit_Workspace'].readX(0), mtd['fit_Workspace'].readY(0))
-                #plt.plot(mtd['fit_Workspace'].readX(0), mtd['fit_Workspace'].readY(1))
-                #plt.title('Chi Sq: %f, Peak Number: '%chiSq + str(i))
-                #plt.pause(0.01)
-            
-
-
- 
-                chiSq2  = 1.0e99
-                if (chiSq > 1.0e99) and (tofWS.readY(0).max() > 10): #The initial fit isn't great - let's see if we can do better
-                    Box = getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel[1])
-
-                    if removeEdges:
-                        if edgesToCheck != []: #At least one plane intersects so we have to fit
-                            tofWS2,ppl2 = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, qMask[1], dtBinWidth=dtBinWidth,dtSpread=dtSpread[1], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=calcTOFPerPixel, workspaceNumber=2,neigh_length_m=neigh_length_m,zBG=zBG)
-                        else:
-                            tofWS2,ppl2 = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, qMask[1], dtBinWidth=dtBinWidth,dtSpread=dtSpread[1], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel, workspaceNumber=2,neigh_length_m=neigh_length_m,zBG=zBG)
-                    else:
-                        tofWS2,ppl2 = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, qMask[1], dtBinWidth=dtBinWidth,dtSpread=dtSpread[1], doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,workspaceNumber=2,neigh_length_m=neigh_length_m,zBG=zBG)
-
-
-
-                    print '############REFITTING########### on %4.4f'%chiSq
-                    try:
-                        fitResults2,fICC2 = doICCFit(tofWS2, energy, flightPath, padeCoefficients, detNumber, calibrationDict,nBG=nBG,outputWSName='fit2',fitOrder=bgPolyOrder,constraintScheme=2) 
-                        fitStatus2 = fitResults2.OutputStatus
-                        chiSq2 = fitResults2.OutputChi2overDoF
-                    except: 
-                        print 'CANNOT DO SECOND FIT, GOING BACK TO FIRST!!'
-                if(chiSq < chiSq2):
-                    r = mtd['fit_Workspace']
-                    param = mtd['fit_Parameters']
-                    tofWS = mtd['tofWS']
-                else:
-                    print 'USING SECOND FIT'
-                    r = mtd['fit2_Workspace']
-                    param = mtd['fit2_Parameters']
-                    chiSq = chiSq2
-                    fICC = fICC2
-                    tofWS = mtd['tofWS2']
-                    ppl = ppl2
+                r = mtd['fit_Workspace']
+                param = mtd['fit_Parameters']
+                tofWS = mtd['tofWS']
 
                 iii = fICC.numParams() - 1
                 fitBG = [param.row(int(iii+bgIDX+1))['Value'] for bgIDX in range(bgPolyOrder+1)]
@@ -925,7 +868,6 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 totEvents = np.sum(n_events[goodIDX*qMask[0]])
                 bgIDX = reduce(np.logical_and,[~goodIDX, qMask[0], conv_n_events>0])
                 bgEvents = np.mean(n_events[bgIDX])*np.sum(goodIDX*qMask[0])
-                
                 intensity, sigma, xStart, xStop = integratePeak(r.readX(0), icProfile,r.readY(0), np.polyval(bgCoefficients, r.readX(1)), pp_lambda=pp_lambda, fracStop=fracStop,totEvents=totEvents, bgEvents=bgEvents)
                 #print '~~~ ', intensity, sigma
                 icProfile = icProfile - np.polyval(bgCoefficients, r.readX(1)) #subtract background
@@ -933,7 +875,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 peak.setSigmaIntensity(sigma)
                 if figsFormat is not None:
                     plotFit(figsFormat, r,tofWS,fICC,peak.getRunNumber(), i, energy, chiSq,fitBG, xStart, xStop, bgx0=None)
-                    #plotFitPresentation('/SNS/users/ntv/med_peak.pdf', r, tofWS,fICC,peak.getRunNumber(), i, energy, chiSq,fitBG, xStart, xStop, bgx0)
+                
                 fitDict[i] = np.array([r.readX(0),r.readY(0), r.readY(1), r.readY(2)])
                 paramList.append([i, energy, np.sum(icProfile), 0.0,chiSq] + [param.row(i)['Value'] for i in range(param.rowCount())]+[pp_lambda])
                 if param.row(2)['Value'] < 0:
