@@ -8,6 +8,7 @@ sys.path.append("/opt/mantidnightly/bin")
 from mantid.simpleapi import *
 from mantid.kernel import V3D
 import ICCFitTools as ICCFT
+import BVGFitTools as BVGFT
 import pickle
 import getEdgePixels as EdgeTools
 from timeit import default_timer as timer
@@ -51,6 +52,19 @@ nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
 dtBinWidth = 25 
 dQPixel=0.005#np.array([0.003, 0.003, 0.003])
 '''
+'''
+#MaNDI natrolite
+peaksFile = '/SNS/users//ntv/integrate/mandi_natrolite/mandi_natrolite_peaks.integrate'
+UBFile =  '/SNS/users/ntv/integrate/mandi_natrolite/mandi_natrolite_niggli_ub.mat'
+DetCalFile = None
+workDir = '/SNS/users/ntv/dropbox/' #End with '/'
+loadDir = '/SNS/MANDI/IPTS-8776/nexus/'
+nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
+#panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
+dtBinWidth = 25 
+dQPixel=0.005#np.array([0.003, 0.003, 0.003])
+predpplCoefficients = None##np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+'''
 
 #Beta Lac
 peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
@@ -62,6 +76,8 @@ nxsTemplate = loadDir+'MANDI_%i_event.nxs'
 #panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
 dtBinWidth = 25 
 dQPixel=0.003#np.array([0.003, 0.003, 0.003])
+predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+
 
 # Some parameters
 
@@ -182,10 +198,10 @@ if True:
     scatteringHalfAngle = 0.5*peak.getScattering()
     edgesToCheck = []#EdgeTools.needsEdgeRemoval(Box,panelDict,peak)
     for dtS in dtSpreadToPlot:
-        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, peakToGet,qMask, dtBinWidth=dtBinWidth,dtSpread=dtS,doVolumeNormalization=False, minFracPixels=0.015, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=False, zBG=-1.)
+        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtS,doVolumeNormalization=False, minFracPixels=0.015, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=False, zBG=-1.)
         plt.subplot(2,1,2)
         plt.plot(tofWS.readX(0), tofWS.readY(0),'o',label='%2.3f'%dtS)
-        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, peakToGet,qMask, dtBinWidth=dtBinWidth,dtSpread=dtS,doVolumeNormalization=False, minFracPixels=0.005, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=False, zBG=1.96,neigh_length_m=3, padeCoefficients=ICCFT.getModeratorCoefficients('franz_coefficients_2017.dat'))
+        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtS,doVolumeNormalization=False, minFracPixels=0.005, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=False, zBG=1.96,neigh_length_m=3, padeCoefficients=ICCFT.getModeratorCoefficients('franz_coefficients_2017.dat'), predCoefficients=predpplCoefficients)
         print pp_lambda
         plt.subplot(2,1,2)
         plt.plot(tofWS.readX(0), tofWS.readY(0),'-o',label='%2.3f'%dtS)
@@ -210,7 +226,7 @@ if True:
     yG = gaussian(t,gp[0], gp[1],gp[2],gp[3])
     plt.plot(t,yG,'r--')
 
-    tofWS = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, peakToGet,qMask, dtBinWidth=dtBinWidth,dtSpread=0.05,doVolumeNormalization=False, minFracPixels=0.015, removeEdges=removeEdges,tListMode=1)
+    tofWS = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=0.05,doVolumeNormalization=False, minFracPixels=0.015, removeEdges=removeEdges,tListMode=1)
     y = tofWS.readY(0) 
     t = tofWS.readX(0)
     bgIDX = np.logical_or(t<peak.getTOF()*0.995, t>peak.getTOF()*1.005)

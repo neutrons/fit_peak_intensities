@@ -5,7 +5,7 @@ import sys
 import ICCAnalysisTools as ICAT
 sampleRuns = range(4999,5003+1)
 workDir = '/SNS/users/ntv/dropbox/'
-descriptor = 'beta_lac_predpws5_lorentz'
+descriptor = 'beta_lac_predpws6'
 
 
 peaksFile = workDir+descriptor+'/peaks_%i_%s.integrate'

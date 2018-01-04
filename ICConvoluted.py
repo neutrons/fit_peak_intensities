@@ -22,7 +22,7 @@ class IkedaCarpenterConvoluted(IFunction1D):
         self.declareParameter("k_conv") #c[6]
 
     #n.b. pass penalty=None to not use default mantid penalty - useful for development
-    def setPenalizedConstraints(self, A0=None, B0=None, R0=None, T00=None, scale0=None, hatWidth0=None, k_conv0=None, penalty=1.0e10):
+    def setPenalizedConstraints(self, A0=None, B0=None, R0=None, T00=None, scale0=None, hatWidth0=None, k_conv0=None, penalty=1.0e20):
         if A0 is not None:
             self.addConstraints("{:4.4e} < A < {:4.4e}".format(A0[0], A0[1]))
             if penalty is not None:
@@ -51,7 +51,6 @@ class IkedaCarpenterConvoluted(IFunction1D):
             self.addConstraints("{:4.4e} < k_conv < {:4.4e}".format(k_conv0[0], k_conv0[1]))
             if penalty is not None:
                 self.setConstraintPenaltyFactor("k_conv", penalty)
-    
     #Evaluate the function
     def function1D(self, t):
         #self.setConstraintPenaltyFactor("A", 1.0e10)
