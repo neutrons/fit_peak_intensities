@@ -7,6 +7,8 @@ import ICCAnalysisTools as ICAT
 from scipy.interpolate import interp1d
 import getEdgePixels as EdgeTools
 import seaborn as sns
+from mantid.geometry import SpaceGroupFactory, PointGroupFactory
+import pickle
 
 #Load the bvgFit files
 workDir = '/SNS/users/ntv/dropbox/'
@@ -58,7 +60,7 @@ df['theta'] = df['QSample'].apply(lambda x: np.arctan2(x[1],x[0]))
 #---------------------------Let's get some trends
 plt.close('all')
 goodIDX = (df['Intens']*5 > df['Intens3d']) & (df['Intens']*1.0/5.0 < df['Intens3d'])
-goodIDX = goodIDX & (df['Intens']<1.0e7) & (df['Intens']>1)
+goodIDX = goodIDX & (df['Intens']<1.0e7) & (df['Intens']>1000) 
 goodIDX = goodIDX & (df['sigX'] < 0.0199) & (df['sigY'] < 0.0199) #& ~(df['PeakNumber'].apply(lambda x: x in badPeaks))
 
 graph1 = sns.jointplot(df[goodIDX]['phi'], np.abs(df[goodIDX]['sigX']),s=1)
@@ -67,8 +69,8 @@ x = np.linspace(-1.5, 1.5, 100)
 y = np.polyval(pX, x)
 graph1.x = x; graph1.y = y; graph1.plot_joint(plt.plot)
 
-graph2 = sns.jointplot(df[goodIDX]['theta'], np.abs(df[goodIDX]['sigY']),s=1)
-pY = np.polyfit(df[goodIDX]['theta'], np.abs(df[goodIDX]['sigY']),4)
+graph2 = sns.jointplot(df[goodIDX]['theta'], df[goodIDX]['sigY'],s=1)
+pY = np.polyfit(df[goodIDX]['theta'], np.abs(df[goodIDX]['sigY']),2)
 x = np.linspace(-0.5, 2.5, 100)
 y = np.polyval(pY, x)
 graph2.x = x; graph2.y = y; graph2.plot_joint(plt.plot)

@@ -70,6 +70,7 @@ doIterativeBackgroundFitting = False
 descriptor = 'run22331' #Does not end with '/'
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 '''
+
 #Beta lactamase - 2016 - MANDI
 loadDir = '/SNS/MANDI/IPTS-15000/data/'
 nxsTemplate = loadDir+'MANDI_%i_event.nxs'
@@ -86,11 +87,34 @@ dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for e
 dtBinWidth = 30 #Width (in us) in TOF profile bins
 dQPixel = [0.003,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
 dQMax = 0.15 #tune this
+descriptor = 'beta_lac_predpws7' #Does not end with '/'
+doIterativeBackgroundFitting = False
+nBG=5
+parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
+predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+
+'''
+#Natrolite - 2016 - MANDI
+loadDir = '/SNS/MANDI/IPTS-8776/nexus/'
+nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
+sampleRuns = range(8733,8750+1)
+peaksFile = '/SNS/users/ntv/integrate/mandi_natrolite/mandi_natrolite_peaks.integrate'
+UBFile =  '/SNS/users/ntv/integrate/mandi_natrolite/mandi_natrolite_niggli_ub.mat'
+peaksFormat = peaksFile
+UBFormat = UBFile
+DetCalFile = None
+qLow = -5.0; qHigh = 5.0
+dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+dtBinWidth = 30 #Width (in us) in TOF profile bins
+dQPixel = [0.005,0.005] #dQ for each voxel in qBox - recommended to decrease for successive fits
+dQMax = 0.15 #tune this
 descriptor = 'beta_lac_predpws6' #Does not end with '/'
 doIterativeBackgroundFitting = False
 nBG=5
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+'''
+
 
 '''
 #Natrolite - 2016 - MANDI
@@ -166,22 +190,12 @@ calibrationDict = pickle.load(open(calibrationDictFile, 'rb'))
 logFile = workDir + descriptor + '/log.log'
 ICFitLog.writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, fracStop, refineCenter, removeEdges, doVolumeNormalization, peaksFormat, UBFormat, DetCalFile, moderatorCoefficientsFile, calibrationDictFile, descriptor,zBG,neigh_length_m)
 
-for sampleRun in [sampleRuns[4]]:
+for sampleRun in [sampleRuns[0]]:
     
     #Set up a few things for the run
     paramList = list()
     fileName = nxsTemplate%sampleRun
-    ''' 
-    #Load the new UB and find peaks in this run if we need to.
-    if peaksFormat is None:
-        peaks_ws = FindPeaksMD(InputWorkspace='MDdata', PeakDistanceThreshold=1.1304, MaxPeaks=1000, DensityThresholdFactor=30, OutputWorkspace='peaks_ws')
-        LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFormat%sampleRun)
-        UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
-    else:
-        peaks_ws = LoadIsawPeaks(Filename = peaksFormat%sampleRun)
-        LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFormat%sampleRun)
-        UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
-    '''
+
     #If we want to remove edges, we rebuild the panel dictionary every run
     # TODO this can be reformulated in QLab and apply R each box.
     instrumentFile = EdgeTools.getInstrumentFile(peaks_ws, peaksFile)
@@ -199,9 +213,6 @@ for sampleRun in [sampleRuns[4]]:
         peaks_ws = FindPeaksMD(InputWorkspace='MDdata', PeakDistanceThreshold=1.1304, MaxPeaks=1000, DensityThresholdFactor=30, OutputWorkspace='peaks_ws')
         LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFormat%sampleRun)
         UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
-    #else:
-    #    LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFormat%sampleRun)
-    #    UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
 
     #Do the actual integration
     peaks_ws,paramList,fitDict = ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients,parameterDict, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.01, fracStop=fracStop, removeEdges=removeEdges, calibrationDict=calibrationDict,dQPixel=dQPixel, calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG, bgPolyOrder=bgPolyOrder, nBG=nBG, doIterativeBackgroundFitting=doIterativeBackgroundFitting,predCoefficients=predpplCoefficients)

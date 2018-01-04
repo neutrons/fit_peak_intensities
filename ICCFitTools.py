@@ -153,22 +153,29 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
     pp_lambda_toCheck = np.unique(conv_n_events)
     pp_lambda_toCheck = pp_lambda_toCheck[1:][np.diff(pp_lambda_toCheck)>0.001]
 
-    
-    if peak is not None: #TODO: This MUST be parameterized, keep it hard coded ONLY for testing
+     
+    if peak is not None: 
         #pred_ppl = scatFun(np.sin(0.5*peak.getScattering())**2/peak.getWavelength()**4, 0.00122958,  0.29769245)
         #pred_ppl = oldScatFun(peak.getScattering()/peak.getWavelength(),5.24730283,  7.23719321,  0.27449887) 
-        pred_ppl = oldScatFun(peak.getScattering()/peak.getWavelength(),predCoefficients[0],predCoefficients[1],predCoefficients[2]) 
-        
-        minppl = minppl_frac*pred_ppl
-        maxppl = maxppl_frac*pred_ppl 
-        if pred_ppl > 2.0:
-            maxppl = 2.0/1.5*maxppl_frac*pred_ppl 
+        if predCoefficients is not None:
+            pred_ppl = oldScatFun(peak.getScattering()/peak.getWavelength(),predCoefficients[0],predCoefficients[1],predCoefficients[2])  
+            minppl = minppl_frac*pred_ppl
+            maxppl = maxppl_frac*pred_ppl 
+
+            if pred_ppl > 2.0:
+                maxppl = 2.0/1.5*maxppl_frac*pred_ppl 
+            pp_lambda_toCheck = pp_lambda_toCheck[pp_lambda_toCheck > minppl]
+            pp_lambda_toCheck = pp_lambda_toCheck[pp_lambda_toCheck < maxppl]
+        else:
+            minppl = np.min(conv_n_events[conv_n_events > 0])
+            maxnppl = np.max(pp_lambda_toCheck)
+            for ppl in pp_lambda_toCheck:
+                if np.sum(conv_n_events > ppl) > 10:
+                    maxnppl = np.max(pp_lambda_toCheck)
+
     else:
         minppl=0
         maxppl = pp_lambda_toCheck.max() + 0.5 #add some just to make sure we don't skip any
-
-    pp_lambda_toCheck = pp_lambda_toCheck[pp_lambda_toCheck > minppl]
-    pp_lambda_toCheck = pp_lambda_toCheck[pp_lambda_toCheck < maxppl]
 
 
     chiSqList = 1.0e30*np.ones_like(pp_lambda_toCheck)
@@ -196,11 +203,11 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
                  break
         except RuntimeError:
             #This is caused by there being fewer datapoints remaining than parameters.  For now, we just hope
-            # we found a satisfactory answer.  TODO: we can rebin and try that, though it may not help much.
+            # we found a satisfactory answer.  
             break
         except KeyboardInterrupt:
             sys.exit()
-    #print '\n'.join([str(v) for v in zip(chiSqList[:i+1], ISIGList[:i+1], IList[:i+1])])
+    print '\n'.join([str(v) for v in zip(chiSqList[:i+1], ISIGList[:i+1], IList[:i+1])])
     chiSqConsider = np.logical_and(chiSqList < 1.2, chiSqList>0.8)
     if np.sum(chiSqConsider) > 1.0:
         use_ppl = np.argmax(ISIGList[chiSqConsider])
@@ -257,6 +264,7 @@ def getBGRemovedIndices(n_events,zBG=1.96,calc_pp_lambda=False, neigh_length_m=3
             except KeyboardInterrupt:
                 sys.exit()
             except:
+                raise
                 pplmin_frac -= 0.1
     print 'ERROR WITH ICCFT:getBGRemovedIndices!' 
 
@@ -292,7 +300,7 @@ def getPixelStep(peak, dtBin=4):
 
 # UB = UBmatrix as loaded by LoadIsawUB().  Only works in the
 #    Qsample frame right now
-#   TODO - calculate this once per run, not every peak
+
 def getDQFracHKL(UB, frac=0.5):
     dQ = np.zeros((3,2))
 
@@ -754,7 +762,6 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.00
             AlignedDim2='Q_sample_z,'+str(Qz-dQ[2,0])+','+str(Qz+dQ[2,1])+','+str(nPtsQ[2]),
             OutputWorkspace = 'MDbox')
             #OutputWorkspace = 'MDbox_'+str(runNumber)+'_'+str(peakNumber))
-
     return Box
 
 
@@ -886,7 +893,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 print 'KeyboardInterrupt: Exiting Program!!!!!!!'
                 sys.exit()
             except: #Error with fitting
-                raise
+                #raise
                 import sys
                 peak.setIntensity(0)
                 peak.setSigmaIntensity(1)

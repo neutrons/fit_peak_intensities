@@ -52,6 +52,19 @@ nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
 dtBinWidth = 25 
 dQPixel=0.005#np.array([0.003, 0.003, 0.003])
 '''
+'''
+#MaNDI natrolite
+peaksFile = '/SNS/users//ntv/integrate/mandi_natrolite/mandi_natrolite_peaks.integrate'
+UBFile =  '/SNS/users/ntv/integrate/mandi_natrolite/mandi_natrolite_niggli_ub.mat'
+DetCalFile = None
+workDir = '/SNS/users/ntv/dropbox/' #End with '/'
+loadDir = '/SNS/MANDI/IPTS-8776/nexus/'
+nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
+#panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
+dtBinWidth = 25 
+dQPixel=0.005#np.array([0.003, 0.003, 0.003])
+predpplCoefficients = None##np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+'''
 
 #Beta Lac
 peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
@@ -64,6 +77,7 @@ nxsTemplate = loadDir+'MANDI_%i_event.nxs'
 dtBinWidth = 25 
 dQPixel=0.003#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+
 
 # Some parameters
 
