@@ -63,7 +63,7 @@ def getDictForPandasPeak(peak, fitParams, fitDict, panelDict, i, pg):
         't':'fitDict[i][0]',  
         'yData':'fitDict[i][1]',  
         'yFit':'fitDict[i][2]',
-        'hklFam': 'pg.getReflectionFamily(peak.getHKL())'}
+        'hklFam': 'tuple(np.array(pg.getReflectionFamily(peak.getHKL())))'}
 
     if len(fitParams[0]) == 17:  
         colFunDict['bg_quad'] = 'fitParams[i,14]'

@@ -110,6 +110,8 @@ def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, dtBi
 
     #peak.setSigmaIntensity(np.sqrt(np.sum(icProfile)))i
     t0 = param.row(3)['Value']
+
+
     intensity, sigma, xStart, xStop = integratePeak(r.readX(0), icProfile,r.readY(0), np.polyval(bgCoefficients, r.readX(1)), pp_lambda=pp_lambda, fracStop=0.01,totEvents=np.sum(n_events[goodIDX*qMask]), bgEvents=np.sum(goodIDX*qMask)*pp_lambda)
 
  
@@ -209,7 +211,7 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
             sys.exit()
     print '\n'.join([str(v) for v in zip(chiSqList[:i+1], ISIGList[:i+1], IList[:i+1])])
     chiSqConsider = np.logical_and(chiSqList < 1.2, chiSqList>0.8)
-    if np.sum(chiSqConsider) > 1.0:
+    if np.sum(chiSqConsider) >= 1.0:
         use_ppl = np.argmax(ISIGList[chiSqConsider])
         pp_lambda = pp_lambda_toCheck[chiSqConsider][use_ppl]
         #print 'USING PP_LAMBDA', pp_lambda, 'WITH CHISQ:', chiSqList[chiSqConsider][use_ppl]
@@ -219,7 +221,6 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
         #print 'USING PP_LAMBDA', pp_lambda, 'WITH CHISQ:', chiSqList[use_ppl]
     #goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
     goodIDX, _ = getBGRemovedIndices(n_events, pp_lambda=pp_lambda)
-
     chiSq, h, intens, sigma = getQuickTOFWS(box, peak, padeCoefficients, goodIDX=goodIDX,qMask=qMask,pp_lambda=pp_lambda,dtBinWidth=dtBinWidth,nBG=nBG)
     if qMask is not None:
         return goodIDX*qMask, pp_lambda
@@ -264,7 +265,7 @@ def getBGRemovedIndices(n_events,zBG=1.96,calc_pp_lambda=False, neigh_length_m=3
             except KeyboardInterrupt:
                 sys.exit()
             except:
-                raise
+                #raise
                 pplmin_frac -= 0.1
     print 'ERROR WITH ICCFT:getBGRemovedIndices!' 
 
@@ -354,7 +355,7 @@ def integratePeak(x, yFit, yData, bg, pp_lambda=0, fracStop = 0.01,totEvents=1, 
         return 0.0, 1.0, x[0], x[-1]
  
     #Do the integration
-    intensity = np.sum(yFit[iStart:iStop] - bg[iStart:iStop])
+    intensity = np.sum(yFit[iStart:iStop] - bg[iStart:iStop]) - bgEvents
 
     #Calculate the background sigma = sqrt(var(Fit) + sum(BG))
     yFitSum = np.sum(yFit[iStart:iStop])
@@ -783,9 +784,10 @@ def doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibration
     #fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.01, 1.0], T00=[0,1.0e10], k_conv0=[10,500],penalty=1.0e20)
     if constraintScheme == 1:
         try:
-            fICC.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0,1.0e10],k_conv0=[100,140],penalty=1.0e10)
+            fICC.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0.,1.e10],k_conv0=[100,140],penalty=1.0e10)
         except:
-            fICC.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0,1.0e10],k_conv0=[100,140],penalty=None)
+            fICC.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[0.,1.e10],k_conv0=[100,140],penalty=None)
+            #fICC.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[x0[3]-150, x0[3]+150],k_conv0=[100,140],penalty=None)
     if constraintScheme == 2:
         try:
             fICC.setPenalizedConstraints(A0=[0.02, 1.0], B0=[0.005, 1.5], R0=[0.00, 1.], scale0=[0.0, 1.0e10],T00=[0,1.0e10], k_conv0=[100.,140], penalty=1.0e20)

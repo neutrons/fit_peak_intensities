@@ -7,19 +7,36 @@ import ICCAnalysisTools as ICAT
 from scipy.interpolate import interp1d
 import getEdgePixels as EdgeTools
 import seaborn as sns
+from mantid.simpleapi import *
 from mantid.geometry import SpaceGroupFactory, PointGroupFactory
 import pickle
 
-#Load the bvgFit files
+#------------------------------Load the bvgFit files
+
+#Beta lactamase
+sampleRuns = range(4999,5004)
 workDir = '/SNS/users/ntv/dropbox/'
 descriptorBVG = 'beta_lac_3D_full'
-descriptorTOF = 'beta_lac_predpws5'
-
-peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
+descriptorTOF = 'beta_lac_predpws7'
+#peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
+peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorBVG, sampleRuns[-1], descriptorBVG)
 ellipseFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 32 2 1")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
-sampleRuns = range(4999,5004)
+
+
+'''
+#NaK
+workDir = '/SNS/users/ntv/dropbox/'
+descriptorBVG = 'nak_3D_full'
+descriptorTOF = 'nak_predpws2'
+sampleRuns = range(8275,8282+1)
+ellipseFile = '/SNS/users/ntv/integrate/mandi_nak/MANDI_nak_8275_8282.integrate'
+peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorBVG, sampleRuns[-1], descriptorBVG)
+sg = SpaceGroupFactory.createSpaceGroup("I 4") 
+pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
+'''
+
 
 #--------------------------------Load everything
 peaks_ws = ICAT.getPeaksWS(peaksFile, wsName='peaks_ws')
@@ -32,19 +49,18 @@ panelDict = EdgeTools.getPanelDictionary(instrumentFile)
 #--------------------------------Create the TOF dataframe 
 dfTOF = pdTOF.getDFForPeaksWS(peaks_ws, fitParams, fitDict, panelDict, pg)
 pdTOF.addPeaksWS(dfTOF,peaks_ws2)#add ellipsoid I, sigma(I)    
-mandiSpec = np.loadtxt('MANDI_current.dat',skiprows=1,delimiter=',')
+mandiSpec = np.loadtxt('/SNS/users/ntv/integrate/MANDI_current.dat',skiprows=1,delimiter=',')
 sortedIDX = np.argsort(mandiSpec[:,0])
 intensSpec = interp1d(mandiSpec[sortedIDX[::3],0], mandiSpec[sortedIDX[::3],1],kind='cubic')
 dfTOF['scaledIntens'] = dfTOF['Intens'] / intensSpec(dfTOF['Wavelength']) * np.mean(mandiSpec[:,1])
 dfTOF['scaledIntensEll'] = dfTOF['IntensEll'] / intensSpec(dfTOF['Wavelength']) * np.mean(mandiSpec[:,1])
-dfTOF['lorentzFactor'] = np.sin(dfTOF['Scattering'])**2 / dfTOF['Wavelength']**4
+dfTOF['lorentzFactor'] = np.sin(0.5*dfTOF['Scattering'])**2 / dfTOF['Wavelength']**4
 dfTOF['lorentzInt'] = dfTOF['Intens']*dfTOF['lorentzFactor']
 dfTOF['lorentzSig'] = dfTOF['SigInt']*dfTOF['lorentzFactor']
 dfTOF['lorentzIntEll'] = dfTOF['IntensEll']*dfTOF['lorentzFactor']
 dfTOF['lorentzSigEll'] = dfTOF['SigEll']*dfTOF['lorentzFactor']
 
 #---------------------------------Create the BVG dataframe
-sampleRuns = [4999,5000, 5001, 5002, 5003]
 bvgParamFiles = [workDir + descriptorBVG + '/bvgParams_%i_%s.pkl'%(sampleRun, descriptorBVG) for sampleRun in sampleRuns]
 bvgParams = []
 for bvgFile in bvgParamFiles:
@@ -54,13 +70,13 @@ dfBVG = pd.DataFrame(bvgParams)
 #--------------------------Join the two dataframes and create some geometric columns
 dfBVG['PeakNumber'] = dfBVG['peakNumber']
 df = dfTOF.merge(dfBVG, on='PeakNumber')
-df['phi'] = df['QSample'].apply(lambda x: np.arctan2(x[2],np.hypot(x[0],x[1])))
-df['theta'] = df['QSample'].apply(lambda x: np.arctan2(x[1],x[0]))
+df['phi'] = df['QLab'].apply(lambda x: np.arctan2(x[2],np.hypot(x[0],x[1])))
+df['theta'] = df['QLab'].apply(lambda x: np.arctan2(x[1],x[0]))
 
 #---------------------------Let's get some trends
 plt.close('all')
 goodIDX = (df['Intens']*5 > df['Intens3d']) & (df['Intens']*1.0/5.0 < df['Intens3d'])
-goodIDX = goodIDX & (df['Intens']<1.0e7) & (df['Intens']>1000) 
+goodIDX = goodIDX & (df['Intens']<1.0e7) & (df['Intens']>90) 
 goodIDX = goodIDX & (df['sigX'] < 0.0199) & (df['sigY'] < 0.0199) #& ~(df['PeakNumber'].apply(lambda x: x in badPeaks))
 
 graph1 = sns.jointplot(df[goodIDX]['phi'], np.abs(df[goodIDX]['sigX']),s=1)
@@ -124,7 +140,7 @@ df['notOutlier'] = ~df['isOutlier']
 
 
 #---------------------Select outputs and save a LaueNorm File
-goodIDX = (df['chiSq'] < 100.0) & (df['Intens3d'] > 1)  & (df['Intens3d']<3.0e7) & (df['chiSq3d'] < 5.0) & (df['notOutlier'])
+goodIDX = (df['chiSq'] < 100.0) & (df['Intens3d'] > 1)  & (df['Intens3d']<1.0e4) & (df['chiSq3d'] < 5.0) & (df['notOutlier'])
 tooFarIDX = (np.abs(df['Intens3d'] > 100)) & ((np.abs(df['Intens3d']-df['IntensEll']) > 4.0*df['Intens3d']) |  (np.abs(df['Intens3d']-df['IntensEll']) > 4.0*df['Intens3d']))
 #goodIDX = goodIDX #& ~tooFarIDX
 
@@ -145,18 +161,18 @@ print 'Removing bad peaks from peaks_ws.  This can take some time...'
 ws = CreatePeaksWorkspace(NumberOfPeaks=0, OutputWorkspace="ws")
 peaksAdded = 0
 peaks_ws_clone = CloneWorkspace(InputWorkspace=peaks_ws, OutputWorkspace='peaks_ws_clone')
-for i in range(peaks_ws.getNumberPeaks()):
-    ICAT.print_progress(i,peaks_ws.getNumberPeaks(),prefix='Cleaning df: ',suffix='Complete')
+for i in range(len(df)):
+    ICAT.print_progress(i,len(df),prefix='Cleaning df: ',suffix='Complete')
     try:
         if goodIDX[i]:
-            ws.addPeak(peaks_ws_clone.getPeak(i))
-            ws.getPeak(peaksAdded).setIntensity(float(df.loc[i]['Intens3d']))
-            ws.getPeak(peaksAdded).setSigmaIntensity(float(df.loc[i]['SigInt3d']))
+            ws.addPeak(peaks_ws_clone.getPeak(df.iloc[i]['peakNumber']))
+            ws.getPeak(peaksAdded).setIntensity(float(df.iloc[i]['Intens3d']))
+            ws.getPeak(peaksAdded).setSigmaIntensity(float(df.iloc[i]['SigInt3d']))
             peaksAdded += 1
     except KeyError:
-        #raise
+        raise
         pass
 
 print 'Saving LaueNorm Input'
-SaveLauenorm(InputWorkspace=ws, Filename=workDir+descriptorBVG+'/laue/laueNorm', ScalePeaks=3000.0, minDSpacing=2.0, minWavelength=2.0, MaxWavelength=4.0, SortFilesBy='RunNumber', MinIsigI=1, MinIntensity=0)
+SaveLauenorm(InputWorkspace=ws, Filename=workDir+descriptorBVG+'/laue/laueNorm', ScalePeaks=3.0, minDSpacing=2.0, minWavelength=2.0, MaxWavelength=4.0, SortFilesBy='RunNumber', MinIsigI=1, MinIntensity=0)
 

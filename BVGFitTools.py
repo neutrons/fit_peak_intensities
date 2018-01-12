@@ -46,7 +46,8 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
     dEdge = edgeCutoff
     useForceParams = peak.getIntensity() < forceCutoff or peak.getRow() <= dEdge or peak.getRow() >= 255-dEdge or peak.getCol() <= dEdge or peak.getCol() >= 255-dEdge
     if strongPeakParams is not None and useForceParams:
-        q = peak.getQSampleFrame()
+        #q = peak.getQSampleFrame()
+        q = peak.getQLabFrame()
         print peak.getQSampleFrame()
         th = np.arctan2(q[1],q[0])
         ph = np.arctan2(q[2],np.hypot(q[0],q[1]))
@@ -109,8 +110,6 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
     QX, QY, QZ = ICCFT.getQXQYQZ(box)
     fitMaxIDX = tuple(np.array(np.unravel_index(Y2.argmax(), Y2.shape)) // (numTimesToInterpolate+1))
     newCenter = np.array([QX[fitMaxIDX], QY[fitMaxIDX], QZ[fitMaxIDX]])
-    print np.unravel_index(Y2.argmax(), Y2.shape)
-    print newCenter, peak.getQSampleFrame(), 'dQ: ', np.linalg.norm(newCenter - peak.getQSampleFrame())
 
     retParams['dQ'] =  np.linalg.norm(newCenter - peak.getQSampleFrame())
     retParams['newQSample'] =  newCenter 
@@ -283,7 +282,6 @@ def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVol
     
     for i, param in enumerate(['A','B','R','T0','scale', 'hatWidth', 'k_conv']):
         fICC[param] = mtd['fit_Parameters'].row(i)['Value']
-    
     bgParamsRows = [7 + i for i in range(bgPolyOrder+1)]
     bgCoeffs = []
     for bgRow in bgParamsRows[::-1]:#reverse for numpy order 
@@ -300,7 +298,6 @@ def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVol
         iStart = np.min(np.where(goodIDX))
         iStop = np.max(np.where(goodIDX))
 
-    print 'bg: ', np.sum(bg[iStart:iStop])
    
     interpF = interp1d(x, yFit, kind='cubic')
     tofxx = np.linspace(tofWS.readX(0).min(), tofWS.readX(0).max(),1000)
@@ -310,6 +307,7 @@ def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVol
         plt.plot(tofxx,tofyy,label='Interpolated')
         plt.plot(tofWS.readX(0), tofWS.readY(0),'o',label='Data')
         print 'sum:', np.sum(fICC.function1D(tofWS.readX(0)))
+        print 'bg: ', np.sum(bg[iStart:iStop])
         plt.plot(mtd['fit_Workspace'].readX(1), mtd['fit_Workspace'].readY(1),label='Fit')
         plt.title(fitResults.OutputChi2overDoF)
         plt.legend(loc='best')
@@ -546,12 +544,13 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
             bounds = ([0.0, thBins[thBins.size//2 - 2], phBins[phBins.size//2 - 2], 0.000, 0.000, -np.inf, 0], 
                     [np.inf, thBins[thBins.size//2 + 2], phBins[phBins.size//2 + 2], 0.02, 0.02, np.inf, np.inf])
             params= curve_fit(bvgFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(),p0=p0, bounds=bounds, sigma=np.sqrt(weights[fitIDX]))
-            print params[0]
+            print '!!!', params[0]
 
     elif forceParams is not None:
         p0 = np.zeros(7)
         p0[0] = np.max(h); p0[1] = TH.mean(); p0[2] = PH.mean()
         p0[3] = forceParams[5]; p0[4] = forceParams[6]; p0[5] = forceParams[7];
+        print p0
         isPos = np.sign(p0)
         bounds = ((1.0-isPos*forceTolerance)*p0, (1.0+isPos*forceTolerance)*p0)
         bounds[0][0] = 0.0;  bounds[1][0] = np.inf; 

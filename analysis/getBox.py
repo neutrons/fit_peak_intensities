@@ -40,18 +40,17 @@ workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
 '''
-'''
 #NaK 2017
 peaksFile = '/SNS/users/ntv/integrate/mandi_nak/MANDI_nak_8275_8282.integrate'
-UBFile =  '/SNS/users/ntv/integrate/mandi_nak/MANDI_NAK_UB_8275.mat'
+UBFile = '/SNS/users/ntv/integrate/mandi_nak/MANDI_NAK_UB.mat'
 DetCalFile = None
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/MANDI/IPTS-17495/nexus/'
 nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
 #panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
 dtBinWidth = 25 
-dQPixel=0.005#np.array([0.003, 0.003, 0.003])
-'''
+dQPixel=0.003#np.array([0.003, 0.003, 0.003])
+predpplCoefficients = np.array([12.51275, 13.078622, 0.18924]) #Go with ICCFT.oldScatFun
 '''
 #MaNDI natrolite
 peaksFile = '/SNS/users//ntv/integrate/mandi_natrolite/mandi_natrolite_peaks.integrate'
@@ -65,7 +64,7 @@ dtBinWidth = 25
 dQPixel=0.005#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = None##np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 '''
-
+'''
 #Beta Lac
 peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
 UBFile =  '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
@@ -77,7 +76,7 @@ nxsTemplate = loadDir+'MANDI_%i_event.nxs'
 dtBinWidth = 25 
 dQPixel=0.003#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
-
+'''
 
 # Some parameters
 
