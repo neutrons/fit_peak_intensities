@@ -12,7 +12,7 @@ from mantid.geometry import SpaceGroupFactory, PointGroupFactory
 import pickle
 
 #------------------------------Load the bvgFit files
-
+'''
 #Beta lactamase
 sampleRuns = range(4999,5004)
 workDir = '/SNS/users/ntv/dropbox/'
@@ -23,19 +23,17 @@ peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorBVG, sampleRuns[-1],
 ellipseFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 32 2 1")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
-
-
 '''
+
 #NaK
 workDir = '/SNS/users/ntv/dropbox/'
-descriptorBVG = 'nak_3D_full'
+descriptorBVG = 'nak_3D_full_labnn'
 descriptorTOF = 'nak_predpws2'
 sampleRuns = range(8275,8282+1)
 ellipseFile = '/SNS/users/ntv/integrate/mandi_nak/MANDI_nak_8275_8282.integrate'
 peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorBVG, sampleRuns[-1], descriptorBVG)
 sg = SpaceGroupFactory.createSpaceGroup("I 4") 
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
-'''
 
 
 #--------------------------------Load everything

@@ -46,8 +46,8 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
     dEdge = edgeCutoff
     useForceParams = peak.getIntensity() < forceCutoff or peak.getRow() <= dEdge or peak.getRow() >= 255-dEdge or peak.getCol() <= dEdge or peak.getCol() >= 255-dEdge
     if strongPeakParams is not None and useForceParams:
-        #q = peak.getQSampleFrame()
-        q = peak.getQLabFrame()
+        q = peak.getQSampleFrame()
+        #q = peak.getQLabFrame()
         print peak.getQSampleFrame()
         th = np.arctan2(q[1],q[0])
         ph = np.arctan2(q[2],np.hypot(q[0],q[1]))

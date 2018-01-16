@@ -85,7 +85,7 @@ dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for e
 dtBinWidth = 30 #Width (in us) in TOF profile bins
 dQPixel = [0.003,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
 dQMax = 0.15 #tune this
-descriptor = 'nak_predpws3' #Does not end with '/'
+descriptor = 'nak_predpws4' #Does not end with '/'
 doIterativeBackgroundFitting = False
 nBG=5
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
@@ -213,8 +213,7 @@ calibrationDict = pickle.load(open(calibrationDictFile, 'rb'))
 logFile = workDir + descriptor + '/log.log'
 ICFitLog.writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, fracStop, refineCenter, removeEdges, doVolumeNormalization, peaksFormat, UBFormat, DetCalFile, moderatorCoefficientsFile, calibrationDictFile, descriptor,zBG,neigh_length_m)
 
-for sampleRun in [sampleRuns[-1]]:
-    0/0    
+for sampleRun in sampleRuns:
     #Set up a few things for the run
     paramList = list()
     fileName = nxsTemplate%sampleRun

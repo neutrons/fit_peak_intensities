@@ -211,7 +211,7 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
             sys.exit()
     print '\n'.join([str(v) for v in zip(chiSqList[:i+1], ISIGList[:i+1], IList[:i+1])])
     chiSqConsider = np.logical_and(chiSqList < 1.2, chiSqList>0.8)
-    if np.sum(chiSqConsider) >= 1.0:
+    if np.sum(chiSqConsider) <= -1.0:
         use_ppl = np.argmax(ISIGList[chiSqConsider])
         pp_lambda = pp_lambda_toCheck[chiSqConsider][use_ppl]
         #print 'USING PP_LAMBDA', pp_lambda, 'WITH CHISQ:', chiSqList[chiSqConsider][use_ppl]
@@ -256,7 +256,7 @@ def getBGRemovedIndices(n_events,zBG=1.96,calc_pp_lambda=False, neigh_length_m=3
         return getPoissionGoodIDX(n_events, zBG=zBG, neigh_length_m=neigh_length_m) 
     
     if peak is not None and box is not None and padeCoefficients is not None:
-        pplmin_frac = 0.8
+        pplmin_frac = 0.5
         while pplmin_frac >= 0.0:
             try:
                 return getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=neigh_length_m, minppl_frac=pplmin_frac,
@@ -265,7 +265,7 @@ def getBGRemovedIndices(n_events,zBG=1.96,calc_pp_lambda=False, neigh_length_m=3
             except KeyboardInterrupt:
                 sys.exit()
             except:
-                #raise
+                raise
                 pplmin_frac -= 0.1
     print 'ERROR WITH ICCFT:getBGRemovedIndices!' 
 
