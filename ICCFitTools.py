@@ -150,15 +150,12 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
     convBox = 1.0*np.ones([neigh_length_m, neigh_length_m,neigh_length_m]) / neigh_length_m**3
     conv_n_events = convolve(n_events,convBox)
     pp_lambda = get_pp_lambda(n_events,hasEventsIDX) #Get the most probable number of events
-    #print pp_lambda, conv_n_events.max(), '~~~~~~'
 
     pp_lambda_toCheck = np.unique(conv_n_events)
     pp_lambda_toCheck = pp_lambda_toCheck[1:][np.diff(pp_lambda_toCheck)>0.001]
 
      
     if peak is not None: 
-        #pred_ppl = scatFun(np.sin(0.5*peak.getScattering())**2/peak.getWavelength()**4, 0.00122958,  0.29769245)
-        #pred_ppl = oldScatFun(peak.getScattering()/peak.getWavelength(),5.24730283,  7.23719321,  0.27449887) 
         if predCoefficients is not None:
             pred_ppl = oldScatFun(peak.getScattering()/peak.getWavelength(),predCoefficients[0],predCoefficients[1],predCoefficients[2])  
             minppl = minppl_frac*pred_ppl
@@ -183,13 +180,11 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
     chiSqList = 1.0e30*np.ones_like(pp_lambda_toCheck)
     ISIGList = 1.0e-30*np.ones_like(pp_lambda_toCheck)
     IList = 1.0e-30*np.ones_like(pp_lambda_toCheck)
-    #hList = []
     oldGoodIDXSum = -1.0
     for i, pp_lambda in enumerate(pp_lambda_toCheck):
         try:
             goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
             if np.sum(goodIDX) == oldGoodIDXSum: #No new points removed, we skip this
-                #print '#############skipping pp_lambda=%4.4f because no new entries'%pp_lambda
                 continue
             else:
                 oldGoodIDXSum = np.sum(goodIDX)
@@ -210,16 +205,9 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
         except KeyboardInterrupt:
             sys.exit()
     print '\n'.join([str(v) for v in zip(chiSqList[:i+1], ISIGList[:i+1], IList[:i+1])])
-    chiSqConsider = np.logical_and(chiSqList < 1.2, chiSqList>0.8)
-    if np.sum(chiSqConsider) <= -1.0:
-        use_ppl = np.argmax(ISIGList[chiSqConsider])
-        pp_lambda = pp_lambda_toCheck[chiSqConsider][use_ppl]
-        #print 'USING PP_LAMBDA', pp_lambda, 'WITH CHISQ:', chiSqList[chiSqConsider][use_ppl]
-    else:
-        use_ppl = np.argmin(np.abs(chiSqList[:i+1]-1.0))
-        pp_lambda = pp_lambda_toCheck[use_ppl]
-        #print 'USING PP_LAMBDA', pp_lambda, 'WITH CHISQ:', chiSqList[use_ppl]
-    #goodIDX = np.logical_and(hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
+    use_ppl = np.argmin(np.abs(chiSqList[:i+1]-1.0))
+    pp_lambda = pp_lambda_toCheck[use_ppl]
+    #print 'USING PP_LAMBDA', pp_lambda, 'WITH CHISQ:', chiSqList[use_ppl]
     goodIDX, _ = getBGRemovedIndices(n_events, pp_lambda=pp_lambda)
     chiSq, h, intens, sigma = getQuickTOFWS(box, peak, padeCoefficients, goodIDX=goodIDX,qMask=qMask,pp_lambda=pp_lambda,dtBinWidth=dtBinWidth,nBG=nBG)
     if qMask is not None:

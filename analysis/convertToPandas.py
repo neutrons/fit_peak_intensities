@@ -6,8 +6,8 @@ import sys
 sys.path.append('../')
 import getEdgePixels as EdgeTools
 import ICCAnalysisTools as ICAT
-import xgboost as xgb
-from sklearn.model_selection import train_test_split
+#import xgboost as xgb
+#from sklearn.model_selection import train_test_split
 import ICConvoluted as ICC
 import ICCFitTools as ICCFT
 from scipy.stats import pearsonr as corr

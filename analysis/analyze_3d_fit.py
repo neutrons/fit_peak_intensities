@@ -6,7 +6,7 @@ import convertToPandas as pdTOF
 import ICCAnalysisTools as ICAT
 from scipy.interpolate import interp1d
 import getEdgePixels as EdgeTools
-import seaborn as sns
+#import seaborn as sns
 from mantid.simpleapi import *
 from mantid.geometry import SpaceGroupFactory, PointGroupFactory
 import pickle
@@ -31,7 +31,7 @@ descriptorBVG = 'nak_3D_full_labnn'
 descriptorTOF = 'nak_predpws2'
 sampleRuns = range(8275,8282+1)
 ellipseFile = '/SNS/users/ntv/integrate/mandi_nak/MANDI_nak_8275_8282.integrate'
-peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorBVG, sampleRuns[-1], descriptorBVG)
+peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
 sg = SpaceGroupFactory.createSpaceGroup("I 4") 
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
 
@@ -76,7 +76,7 @@ plt.close('all')
 goodIDX = (df['Intens']*5 > df['Intens3d']) & (df['Intens']*1.0/5.0 < df['Intens3d'])
 goodIDX = goodIDX & (df['Intens']<1.0e7) & (df['Intens']>90) 
 goodIDX = goodIDX & (df['sigX'] < 0.0199) & (df['sigY'] < 0.0199) #& ~(df['PeakNumber'].apply(lambda x: x in badPeaks))
-
+'''
 graph1 = sns.jointplot(df[goodIDX]['phi'], np.abs(df[goodIDX]['sigX']),s=1)
 pX = np.polyfit(df[goodIDX]['phi'], np.abs(df[goodIDX]['sigX']),4)
 x = np.linspace(-1.5, 1.5, 100)
@@ -88,7 +88,7 @@ pY = np.polyfit(df[goodIDX]['theta'], np.abs(df[goodIDX]['sigY']),2)
 x = np.linspace(-0.5, 2.5, 100)
 y = np.polyval(pY, x)
 graph2.x = x; graph2.y = y; graph2.plot_joint(plt.plot)
-
+'''
 #====to save
 #r = np.array(df[goodIDX][['theta', 'phi', 'scale3d', 'muTH', 'muPH', 'sigX', 'sigY', 'sigP']])
 #pickle.dump(r, open('strongPeakParams.pkl', 'wb'))
