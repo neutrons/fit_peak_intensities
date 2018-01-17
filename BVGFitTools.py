@@ -17,8 +17,17 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 # BVGFT.compareBVGFitData(box,params[0])
 
 
-def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxToHistogram=1.0,numTimesToInterpolate=1, plotResults=False,nBG=15, dtBinWidth=4,zBG=1.96,bgPolyOrder=1, fICCParams = None, oldICCFit=None, strongPeakParams=None, forceCutoff=250, edgeCutoff=15, predCoefficients=None, neigh_length_m=3):
+def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxToHistogram=1.0,numTimesToInterpolate=1, plotResults=False,nBG=15, dtBinWidth=4,zBG=1.96,bgPolyOrder=1, fICCParams = None, oldICCFit=None, strongPeakParams=None, forceCutoff=250, edgeCutoff=15, predCoefficients=None, neigh_length_m=3, q_frame = 'sample'):
     n_events = box.getNumEventsArray()
+
+    if q_frame == 'lab':
+        q0 = peak.getQLabFrame()
+    elif q_frame == 'sample':
+        q0 = peak.getQSampleFrame()
+    else:
+        raise ValueError('BVGFT:get3DPeak - q_frame must be either \'lab\' or \'sample\'; %s was provided'%q_frame)
+
+
 
     if fICCParams is None:
         goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events, peak=peak, box=box,qMask=qMask, calc_pp_lambda=True, padeCoefficients=padeCoefficients, dtBinWidth=dtBinWidth,nBG=nBG, predCoefficients=predCoefficients,neigh_length_m=neigh_length_m)
@@ -46,11 +55,9 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
     dEdge = edgeCutoff
     useForceParams = peak.getIntensity() < forceCutoff or peak.getRow() <= dEdge or peak.getRow() >= 255-dEdge or peak.getCol() <= dEdge or peak.getCol() >= 255-dEdge
     if strongPeakParams is not None and useForceParams:
-        q = peak.getQSampleFrame()
-        #q = peak.getQLabFrame()
-        print peak.getQSampleFrame()
-        th = np.arctan2(q[1],q[0])
-        ph = np.arctan2(q[2],np.hypot(q[0],q[1]))
+        print q0
+        th = np.arctan2(q0[1],q0[0])
+        ph = np.arctan2(q0[2],np.hypot(q0[0],q0[1]))
         thphPeak = np.array([th,ph])
         nnIDX = np.argmin(np.linalg.norm(strongPeakParams[:,:2] - thphPeak,axis=1))
         print 'Using ', strongPeakParams[nnIDX,:2], 'for ', thphPeak
@@ -111,8 +118,8 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
     fitMaxIDX = tuple(np.array(np.unravel_index(Y2.argmax(), Y2.shape)) // (numTimesToInterpolate+1))
     newCenter = np.array([QX[fitMaxIDX], QY[fitMaxIDX], QZ[fitMaxIDX]])
 
-    retParams['dQ'] =  np.linalg.norm(newCenter - peak.getQSampleFrame())
-    retParams['newQSample'] =  newCenter 
+    retParams['dQ'] =  np.linalg.norm(newCenter - q0)
+    retParams['newQ'] =  newCenter 
 
     return Y2, goodIDX, pp_lambda, retParams
 
@@ -463,8 +470,8 @@ def integrateBVGFit(Y,params):
     sigma = np.sqrt(fitSum + bgSum)
     return intensity, sigma
 
-def integrateBVGPeak(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.005,fracHKL = 0.5, refineCenter=False, fracHKLRefine = 0.2,nTheta=400,nPhi=400):
-    box = getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel)
+def integrateBVGPeak(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.005,fracHKL = 0.5, refineCenter=False, fracHKLRefine = 0.2,nTheta=400,nPhi=400, q_frame='sample'):
+    box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel,q_frame=q_frame)
     params,h,t,p = doBVGFit(box,nTheta=nTheta,nPhi=nPhi)
     Y = getBVGResult(box, params[0],nTheta=nTheta,nPhi=nPhi)
     intens, sigma = integrateBVGFit(Y,params)
@@ -539,7 +546,7 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
             sigX0 = np.polyval([ 0.00173264,  0.0002208 ,  0.00185031, -0.00012078,  0.00189967], meanPH)
             sigY0 = np.polyval([ 0.00045678, -0.0017618 ,  0.0045013 , -0.00480677,  0.00376619], meanTH)
              
-            p0=[np.max(h), meanTH, meanPH, sigX0, sigY0, 0.00,0.0]
+            p0=[np.max(h), meanTH, meanPH, min(sigX0,0.02), min(sigY0, 0.02), 0.00,0.0]
             print p0 
             bounds = ([0.0, thBins[thBins.size//2 - 2], phBins[phBins.size//2 - 2], 0.000, 0.000, -np.inf, 0], 
                     [np.inf, thBins[thBins.size//2 + 2], phBins[phBins.size//2 + 2], 0.02, 0.02, np.inf, np.inf])

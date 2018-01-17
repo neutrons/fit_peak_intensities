@@ -26,7 +26,7 @@ def scatFun(x, A, bg):
 def oldScatFun(x,A,k,bg):
     return 1.0*A*np.exp(-k*x) + bg
 
-def calcSomeTOF(box, peak, refitIDX = None):
+def calcSomeTOF(box, peak, refitIDX = None, q_frame='sample'):
     xaxis = box.getXDimension()
     qx = np.linspace(xaxis.getMinimum(), xaxis.getMaximum(), xaxis.getNBins())
     yaxis = box.getYDimension()
@@ -39,7 +39,12 @@ def calcSomeTOF(box, peak, refitIDX = None):
         refitIDX = np.ones_like(QX).astype(np.bool)
 
     from mantid.kernel import V3D
-    qS0 = peak.getQSampleFrame()
+    if q_frame == 'lab':
+        qS0 = peak.getQLabFrame()
+    elif q_frame == 'sample': 
+        qS0 = peak.getQSampleFrame()
+    else:
+        raise ValueError('ICCFT:calcSomeTOF - q_frame must be either \'lab\' or \'sample\'; %s was provided'%q_frame)
     PIXELFACTOR = np.ones_like(QX)*(peak.getL1() + peak.getL2())*np.sin(0.5*peak.getScattering())
     for i, x in enumerate(qx):
         print i
@@ -257,15 +262,23 @@ def getBGRemovedIndices(n_events,zBG=1.96,calc_pp_lambda=False, neigh_length_m=3
                 pplmin_frac -= 0.1
     print 'ERROR WITH ICCFT:getBGRemovedIndices!' 
 
-def getDQTOF(peak, dtSpread=0.03, maxDQ=0.5):
+def getDQTOF(peak, dtSpread=0.03, maxDQ=0.5,q_frame='sample'):
     dQ=np.zeros(3)
     dtTarget = dtSpread*peak.getTOF()
     gamma = 3176.507*(peak.getL1()+peak.getL2())*np.sin(peak.getScattering()*0.5)
+
+    if q_frame == 'lab':
+        q0 = peak.getQLabFrame()
+    elif q_frame == 'sample': 
+        q0 = peak.getQSampleFrame()
+    else:
+        raise ValueError('ICCFT:getDQTOF - q_frame must be either \'lab\' or \'sample\'; %s was provided'%q_frame)
+
     for i in range(3):
         gradientVector=np.zeros(3)
-        gradientVector[i]= np.sign(peak.getQSampleFrame()[i]) 
+        gradientVector[i]= np.sign(q0[i]) 
         for qStep in np.linspace(0,maxDQ, 100):
-            dt = np.abs((gamma /np.linalg.norm(peak.getQSampleFrame()+gradientVector*qStep)) - peak.getTOF())
+            dt = np.abs((gamma /np.linalg.norm(q0+gradientVector*qStep)) - peak.getTOF())
             if dt >dtTarget:
                 dQ[i] = qStep
                 break;
@@ -274,13 +287,19 @@ def getDQTOF(peak, dtSpread=0.03, maxDQ=0.5):
     dQ2d = np.array([[dQ[0],dQ[0]],[dQ[1],dQ[1]],[dQ[2],dQ[2]]])
     return dQ2d
 
-def getPixelStep(peak, dtBin=4):
+def getPixelStep(peak, dtBin=4, q_frame='sample'):
     gamma = 3176.507*(peak.getL1()+peak.getL2())*np.sin(peak.getScattering()*0.5)
-    gradientVector = -1.0*np.sign(peak.getQSampleFrame())
+    if q_frame == 'lab':
+        q0 = peak.getQLabFrame()
+    elif q_frame == 'sample': 
+        q0 = peak.getQSampleFrame()
+    else:
+        raise ValueError('ICCFT:getPixelStep - q_frame must be either \'lab\' or \'sample\'; %s was provided'%q_frame)
+    gradientVector = -1.0*np.sign(q0)
     gradientVector *= 1.0/np.sqrt(3.0)
     
     for qStep in np.linspace(0,0.005, 100):
-            dt = np.abs((gamma /np.linalg.norm(peak.getQSampleFrame()+gradientVector*qStep)) - peak.getTOF())
+            dt = np.abs((gamma /np.linalg.norm(q0+gradientVector*qStep)) - peak.getTOF())
             if dt >dtBin/np.sqrt(3):
                 return qStep
 
@@ -348,10 +367,8 @@ def integratePeak(x, yFit, yData, bg, pp_lambda=0, fracStop = 0.01,totEvents=1, 
     #Calculate the background sigma = sqrt(var(Fit) + sum(BG))
     yFitSum = np.sum(yFit[iStart:iStop])
     bgSum = np.abs(np.sum(bg[iStart:iStop]))
-    #varFit = np.average((yData-yFit)**2,weights=(yData-bg))   
-    #sigma = np.sqrt(varFit + bgSum)
-    sigma = np.sqrt(totEvents + bgEvents) 
-    #sigma = np.sqrt(totEvents)
+    #sigma = np.sqrt(totEvents + bgEvents) 
+    sigma = np.sqrt(intensity + 2.0*bgEvents)
     print 'Intensity: ', intensity, 'Sigma: ', sigma, 'pp_lambda:', pp_lambda
     return intensity, sigma, xStart, xStop
 
@@ -607,15 +624,22 @@ def getInitialGuess(tofWS, paramNames, energy, flightPath, padeCoefficients,detN
 # DetCalFile is a string for the file containng the detector calibration
 # workDir is not used
 # loadDir is the directory to extract the data from
-def getSample(run, DetCalFile,  workDir, fileName, qLow=-25, qHigh=25):
+def getSample(run, DetCalFile,  workDir, fileName, qLow=-25, qHigh=25, q_frame='sample'):
     #data
     print 'Loading file', fileName
     data = Load(Filename = fileName)
     if DetCalFile is not None:
         LoadIsawDetCal(InputWorkspace = data, Filename = DetCalFile)
-    
+   
+    if q_frame == 'lab':
+        Q3DFrame = 'Q_lab'
+    elif q_frame == 'sample': 
+        Q3DFrame = 'Q_sample'
+    else:
+        raise ValueError('ICCFT:calcSomeTOF - q_frame must be either \'lab\' or \'sample\'; %s was provided'%q_frame)
+     
     MDdata = ConvertToMD(InputWorkspace = data, QDimensions = 'Q3D', dEAnalysisMode = 'Elastic',
-      Q3DFrames = 'Q_sample', QConversionScales = 'Q in A^-1',
+      Q3DFrames = Q3DFrame, QConversionScales = 'Q in A^-1',
       MinValues = '%f, %f, %f'%(qLow, qLow, qLow), Maxvalues = '%f, %f, %f'%(qHigh, qHigh, qHigh), MaxRecursionDepth=10,
         LorentzCorrection=False)
     return MDdata
@@ -669,7 +693,7 @@ def plotFit(filenameFormat, r,tofWS,fICC,runNumber, peakNumber, energy, chiSq,bg
     plt.legend(loc='best')
     plt.savefig(filenameFormat%(runNumber, peakNumber))
 
-
+# TODO: redo with qLab and qSample
 def getRefinedCenter(peak, MDdata, UBMatrix, dQPixel,nPtsQ, neigh_length_m = 5, fracHKLSearch = 0.2):
     from mantid.kernel._kernel import V3D
     QSample = peak.getQSampleFrame()
@@ -706,7 +730,7 @@ def getRefinedCenter(peak, MDdata, UBMatrix, dQPixel,nPtsQ, neigh_length_m = 5, 
     qS[1] = qy[peakIDX[1]]
     qS[2] = qz[peakIDX[2]]
     peak.setQSampleFrame(qS)
-    newWavelength = 4*np.pi*np.sin(peak.getScattering()/2.0)/np.sqrt(np.sum(np.power(peak.getQSampleFrame(),2)))
+    newWavelength = 4*np.pi*np.sin(peak.getScattering()/2.0)/np.sqrt(np.sum(np.power(QSample,2)))
     peak.setWavelength(newWavelength)
     print 'Wavelength %4.4f --> %4.4f'%(oldWavelength, newWavelength)
     return np.array([qx[peakIDX[0]], qy[peakIDX[1]], qz[peakIDX[2]]])
@@ -724,31 +748,36 @@ def getRefinedCenter(peak, MDdata, UBMatrix, dQPixel,nPtsQ, neigh_length_m = 5, 
 #    peakNumber: integer peak number within a  dataset - basically an index
 #  Returns:
 #  Box, an MDWorkspace with histogrammed events around the peak
-def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.005,fracHKL = 0.5, refineCenter=False, fracHKLRefine = 0.2):
+def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.005,fracHKL = 0.5, refineCenter=False, fracHKLRefine = 0.2, q_frame='sample'):
     runNumber = peak.getRunNumber()
-    QSample = peak.getQSampleFrame()
-    Qx = QSample[0]
-    Qy = QSample[1]
-    Qz = QSample[2]
+    if q_frame == 'lab':
+        q0 = peak.getQLabFrame()
+    elif q_frame == 'sample': 
+        q0 = peak.getQSampleFrame()
+    else:
+        raise ValueError('ICCFT:calcSomeTOF - q_frame must be either \'lab\' or \'sample\'; %s was provided'%q_frame)
+    Qx = q0[0]
+    Qy = q0[1]
+    Qz = q0[2]
     dQ = np.abs(dQ)
     dQ[dQ>0.5] = 0.5
     nPtsQ = np.round(np.sum(dQ/dQPixel,axis=1)).astype(int)
     if refineCenter: #Find better center by flattining the cube in each direction and fitting a Gaussian
 
         #Get the new centers and new Box
-        Qxr,Qyr,Qzr = getRefinedCenter(peak, MDdata, UBMatrix, dQPixel,nPtsQ, neigh_length_m = 5, fracHKLSearch = fracHKLRefine)
+        Qxr,Qyr,Qzr = getRefinedCenter(peak, MDdata, UBMatrix, dQPixel,nPtsQ, neigh_length_m = 5, fracHKLSearch = fracHKLRefine, q_frameFrame=q_frame)
 
         Box = BinMD(InputWorkspace = 'MDdata',
-            AlignedDim0='Q_sample_x,'+str(Qxr-dQ[0,0])+','+str(Qxr+dQ[0,1])+','+str(nPtsQ[0]),
-            AlignedDim1='Q_sample_y,'+str(Qyr-dQ[1,0])+','+str(Qyr+dQ[1,1])+','+str(nPtsQ[1]),
-            AlignedDim2='Q_sample_z,'+str(Qzr-dQ[2,0])+','+str(Qzr+dQ[2,1])+','+str(nPtsQ[2]),
+            AlignedDim0='Q_%s_x,'%q_frame+str(Qxr-dQ[0,0])+','+str(Qxr+dQ[0,1])+','+str(nPtsQ[0]),
+            AlignedDim1='Q_%s_y,'%q_frame+str(Qyr-dQ[1,0])+','+str(Qyr+dQ[1,1])+','+str(nPtsQ[1]),
+            AlignedDim2='Q_%s_z,'%q_frame+str(Qzr-dQ[2,0])+','+str(Qzr+dQ[2,1])+','+str(nPtsQ[2]),
             OutputWorkspace = 'MDbox')
     
     else: #We'll juse use the given center
         Box = BinMD(InputWorkspace = 'MDdata',
-            AlignedDim0='Q_sample_x,'+str(Qx-dQ[0,0])+','+str(Qx+dQ[0,1])+','+str(nPtsQ[0]),
-            AlignedDim1='Q_sample_y,'+str(Qy-dQ[1,0])+','+str(Qy+dQ[1,1])+','+str(nPtsQ[1]),
-            AlignedDim2='Q_sample_z,'+str(Qz-dQ[2,0])+','+str(Qz+dQ[2,1])+','+str(nPtsQ[2]),
+            AlignedDim0='Q_%s_x,'%q_frame+str(Qx-dQ[0,0])+','+str(Qx+dQ[0,1])+','+str(nPtsQ[0]),
+            AlignedDim1='Q_%s_y,'%q_frame+str(Qy-dQ[1,0])+','+str(Qy+dQ[1,1])+','+str(nPtsQ[1]),
+            AlignedDim2='Q_%s_z,'%q_frame+str(Qz-dQ[2,0])+','+str(Qz+dQ[2,1])+','+str(nPtsQ[2]),
             OutputWorkspace = 'MDbox')
             #OutputWorkspace = 'MDbox_'+str(runNumber)+'_'+str(peakNumber))
     return Box
@@ -792,7 +821,7 @@ def doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibration
     return fitResults, fICC
 
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
-def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients, parameterDict, figsFormat=None, dtBinWidth = 4, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, doVolumeNormalization=False, minFracPixels=0.0000, fracStop = 0.01, removeEdges=False, calibrationDict=None,dQPixel=0.005,calcTOFPerPixel=False, p=None,neigh_length_m=0,zBG=-1.0,bgPolyOrder=1, doIterativeBackgroundFitting=False,predCoefficients=None):
+def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients, parameterDict, figsFormat=None, dtBinWidth = 4, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, doVolumeNormalization=False, minFracPixels=0.0000, fracStop = 0.01, removeEdges=False, calibrationDict=None,dQPixel=0.005,calcTOFPerPixel=False, p=None,neigh_length_m=0,zBG=-1.0,bgPolyOrder=1, doIterativeBackgroundFitting=False,predCoefficients=None, q_frame='sample'):
     if removeEdges is True and panelDict is None:
         import sys
         sys.exit('ICCFT:integrateSample - trying to remove edges without a panelDict, this is impossible!')
@@ -804,7 +833,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
         peak = peaks_ws.getPeak(i)
         if peak.getRunNumber() == run:
             try:#for ppppp in [3]:#try:
-                Box = getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel[0])
+                Box = getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel[0], q_frame=q_frame)
                 tof = peak.getTOF() #in us
                 wavelength = peak.getWavelength() #in Angstrom
                 energy = 81.804 / wavelength**2 / 1000.0 #in eV

@@ -40,6 +40,7 @@ workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
 '''
+
 #NaK 2017
 peaksFile = '/SNS/users/ntv/integrate/mandi_nak/MANDI_nak_8275_8282.integrate'
 UBFile = '/SNS/users/ntv/integrate/mandi_nak/MANDI_NAK_UB.mat'
@@ -51,10 +52,11 @@ nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
 dtBinWidth = 25 
 dQPixel=0.003#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = np.array([12.51275, 13.078622, 0.18924]) #Go with ICCFT.oldScatFun
+q_frame = 'sample'
 '''
 #MaNDI natrolite
-peaksFile = '/SNS/users//ntv/integrate/mandi_natrolite/mandi_natrolite_peaks.integrate'
-UBFile =  '/SNS/users/ntv/integrate/mandi_natrolite/mandi_natrolite_niggli_ub.mat'
+peaksFile = '/SNS/users//ntv/integrate/mandi_natrolite/peaks_8679.integrate'
+UBFile =  '/SNS/users/ntv/integrate/mandi_natrolite/mandi_8679_niggli.mat'
 DetCalFile = None
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/MANDI/IPTS-8776/nexus/'
@@ -64,6 +66,8 @@ dtBinWidth = 25
 dQPixel=0.005#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = None##np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 '''
+
+
 '''
 #Beta Lac
 peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
@@ -104,7 +108,7 @@ for ws in mtd.getObjectNames():
         break
 if importFlag:
     fileName = nxsTemplate%peak.getRunNumber()
-    MDdata = ICCFT.getSample(peak.getRunNumber(), DetCalFile, workDir, fileName)
+    MDdata = ICCFT.getSample(peak.getRunNumber(), DetCalFile, workDir, fileName, q_frame=q_frame)
     MDdata.setComment('BSGETBOX%i'%peak.getRunNumber())
 
 figNumber =1 
@@ -123,7 +127,7 @@ dQ[dQ>0.4]=0.4
 
 print dQPixel
 print peak.getQSampleFrame()
-Box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakToGet, dQ, fracHKL=fracHKL,dQPixel=dQPixel, refineCenter=False)
+Box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakToGet, dQ, fracHKL=fracHKL,dQPixel=dQPixel, refineCenter=False, q_frame=q_frame)
 box = Box
 Box.setTitle('Box for peak %i'%peakToGet)
 #SaveMD(InputWorkspace=Box, Filename = 'Box.nxs')
@@ -197,7 +201,7 @@ if True:
     scatteringHalfAngle = 0.5*peak.getScattering()
     edgesToCheck = []#EdgeTools.needsEdgeRemoval(Box,panelDict,peak)
     for dtS in dtSpreadToPlot:
-        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtS,doVolumeNormalization=False, minFracPixels=0.015, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=False, zBG=-1.)
+        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtS,doVolumeNormalization=False, minFracPixels=0.015, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=False, zBG=-1., calc_pp_lambda=False)
         plt.subplot(2,1,2)
         plt.plot(tofWS.readX(0), tofWS.readY(0),'o',label='%2.3f'%dtS)
         tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtS,doVolumeNormalization=False, minFracPixels=0.005, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=False, zBG=1.96,neigh_length_m=3, padeCoefficients=ICCFT.getModeratorCoefficients('franz_coefficients_2017.dat'), predCoefficients=predpplCoefficients)

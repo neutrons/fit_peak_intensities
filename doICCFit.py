@@ -70,7 +70,6 @@ doIterativeBackgroundFitting = False
 descriptor = 'run22331' #Does not end with '/'
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 '''
-
 #NaK - MANDI
 loadDir = '/SNS/MANDI/IPTS-17495/nexus/'
 nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
@@ -85,11 +84,12 @@ dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for e
 dtBinWidth = 30 #Width (in us) in TOF profile bins
 dQPixel = [0.003,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
 dQMax = 0.15 #tune this
-descriptor = 'nak_predpws4' #Does not end with '/'
+descriptor = 'nak_predpws5_lab' #Does not end with '/'
 doIterativeBackgroundFitting = False
 nBG=5
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 predpplCoefficients = np.array([12.51275, 13.078622, 0.18924]) #Go with ICCFT.oldScatFun
+q_frame = 'lab'
 
 '''
 #Beta lactamase - 2016 - MANDI
@@ -108,7 +108,7 @@ dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for e
 dtBinWidth = 30 #Width (in us) in TOF profile bins
 dQPixel = [0.003,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
 dQMax = 0.15 #tune this
-descriptor = 'beta_lac_highres' #Does not end with '/'
+descriptor = 'beta_lac_highres2' #Does not end with '/'
 doIterativeBackgroundFitting = False
 nBG=5
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
@@ -138,21 +138,29 @@ parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scoleci
 predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 '''
 
-
 '''
-#Natrolite - 2016 - MANDI
+#Natrolite - 2017 - MANDI
 loadDir = '/SNS/MANDI/IPTS-8776/nexus/'
 nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
-sampleRuns = [8401]
-peaksFile=None#'/SNS/MANDI/IPTS-8776/shared/Natrolite/New/8041_Niggli.integrate'
-DetCalFile = '/SNS/MANDI/shared/calibration/MANDI_500.DetCal'
-qLow = -25.0; qHigh = 25.0
-dtSpread = [0.025,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+sampleRuns = [8679]
+peaksFile='/SNS/users/ntv/integrate/mandi_natrolite/peaks_8679.integrate'
+UBFile='/SNS/users/ntv/integrate/mandi_natrolite/mandi_8679_niggli.mat'
+#DetCalFile = '/SNS/MANDI/shared/calibration/MANDI_500.DetCal'
+DetCalFile = None
+peaksFormat = peaksFile
+UBFormat = UBFile
+qLow = -10.0; qHigh = 10.0
+dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
 dtBinWidth = 4 #Width (in us) in TOF profile bins
-dQPixel = [0.005,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
-dQMax = 0.4
+dQPixel = [0.003,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
+dQMax = 0.2
 doIterativeBackgroundFitting = False
 descriptor = 'natrolite' #Does not end with '/'
+doIterativeBackgroundFitting = False
+nBG=5
+parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
+predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+q_frame = 'sample'
 '''
 '''
 #Si - 2016A
@@ -227,17 +235,10 @@ for sampleRun in sampleRuns:
         panelDict = EdgeTools.getPanelDictionary(instrumentFile)
 
     #Conver the sample to reciprocal space
-    MDdata = ICCFT.getSample(sampleRun, DetCalFile, workDir, fileName, qLow=qLow, qHigh=qHigh)
+    MDdata = ICCFT.getSample(sampleRun, DetCalFile, workDir, fileName, qLow=qLow, qHigh=qHigh, q_frame=q_frame)
     
-
-    #Load the new UB and find peaks in this run if we need to.
-    if peaksFile is None:
-        peaks_ws = FindPeaksMD(InputWorkspace='MDdata', PeakDistanceThreshold=1.1304, MaxPeaks=1000, DensityThresholdFactor=30, OutputWorkspace='peaks_ws')
-        LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFormat%sampleRun)
-        UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
-
     #Do the actual integration
-    peaks_ws,paramList,fitDict = ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients,parameterDict, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.01, fracStop=fracStop, removeEdges=removeEdges, calibrationDict=calibrationDict,dQPixel=dQPixel, calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG, bgPolyOrder=bgPolyOrder, nBG=nBG, doIterativeBackgroundFitting=doIterativeBackgroundFitting,predCoefficients=predpplCoefficients)
+    peaks_ws,paramList,fitDict = ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients,parameterDict, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.01, fracStop=fracStop, removeEdges=removeEdges, calibrationDict=calibrationDict,dQPixel=dQPixel, calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG, bgPolyOrder=bgPolyOrder, nBG=nBG, doIterativeBackgroundFitting=doIterativeBackgroundFitting,predCoefficients=predpplCoefficients, q_frame=q_frame)
 
     #Save the results and delete the leftovers
     SaveIsawPeaks(InputWorkspace='peaks_ws', Filename=workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))
