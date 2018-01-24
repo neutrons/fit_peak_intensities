@@ -252,7 +252,7 @@ def getBGRemovedIndices(n_events,zBG=1.96,calc_pp_lambda=False, neigh_length_m=3
     
     if peak is not None and box is not None and padeCoefficients is not None:
         pplmax_frac = 1.5
-        pplmin_frac = 0.7
+        pplmin_frac = 0.8
         while pplmin_frac >= 0.0:
             try:
                 return getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=neigh_length_m, minppl_frac=pplmin_frac, maxppl_frac=pplmax_frac,
@@ -645,6 +645,7 @@ def getSample(run, DetCalFile,  workDir, fileName, qLow=-25, qHigh=25, q_frame='
       Q3DFrames = Q3DFrame, QConversionScales = 'Q in A^-1',
       MinValues = '%f, %f, %f'%(qLow, qLow, qLow), Maxvalues = '%f, %f, %f'%(qHigh, qHigh, qHigh), MaxRecursionDepth=10,
         LorentzCorrection=False)
+    mtd.remove('data')
     return MDdata
 
 def plotFitPresentation(filenameFormat, r,tofWS,fICC,runNumber, peakNumber, energy, chiSq,bgFinal, xStart, xStop, bgx0=None):

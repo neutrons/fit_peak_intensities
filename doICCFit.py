@@ -94,6 +94,7 @@ q_frame = 'lab'
 '''
 
 
+'''
 #PsbO - 2016 - MANDI
 loadDir = '/SNS/MANDI/IPTS-16286/data/'
 nxsTemplate = loadDir+'MANDI_%i_event.nxs'
@@ -114,16 +115,15 @@ nBG=5
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 q_frame='lab'
-
-
-
 '''
 #Beta lactamase - 2016 - MANDI
 loadDir = '/SNS/MANDI/IPTS-15000/data/'
 nxsTemplate = loadDir+'MANDI_%i_event.nxs'
 sampleRuns = range(4999,5003+1)
-peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
-UBFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
+peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/combined_triclinic.integrate'
+UBFile = '/SNS/users/ntv/integrate/mandi_betalactamase/combined_triclinic.mat'
+#peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
+#UBFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
 #peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_3.integrate'
 #UBFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
 peaksFormat = peaksFile
@@ -134,13 +134,12 @@ dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for e
 dtBinWidth = 30 #Width (in us) in TOF profile bins
 dQPixel = [0.003,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
 dQMax = 0.15 #tune this
-descriptor = 'beta_lac_lab' #Does not end with '/'
+descriptor = 'beta_lac_lab_highres' #Does not end with '/'
 doIterativeBackgroundFitting = False
 nBG=5
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 q_frame='lab'
-'''
 
 '''
 #Natrolite - 2016 - MANDI
@@ -246,7 +245,7 @@ calibrationDict = pickle.load(open(calibrationDictFile, 'rb'))
 #Write the log
 logFile = workDir + descriptor + '/log.log'
 ICFitLog.writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, fracStop, refineCenter, removeEdges, doVolumeNormalization, peaksFormat, UBFormat, DetCalFile, moderatorCoefficientsFile, calibrationDictFile, descriptor,zBG,neigh_length_m)
-for sampleRun in sampleRuns[1::2]:
+for sampleRun in [sampleRuns[4]]:
     #Set up a few things for the run
     paramList = list()
     fileName = nxsTemplate%sampleRun
@@ -272,5 +271,6 @@ for sampleRun in sampleRuns[1::2]:
     
     wsList = mtd.getObjectNames()
     for ws in wsList:
-        if 'MDbox_' in ws:
+        if 'peaks' not in ws:
             mtd.remove(ws)
+            print 'Removing workspace %s'%ws
