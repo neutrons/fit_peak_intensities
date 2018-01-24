@@ -70,6 +70,7 @@ doIterativeBackgroundFitting = False
 descriptor = 'run22331' #Does not end with '/'
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 '''
+'''
 #NaK - MANDI
 loadDir = '/SNS/MANDI/IPTS-17495/nexus/'
 nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
@@ -90,16 +91,41 @@ nBG=5
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 predpplCoefficients = np.array([12.51275, 13.078622, 0.18924]) #Go with ICCFT.oldScatFun
 q_frame = 'lab'
+'''
+
+
+#PsbO - 2016 - MANDI
+loadDir = '/SNS/MANDI/IPTS-16286/data/'
+nxsTemplate = loadDir+'MANDI_%i_event.nxs'
+sampleRuns = range(6154,6165+1)
+peaksFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.integrate'
+UBFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.mat'
+peaksFormat = peaksFile
+UBFormat = UBFile
+DetCalFile = None
+qLow = -5.0; qHigh = 5.0
+dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+dtBinWidth = 30 #Width (in us) in TOF profile bins
+dQPixel = [0.003,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
+dQMax = 0.15 #tune this
+descriptor = 'psbo_lab' #Does not end with '/'
+doIterativeBackgroundFitting = False
+nBG=5
+parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
+predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+q_frame='lab'
+
+
 
 '''
 #Beta lactamase - 2016 - MANDI
 loadDir = '/SNS/MANDI/IPTS-15000/data/'
 nxsTemplate = loadDir+'MANDI_%i_event.nxs'
 sampleRuns = range(4999,5003+1)
-#peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.integrate'
-#UBFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
-peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_3.integrate'
+peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
 UBFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
+#peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_3.integrate'
+#UBFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
 peaksFormat = peaksFile
 UBFormat = UBFile
 DetCalFile = None
@@ -108,13 +134,13 @@ dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for e
 dtBinWidth = 30 #Width (in us) in TOF profile bins
 dQPixel = [0.003,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
 dQMax = 0.15 #tune this
-descriptor = 'beta_lac_highres2' #Does not end with '/'
+descriptor = 'beta_lac_lab' #Does not end with '/'
 doIterativeBackgroundFitting = False
 nBG=5
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+q_frame='lab'
 '''
-
 
 '''
 #Natrolite - 2016 - MANDI
@@ -220,8 +246,7 @@ calibrationDict = pickle.load(open(calibrationDictFile, 'rb'))
 #Write the log
 logFile = workDir + descriptor + '/log.log'
 ICFitLog.writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, fracStop, refineCenter, removeEdges, doVolumeNormalization, peaksFormat, UBFormat, DetCalFile, moderatorCoefficientsFile, calibrationDictFile, descriptor,zBG,neigh_length_m)
-
-for sampleRun in sampleRuns:
+for sampleRun in sampleRuns[1::2]:
     #Set up a few things for the run
     paramList = list()
     fileName = nxsTemplate%sampleRun

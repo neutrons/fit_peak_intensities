@@ -65,8 +65,10 @@ def getDictForPandasPeak(peak, fitParams, fitDict, panelDict, i, pg):
         'yFit':'fitDict[i][2]',
         'hklFam': 'tuple(np.array(pg.getReflectionFamily(peak.getHKL())))'}
 
-    if len(fitParams[0]) == 17:  
-        colFunDict['bg_quad'] = 'fitParams[i,14]'
+    try:
+        if len(fitParams[0]) == 17:  
+            colFunDict['bg_quad'] = 'fitParams[i,14]'
+    except: pass
     d = {}
     for key in colFunDict.keys():
         command = 'd[\'%s\'] = %s'%(key, colFunDict[key])
@@ -74,8 +76,8 @@ def getDictForPandasPeak(peak, fitParams, fitDict, panelDict, i, pg):
         except KeyError:
             pass
         except:
-            print command 
-            raise#print command
+            pass#print command 
+            #raise#print command
     d['PeakNumber'] = i
     return d
 

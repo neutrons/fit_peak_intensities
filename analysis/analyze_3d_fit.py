@@ -6,39 +6,39 @@ import convertToPandas as pdTOF
 import ICCAnalysisTools as ICAT
 from scipy.interpolate import interp1d
 import getEdgePixels as EdgeTools
-#import seaborn as sns
+import seaborn as sns
 from mantid.simpleapi import *
 from mantid.geometry import SpaceGroupFactory, PointGroupFactory
 import pickle
+from scipy.optimize import curve_fit
 
 #------------------------------Load the bvgFit files
-'''
 #Beta lactamase
 sampleRuns = range(4999,5004)
 workDir = '/SNS/users/ntv/dropbox/'
-descriptorBVG = 'beta_lac_3D_full'
-descriptorTOF = 'beta_lac_predpws7'
+descriptorBVG = 'beta_lac_3D_full_lab3'
+descriptorTOF = 'beta_lac_lab'
 #peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
-peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorBVG, sampleRuns[-1], descriptorBVG)
+peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
 ellipseFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 32 2 1")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
 '''
-
 #NaK
 workDir = '/SNS/users/ntv/dropbox/'
-descriptorBVG = 'nak_3D_full_labnn'
-descriptorTOF = 'nak_predpws2'
+descriptorBVG = 'nak_3D_full_lab'
+descriptorTOF = 'nak_predpws5_lab'
 sampleRuns = range(8275,8282+1)
 ellipseFile = '/SNS/users/ntv/integrate/mandi_nak/MANDI_nak_8275_8282.integrate'
 peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
 sg = SpaceGroupFactory.createSpaceGroup("I 4") 
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
+'''
 
 
 #--------------------------------Load everything
-peaks_ws = ICAT.getPeaksWS(peaksFile, wsName='peaks_ws')
-peaks_ws2 = ICAT.getPeaksWS(ellipseFile,wsName='peaks_ws2')
+peaks_ws = ICAT.getPeaksWS(peaksFile, wsName='peaks_ws', forceLoad=True)
+peaks_ws2 = ICAT.getPeaksWS(ellipseFile,wsName='peaks_ws2', forceLoad=True)
 fitParams = ICAT.getFitParameters(workDir, descriptorTOF, sampleRuns[0], sampleRuns[-1], sampleRuns=sampleRuns)
 fitDict = ICAT.getFitDicts(workDir, descriptorTOF,sampleRuns[0], sampleRuns[-1], sampleRuns=sampleRuns)
 instrumentFile = EdgeTools.getInstrumentFile(peaks_ws, peaksFile)
@@ -74,21 +74,38 @@ df['theta'] = df['QLab'].apply(lambda x: np.arctan2(x[1],x[0]))
 #---------------------------Let's get some trends
 plt.close('all')
 goodIDX = (df['Intens']*5 > df['Intens3d']) & (df['Intens']*1.0/5.0 < df['Intens3d'])
-goodIDX = goodIDX & (df['Intens']<1.0e7) & (df['Intens']>90) 
+goodIDX = goodIDX & (df['Intens']<1.0e7) & (df['Intens']>250) 
 goodIDX = goodIDX & (df['sigX'] < 0.0199) & (df['sigY'] < 0.0199) #& ~(df['PeakNumber'].apply(lambda x: x in badPeaks))
-'''
+
+def fSigX(x,a,k,x0,b):
+    return a*np.exp(-k*(x-x0)) + b
+    #return a/(x-x0) + b
+
+def fSigP(x,a,k,phi,b):
+    return a*np.sin(k*x-phi) + b*x
+
 graph1 = sns.jointplot(df[goodIDX]['phi'], np.abs(df[goodIDX]['sigX']),s=1)
-pX = np.polyfit(df[goodIDX]['phi'], np.abs(df[goodIDX]['sigX']),4)
-x = np.linspace(-1.5, 1.5, 100)
-y = np.polyval(pX, x)
-graph1.x = x; graph1.y = y; graph1.plot_joint(plt.plot)
+#pX = np.polyfit(df[goodIDX]['phi'], np.abs(df[goodIDX]['sigX']),4)
+x = np.linspace(df[goodIDX]['phi'].min(), df[goodIDX]['phi'].max(), 100)
+#y = np.polyval(pX, x)
+pX,cov = curve_fit(fSigX, df[goodIDX]['phi'], df[goodIDX]['sigX'],maxfev=10000,p0=[0.02,0.4,0.05,0.005])
+graph1.x = x; graph1.y = fSigX(x,pX[0],pX[1],pX[2],pX[3]); graph1.plot_joint(plt.plot)
 
 graph2 = sns.jointplot(df[goodIDX]['theta'], df[goodIDX]['sigY'],s=1)
 pY = np.polyfit(df[goodIDX]['theta'], np.abs(df[goodIDX]['sigY']),2)
 x = np.linspace(-0.5, 2.5, 100)
 y = np.polyval(pY, x)
-graph2.x = x; graph2.y = y; graph2.plot_joint(plt.plot)
-'''
+
+
+graph3 = sns.jointplot(df[goodIDX]['theta'], df[goodIDX]['sigP'],s=1)
+pX,cov = curve_fit(fSigP, df[goodIDX]['theta'], df[goodIDX]['sigP'],maxfev=10000,p0=[0.25,2.,0.,0.])
+x = np.linspace(df[goodIDX]['theta'].min(), df[goodIDX]['theta'].max(), 100)
+graph3.x = x; graph3.y = fSigP(x,pX[0],pX[1],pX[2],pX[3]); graph3.plot_joint(plt.plot)
+
+
+#graph2.x = x; graph2.y = y; graph2.plot_joint(plt.plot)
+
+
 #====to save
 #r = np.array(df[goodIDX][['theta', 'phi', 'scale3d', 'muTH', 'muPH', 'sigX', 'sigY', 'sigP']])
 #pickle.dump(r, open('strongPeakParams.pkl', 'wb'))
@@ -124,7 +141,7 @@ def isOutlier(intensities):
     if len(intensities) > 1:
         meanI = np.mean(intensities)
         stdI = np.std(intensities)
-        isOutlier = (intensities > meanI + 4.0*stdI) + (intensities < meanI - 4.0*stdI) + (intensities > 3.0*meanI) + (intensities < 1.0/3.0*meanI)
+        isOutlier = (intensities > meanI + 4.0*stdI) + (intensities < meanI - 4.0*stdI) + (intensities > 2.0*meanI) + (intensities < 1.0/2.0*meanI)
         return isOutlier
     else: return 0.0
 
@@ -138,20 +155,20 @@ df['notOutlier'] = ~df['isOutlier']
 
 
 #---------------------Select outputs and save a LaueNorm File
-goodIDX = (df['chiSq'] < 100.0) & (df['Intens3d'] > 1)  & (df['Intens3d']<1.0e4) & (df['chiSq3d'] < 5.0) & (df['notOutlier'])
-tooFarIDX = (np.abs(df['Intens3d'] > 100)) & ((np.abs(df['Intens3d']-df['IntensEll']) > 4.0*df['Intens3d']) |  (np.abs(df['Intens3d']-df['IntensEll']) > 4.0*df['Intens3d']))
-#goodIDX = goodIDX #& ~tooFarIDX
+goodIDX = (df['chiSq'] < 50.0) & (df['Intens3d'] > 1)  & (df['notOutlier']) & (df['chiSq3d']<10.)
+tooFarIDX = (np.abs(df['Intens3d'] > 100)) & ((np.abs(df['Intens3d']-df['Intens']) > 2.0*df['Intens3d']) |  (np.abs(df['Intens3d']-df['Intens']) > 2.0*df['Intens3d']))
+
+goodIDX = goodIDX & ~tooFarIDX
 
 dEdge = 3
 edgeIDX = (df['Row'] <= dEdge) | (df['Row'] >= 255-dEdge) | (df['Col'] <= dEdge) | (df['Col'] >= 255-dEdge)
 goodIDX = goodIDX & ~edgeIDX 
 
-goodIDX = goodIDX & (df['sigX'] < 0.0199)& (df['sigY'] < 0.0199) & (df['theta'] > -1.0)
 
 p = np.array([1.14757325, -746.16871354])
 
 plt.figure(3); plt.clf();
-plt.plot(df[goodIDX]['Intens3d'], df[goodIDX]['IntensEll'],'.',ms=3)
+plt.plot(df[goodIDX]['IntensEll'], df[goodIDX]['Intens3d'],'.',ms=2)
 
 laueOutput = (df['DSpacing'] > 2.0) & (df['Wavelength'] > 2.0) & (df['Wavelength']<4.0) & (df['Intens']/df['SigInt'] > 1.0)
 print ' '

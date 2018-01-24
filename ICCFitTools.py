@@ -212,7 +212,7 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
     print '\n'.join([str(v) for v in zip(chiSqList[:i+1], ISIGList[:i+1], IList[:i+1])])
     use_ppl = np.argmin(np.abs(chiSqList[:i+1]-1.0))
     pp_lambda = pp_lambda_toCheck[use_ppl]
-    #print 'USING PP_LAMBDA', pp_lambda, 'WITH CHISQ:', chiSqList[use_ppl]
+    print 'USING PP_LAMBDA', pp_lambda, 'WITH CHISQ:', chiSqList[use_ppl]
     goodIDX, _ = getBGRemovedIndices(n_events, pp_lambda=pp_lambda)
     chiSq, h, intens, sigma = getQuickTOFWS(box, peak, padeCoefficients, goodIDX=goodIDX,qMask=qMask,pp_lambda=pp_lambda,dtBinWidth=dtBinWidth,nBG=nBG)
     if qMask is not None:
@@ -234,6 +234,8 @@ def getBGRemovedIndices(n_events,zBG=1.96,calc_pp_lambda=False, neigh_length_m=3
         sys.exit('Error in ICCFT:getBGRemovedIndices: calc_pp_lambda is True, but no moderator coefficients are provided.')
 
 
+    #TODO: this result should be multiplied by qMask if qMask is not None - but I need to check that that change won't affect
+    # other workflows.
     if pp_lambda is not None:
         #Set up some things to only consider good pixels
         hasEventsIDX = n_events>0
@@ -249,10 +251,11 @@ def getBGRemovedIndices(n_events,zBG=1.96,calc_pp_lambda=False, neigh_length_m=3
         return getPoissionGoodIDX(n_events, zBG=zBG, neigh_length_m=neigh_length_m) 
     
     if peak is not None and box is not None and padeCoefficients is not None:
-        pplmin_frac = 0.5
+        pplmax_frac = 1.5
+        pplmin_frac = 0.7
         while pplmin_frac >= 0.0:
             try:
-                return getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=neigh_length_m, minppl_frac=pplmin_frac,
+                return getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=neigh_length_m, minppl_frac=pplmin_frac, maxppl_frac=pplmax_frac,
                     dtBinWidth=dtBinWidth, qMask=qMask, peak=peak, box=box, pp_lambda=pp_lambda,peakNumber=peakNumber,nBG=nBG,
                     predCoefficients=predCoefficients)
             except KeyboardInterrupt:

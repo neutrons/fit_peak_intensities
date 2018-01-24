@@ -40,7 +40,22 @@ workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
 '''
+'''
+#PsbO 2016
+peaksFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.integrate'
+UBFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.mat'
+DetCalFile = None
+workDir = '/SNS/users/ntv/dropbox/' #End with '/'
+loadDir = '/SNS/MANDI/IPTS-16286/data/'
+nxsTemplate = loadDir+'MANDI_%i_event.nxs'
+#panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
+dtBinWidth = 25 
+dQPixel=0.003#np.array([0.003, 0.003, 0.003])
+predpplCoefficients = np.array([12.51275, 13.078622, 0.18924]) #Go with ICCFT.oldScatFun
+q_frame = 'lab'
+'''
 
+'''
 #NaK 2017
 peaksFile = '/SNS/users/ntv/integrate/mandi_nak/MANDI_nak_8275_8282.integrate'
 UBFile = '/SNS/users/ntv/integrate/mandi_nak/MANDI_NAK_UB.mat'
@@ -52,7 +67,10 @@ nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
 dtBinWidth = 25 
 dQPixel=0.003#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = np.array([12.51275, 13.078622, 0.18924]) #Go with ICCFT.oldScatFun
-q_frame = 'sample'
+q_frame = 'lab'
+'''
+
+
 '''
 #MaNDI natrolite
 peaksFile = '/SNS/users//ntv/integrate/mandi_natrolite/peaks_8679.integrate'
@@ -66,9 +84,6 @@ dtBinWidth = 25
 dQPixel=0.005#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = None##np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 '''
-
-
-'''
 #Beta Lac
 peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
 UBFile =  '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
@@ -80,11 +95,9 @@ nxsTemplate = loadDir+'MANDI_%i_event.nxs'
 dtBinWidth = 25 
 dQPixel=0.003#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
-'''
+q_frame='lab'
 
 # Some parameters
-
-
 removeEdges = False 
 importPeaks = True
 for ws in mtd.getObjectNames():
@@ -147,7 +160,7 @@ else:
 
 n_events = Box.getNumEventsArray()
 
-qMask = ICCFT.getHKLMask(UBMatrix, frac=fracHKL, dQPixel=dQPixel, dQ=dQ)
+qMask = ICCFT.getHKLMask(UBMatrix, frac=0.5, dQPixel=dQPixel, dQ=dQ)
 if not removeEdges:
     mask = np.ones_like(n_events)
 else:

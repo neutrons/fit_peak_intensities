@@ -43,19 +43,19 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
         fICC['T0'] = fICCParams[8]  
         fICC['scale'] = fICCParams[9]  
         fICC['hatWidth'] = fICCParams[10]  
-        fICC['k_conv'] = fICCParams[11]  
-        goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events, pp_lambda=pp_lambda,predCoefficients=predCoefficients)
+        fICC['k_conv'] = fICCParams[11] 
+        goodIDX, _ = ICCFT.getBGRemovedIndices(n_events, pp_lambda=pp_lambda, qMask=qMask)
         x_lims = [np.min(oldICCFit[0]), np.max(oldICCFit[0])]
-        tofxx = oldICCFit[0]; tofyy = oldICCFit[1]
+        tofxx = oldICCFit[0]; tofyy = oldICCFit[2]
         ftof = interp1d(tofxx, tofyy,bounds_error=False,fill_value=0.0)
         XTOF = boxToTOFThetaPhi(box,peak)[:,:,:,0]
         YTOF = ftof(XTOF)
 
+    goodIDX *= qMask #TODO: we can do this when we get the goodIDX
     X = boxToTOFThetaPhi(box,peak)
     dEdge = edgeCutoff
     useForceParams = peak.getIntensity() < forceCutoff or peak.getRow() <= dEdge or peak.getRow() >= 255-dEdge or peak.getCol() <= dEdge or peak.getCol() >= 255-dEdge
     if strongPeakParams is not None and useForceParams:
-        print q0
         th = np.arctan2(q0[1],q0[0])
         ph = np.arctan2(q0[2],np.hypot(q0[0],q0[1]))
         thphPeak = np.array([th,ph])
@@ -218,7 +218,9 @@ def fitScaling(n_events,box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
     fitMaxIDX = tuple(np.array(np.unravel_index(YJOINT.argmax(), YJOINT.shape)))
     if goodIDX is None:
         goodIDX = np.zeros_like(YJOINT).astype(np.bool)
-        goodIDX[fitMaxIDX[0]-dP:fitMaxIDX[0]+dP, fitMaxIDX[1]-dP:fitMaxIDX[1]+dP,fitMaxIDX[2]-dP:fitMaxIDX[2]+dP] = True
+        goodIDX[max(fitMaxIDX[0]-dP,0):min(fitMaxIDX[0]+dP,goodIDX.shape[0]), 
+                max(fitMaxIDX[1]-dP,0):min(fitMaxIDX[1]+dP,goodIDX.shape[1]),
+                max(fitMaxIDX[2]-dP,0):min(fitMaxIDX[2]+dP,goodIDX.shape[2])] = True
         goodIDX = np.logical_and(goodIDX, conv_n_events>0)
         #goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events)
         #goodIDX = np.logical_and(goodIDX, n_events>0)
@@ -227,12 +229,10 @@ def fitScaling(n_events,box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
     weights = np.sqrt(n_events).copy()
     weights[weights<1] = 1.
     bounds = ([0,0],[np.inf,np.inf])
-
-    p, cov = curve_fit(fitScalingFunction,convYJOINT[goodIDX],conv_n_events[goodIDX],p0=p0)#, sigma=np.sqrt(weights[goodIDX]))
+    p, cov = curve_fit(fitScalingFunction,convYJOINT[goodIDX],conv_n_events[goodIDX],p0=p0, bounds=bounds)#, sigma=np.sqrt(weights[goodIDX]))
     
     #highIDX = YJOINT > 0.7
     #p[0] = np.mean(n_events[highIDX] / YJOINT[highIDX])
-    print p
     YRET = p[0]*YJOINT + p[1] 
     
     chiSq = np.sum((YRET[goodIDX]-n_events[goodIDX])**2 / weights[goodIDX])
@@ -293,7 +293,7 @@ def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVol
     bgCoeffs = []
     for bgRow in bgParamsRows[::-1]:#reverse for numpy order 
         bgCoeffs.append(mtd['fit_Parameters'].row(bgRow)['Value'])
-    print bgCoeffs
+    #print bgCoeffs
     x = tofWS.readX(0)
     bg = np.polyval(bgCoeffs, x)
     yFit = mtd['fit_Workspace'].readY(1)
@@ -475,7 +475,6 @@ def integrateBVGPeak(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0
     params,h,t,p = doBVGFit(box,nTheta=nTheta,nPhi=nPhi)
     Y = getBVGResult(box, params[0],nTheta=nTheta,nPhi=nPhi)
     intens, sigma = integrateBVGFit(Y,params)
-    print peak.getIntensity(), intens, sigma
     peak.setIntensity(intens)
     peak.setSigmaIntensity(sigma)
 
@@ -495,14 +494,14 @@ def compareBVGFitData(box,params,nTheta=200,nPhi=200,figNumber=2,fracBoxToHistog
     nX, nY = Y.shape
     plt.figure(figNumber); plt.clf()
     plt.subplot(2,2,1);
-    plt.imshow(h,vmin=0,vmax=np.max(h),interpolation='None')
+    plt.imshow(h,vmin=0,vmax=0.7*np.max(h),interpolation='None')
     plt.xlim([pLow*nX, pHigh*nX])
     plt.ylim([pLow*nY, pHigh*nY])
     if useIDX is None: plt.title('Measured Peak')
     else: plt.title('BG Removed Measured Peak')
     plt.colorbar() 
     plt.subplot(2,2,2);
-    plt.imshow(Y,vmin=0,vmax=np.max(h),interpolation='None' )
+    plt.imshow(Y,vmin=0,vmax=0.7*np.max(h),interpolation='None' )
     #plt.imshow(Y,interpolation='None' )
     plt.title('Modeled Peak')
     plt.xlim([pLow*nX, pHigh*nX])
@@ -518,7 +517,7 @@ def compareBVGFitData(box,params,nTheta=200,nPhi=200,figNumber=2,fracBoxToHistog
     if useIDX is not None:
         h0, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram, useIDX=None)
         plt.subplot(2,2,4);
-        plt.imshow(h0,interpolation='None')
+        plt.imshow(h0,vmin=0,vmax=1.0*np.max(h0),interpolation='None')
         plt.xlim([pLow*nX, pHigh*nX])
         plt.ylim([pLow*nY, pHigh*nY])
         plt.xlabel('Measured Peak')
@@ -528,7 +527,7 @@ def compareBVGFitData(box,params,nTheta=200,nPhi=200,figNumber=2,fracBoxToHistog
 
 
 
-def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX=None, forceParams=None, forceTolerance = 0.01):
+def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX=None, forceParams=None, forceTolerance = 0.1, dph=10, dth=10):
     h, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi,zBG=zBG,fracBoxToHistogram=fracBoxToHistogram,useIDX=goodIDX)
     dtH = np.mean(np.diff(thBins))
     dpH = np.mean(np.diff(phBins))
@@ -540,13 +539,23 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
     weights = np.sqrt(h)
     weights[weights<1] = 1
 
+    def fSigX(x,a,k,x0,b):
+        return a*np.exp(-k*(x-x0)) + b
+        #return a/(x-x0) + b
+
+    def fSigP(x,a,k,phi,b):
+        return a*np.sin(k*x-phi) + b*x 
+
+
     if forceParams is None:
             meanTH = TH.mean()
             meanPH = PH.mean()
-            sigX0 = np.polyval([ 0.00173264,  0.0002208 ,  0.00185031, -0.00012078,  0.00189967], meanPH)
-            sigY0 = np.polyval([ 0.00045678, -0.0017618 ,  0.0045013 , -0.00480677,  0.00376619], meanTH)
+            #sigX0 = np.polyval([ 0.00173264,  0.0002208 ,  0.00185031, -0.00012078,  0.00189967], meanPH)
+            sigX0 = fSigX(meanPH,  1.12555136e-02, 1.00831667e+01,1.24807005e-01, 4.50501824e-03)
+            sigY0 = 0.018#np.polyval([ 0.00045678, -0.0017618 ,  0.0045013 , -0.00480677,  0.00376619], meanTH)
+            sigP0 = fSigP(meanTH,  0.1460775 ,  1.85816592,  0.26850086, -0.00725352) 
              
-            p0=[np.max(h), meanTH, meanPH, min(sigX0,0.02), min(sigY0, 0.02), 0.00,0.0]
+            p0=[np.max(h), meanTH, meanPH, sigX0, sigY0, sigP0,0.0]
             print p0 
             bounds = ([0.0, thBins[thBins.size//2 - 2], phBins[phBins.size//2 - 2], 0.000, 0.000, -np.inf, 0], 
                     [np.inf, thBins[thBins.size//2 + 2], phBins[phBins.size//2 + 2], 0.02, 0.02, np.inf, np.inf])
@@ -557,15 +566,18 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         p0 = np.zeros(7)
         p0[0] = np.max(h); p0[1] = TH.mean(); p0[2] = PH.mean()
         p0[3] = forceParams[5]; p0[4] = forceParams[6]; p0[5] = forceParams[7];
-        print p0
         isPos = np.sign(p0)
         bounds = ((1.0-isPos*forceTolerance)*p0, (1.0+isPos*forceTolerance)*p0)
-        bounds[0][0] = 0.0;  bounds[1][0] = np.inf; 
+        bounds[0][0] = 0.0;  bounds[1][0] = np.inf; #Amplitude
+        bounds[0][1] = min(thBins[thBins.size//2 - dth], thBins[thBins.size//2 + dth]);
+        bounds[1][1] = max(thBins[thBins.size//2 - dth], thBins[thBins.size//2 + dth]);
+        bounds[0][2] = min(phBins[phBins.size//2 - dph], phBins[phBins.size//2 + dph]);
+        bounds[1][2] = max(phBins[phBins.size//2 - dph], phBins[phBins.size//2 + dph]);
         bounds[1][-1] = np.inf
-        print '~~', forceParams[2:]
-        print '~~~',p0
+        print 'forcing: ', forceParams
+        print '~~~ p0:',p0
         params = curve_fit(bvgFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX],p0=p0, bounds=bounds)
-        print '~~', params[0]
+        print '~~ params:', params[0]
     return params, h, thBins, phBins
 
 def bvgFitFun(x, A, mu0, mu1,sigX,sigY,p,bg):
