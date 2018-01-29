@@ -116,6 +116,29 @@ parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scoleci
 predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 q_frame='lab'
 '''
+'''
+# DNA - 2017 - MANDI
+loadDir = '/SNS/MANDI/IPTS-18552/nexus/'
+nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
+sampleRuns = range(8758,8769+1)
+peaksFile = '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.integrate'
+UBFile = '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.mat'
+peaksFormat = peaksFile
+UBFormat = UBFile
+DetCalFile = None
+qLow = -5.0; qHigh = 5.0
+dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+dtBinWidth = 30 #Width (in us) in TOF profile bins
+dQPixel = [0.007,0.007] #dQ for each voxel in qBox - recommended to decrease for successive fits
+dQMax = 0.15 #tune this
+descriptor = 'dna_lab' #Does not end with '/'
+doIterativeBackgroundFitting = False
+nBG=5
+parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
+predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+q_frame='lab'
+'''
+
 #Beta lactamase - 2016 - MANDI
 loadDir = '/SNS/MANDI/IPTS-15000/data/'
 nxsTemplate = loadDir+'MANDI_%i_event.nxs'

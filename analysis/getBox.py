@@ -16,8 +16,8 @@ reload(EdgeTools)
 reload(ICCFT)
 
 print "Which peak?"
-peakToGet = int(input())
-
+#peakToGet = int(input())
+peakToGet=484
 '''
 #Scolecite
 peaksFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Monoclinic_C.integrate'
@@ -30,6 +30,8 @@ loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
 dtBinWidth = 4 
 dQPixel=0.005#np.array([0.003, 0.003, 0.003])
+predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+q_frame='lab'
 '''
 '''
 #Si 2016
@@ -84,6 +86,21 @@ dtBinWidth = 25
 dQPixel=0.005#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = None##np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 '''
+#DNA
+peaksFile = '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.integrate'
+UBFile =  '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.mat'
+DetCalFile = None
+workDir = '/SNS/users/ntv/dropbox/' #End with '/'
+loadDir = '/SNS/MANDI/IPTS-18552/nexus/'
+nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
+#panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
+dtBinWidth = 25 
+dQPixel=0.007#np.array([0.003, 0.003, 0.003])
+predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+q_frame='lab'
+
+
+'''
 #Beta Lac
 peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
 UBFile =  '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
@@ -96,6 +113,7 @@ dtBinWidth = 25
 dQPixel=0.003#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 q_frame='lab'
+'''
 
 # Some parameters
 removeEdges = False 
@@ -128,8 +146,8 @@ figNumber =1
 
 fracHKL = 0.5
 #dQPixel = ICCFT.getPixelStep(peak)
-dtSpread = 0.03
-dtSpreadToPlot = [0.03]
+dtSpread = 0.015
+dtSpreadToPlot = [0.01]
 wavelength = peak.getWavelength() #in Angstrom
 energy = 81.804 / wavelength**2 / 1000.0 #in eV
 flightPath = peak.getL1() + peak.getL2() #in m

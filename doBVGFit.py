@@ -40,6 +40,57 @@ dtBinWidth = 4 #Width (in us) in TOF profile bins
 qLow = -25; qHigh=25;
 '''
 
+'''
+#PsbO
+loadDir = '/SNS/MANDI/IPTS-16286/data/'
+nxsTemplate = loadDir+'MANDI_%i_event.nxs'
+sampleRuns = range(6154,6165+1)
+peaksFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.integrate'
+peaksFormat = peaksFile
+UBFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.mat'
+UBFormat = UBFile
+DetCalFile = None
+qLow = -5.0; qHigh = 5.0
+dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+dtBinWidth = 40 #Width (in us) in TOF profile bins
+dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
+descriptor = 'psbo_3D_full_lab' #Does not end with '/'
+doIterativeBackgroundFitting = False
+nBG=5
+parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
+numTimesToInterpolate=0
+workDir = '/SNS/users/ntv/dropbox/'
+descriptorRead = 'psbo_lab'
+predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+q_frame='lab'
+'''
+
+#DNA
+loadDir = '/SNS/MANDI/IPTS-18552/nexus/'
+nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
+sampleRuns = range(8758,8769+1)
+peaksFile = '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.integrate'
+peaksFormat = peaksFile
+UBFile = '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.mat'
+UBFormat = UBFile
+DetCalFile = None
+qLow = -5.0; qHigh = 5.0
+dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+dtBinWidth = 40 #Width (in us) in TOF profile bins
+dQPixel = 0.007 #dQ for each voxel in qBox - recommended to decrease for successive fits
+descriptor = 'dna_3D_full_lab' #Does not end with '/'
+doIterativeBackgroundFitting = False
+nBG=5
+parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
+numTimesToInterpolate=0
+workDir = '/SNS/users/ntv/dropbox/'
+descriptorRead = 'dna_lab'
+predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+q_frame='lab'
+
+
+
+'''
 #Beta Lac
 loadDir = '/SNS/MANDI/IPTS-15000/data/'
 nxsTemplate = loadDir+'MANDI_%i_event.nxs'
@@ -62,6 +113,7 @@ workDir = '/SNS/users/ntv/dropbox/'
 descriptorRead = 'beta_lac_lab'
 predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 q_frame='lab'
+'''
 
 
 '''

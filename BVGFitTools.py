@@ -17,7 +17,7 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 # BVGFT.compareBVGFitData(box,params[0])
 
 
-def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxToHistogram=1.0,numTimesToInterpolate=1, plotResults=False,nBG=15, dtBinWidth=4,zBG=1.96,bgPolyOrder=1, fICCParams = None, oldICCFit=None, strongPeakParams=None, forceCutoff=250, edgeCutoff=15, predCoefficients=None, neigh_length_m=3, q_frame = 'sample'):
+def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxToHistogram=1.0,numTimesToInterpolate=1, plotResults=False,nBG=15, dtBinWidth=4,zBG=1.96,bgPolyOrder=1, fICCParams = None, oldICCFit=None, strongPeakParams=None, forceCutoff=250, edgeCutoff=15, predCoefficients=None, neigh_length_m=3, q_frame = 'sample', dtSpread=0.03):
     n_events = box.getNumEventsArray()
 
     if q_frame == 'lab':
@@ -30,8 +30,8 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
 
 
     if fICCParams is None:
-        goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events, peak=peak, box=box,qMask=qMask, calc_pp_lambda=True, padeCoefficients=padeCoefficients, dtBinWidth=dtBinWidth,nBG=nBG, predCoefficients=predCoefficients,neigh_length_m=neigh_length_m)
-        YTOF, fICC, x_lims = fitTOFCoordinate(box,peak,padeCoefficients,dtSpread=0.03,dtBinWidth=dtBinWidth,qMask=qMask,bgPolyOrder=bgPolyOrder,nBG=nBG,zBG=zBG,plotResults=plotResults, pp_lambda=pp_lambda, neigh_length_m=neigh_length_m)
+        goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events, peak=peak, box=box,qMask=qMask, calc_pp_lambda=True, padeCoefficients=padeCoefficients, dtBinWidth=dtBinWidth,nBG=nBG, predCoefficients=predCoefficients,neigh_length_m=neigh_length_m, pp_lambda=None)
+        YTOF, fICC, x_lims = fitTOFCoordinate(box,peak,padeCoefficients,dtSpread=dtSpread,dtBinWidth=dtBinWidth,qMask=qMask,bgPolyOrder=bgPolyOrder,nBG=nBG,zBG=zBG,plotResults=plotResults, pp_lambda=pp_lambda, neigh_length_m=neigh_length_m)
 
     else: #we already did I-C profile, so we'll just read the parameters
         pp_lambda = fICCParams[-1]
