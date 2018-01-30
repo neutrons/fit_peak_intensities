@@ -16,8 +16,7 @@ reload(EdgeTools)
 reload(ICCFT)
 
 print "Which peak?"
-#peakToGet = int(input())
-peakToGet=484
+peakToGet = int(input())
 '''
 #Scolecite
 peaksFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Monoclinic_C.integrate'
@@ -42,7 +41,6 @@ workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
 '''
-'''
 #PsbO 2016
 peaksFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.integrate'
 UBFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.mat'
@@ -53,9 +51,9 @@ nxsTemplate = loadDir+'MANDI_%i_event.nxs'
 #panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
 dtBinWidth = 25 
 dQPixel=0.003#np.array([0.003, 0.003, 0.003])
-predpplCoefficients = np.array([12.51275, 13.078622, 0.18924]) #Go with ICCFT.oldScatFun
+predpplCoefficients = np.array([14.36827809, 10.889742, 0.28754095]) #Go with ICCFT.oldScatFun
+#predpplCoefficients = np.array([12.51275, 13.078622, 0.18924]) #Go with ICCFT.oldScatFun
 q_frame = 'lab'
-'''
 
 '''
 #NaK 2017
@@ -86,6 +84,7 @@ dtBinWidth = 25
 dQPixel=0.005#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = None##np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 '''
+'''
 #DNA
 peaksFile = '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.integrate'
 UBFile =  '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.mat'
@@ -98,6 +97,7 @@ dtBinWidth = 25
 dQPixel=0.007#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 q_frame='lab'
+'''
 
 
 '''

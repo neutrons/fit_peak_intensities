@@ -13,6 +13,18 @@ import pickle
 from scipy.optimize import curve_fit
 
 #------------------------------Load the bvgFit files
+#PsbO
+sampleRuns = range(6154, 6165+1)
+workDir = '/SNS/users/ntv/dropbox/'
+descriptorBVG = 'psbo_3D_full_lab'
+descriptorTOF = 'psbo_lab'
+peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF) #TOF file, BVGxTOF is from fitDict
+#peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
+ellipseFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.integrate'
+sg = SpaceGroupFactory.createSpaceGroup("P 61 2 2")
+pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
+
+'''
 #Beta lactamase
 sampleRuns = range(4999,5004)
 workDir = '/SNS/users/ntv/dropbox/'
@@ -23,6 +35,20 @@ peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1],
 ellipseFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 32 2 1")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
+'''
+'''
+#DNA
+sampleRuns = range(8758,8769+1)
+workDir = '/SNS/users/ntv/dropbox/'
+descriptorBVG = 'dna_3D_full_lab'
+descriptorTOF = 'dna_lab'
+#peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
+peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
+ellipseFile = '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.integrate'
+sg = SpaceGroupFactory.createSpaceGroup("P 21 21 21")
+pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
+'''
+
 '''
 #NaK
 workDir = '/SNS/users/ntv/dropbox/'
@@ -125,7 +151,7 @@ intensSpec = interp1d(mandiSpec[sortedIDX[::3],0], mandiSpec[sortedIDX[::3],1],k
 df['scaledIntens'] = df['Intens'] / intensSpec(df['Wavelength']) * np.mean(mandiSpec[:,1])
 df['scaledIntensEll'] = df['IntensEll'] / intensSpec(df['Wavelength']) * np.mean(mandiSpec[:,1])
 df['scaledIntens3d'] = df['Intens3d'] / intensSpec(df['Wavelength']) * np.mean(mandiSpec[:,1])
-df['lorentzFactor'] = np.sin(df['Scattering'])**2 / df['Wavelength']**4
+df['lorentzFactor'] = np.sin(0.5*df['Scattering'])**2 / df['Wavelength']**4
 df['lorentzInt'] = df['Intens']*df['lorentzFactor']
 df['lorentzSig'] = df['SigInt']*df['lorentzFactor']
 df['lorentzIntEll'] = df['IntensEll']*df['lorentzFactor']
@@ -141,11 +167,11 @@ def isOutlier(intensities):
     if len(intensities) > 1:
         meanI = np.mean(intensities)
         stdI = np.std(intensities)
-        isOutlier = (intensities > meanI + 4.0*stdI) + (intensities < meanI - 4.0*stdI) + (intensities > 2.0*meanI) + (intensities < 1.0/2.0*meanI)
+        isOutlier = (intensities > meanI + 4.0*stdI) + (intensities < meanI - 4.0*stdI) + (intensities > 2.0*meanI) + (intensities < 1.0/2.*meanI)
         return isOutlier
     else: return 0.0
 
-checkIDX = (df['Intens3d'] > 0) & (df['chiSq']<50.0)
+checkIDX = (df['Intens3d'] > 3) & (df['chiSq']<50.0 ) & (df['chiSq3d']<10.) & (df['Intens3d']/df['SigInt3d'] > 1.)
 df['isOutlier'] = 0.0
 
 df.loc[checkIDX,'isOutlier'] = df[checkIDX].groupby('hklFam')['scaledIntens3d'].transform(isOutlier)
@@ -155,18 +181,19 @@ df['notOutlier'] = ~df['isOutlier']
 
 
 #---------------------Select outputs and save a LaueNorm File
-goodIDX = (df['chiSq'] < 50.0) & (df['Intens3d'] > 1)  & (df['notOutlier']) & (df['chiSq3d']<10.)
-tooFarIDX = (np.abs(df['Intens3d'] > 100)) & ((np.abs(df['Intens3d']-df['Intens']) > 2.0*df['Intens3d']) |  (np.abs(df['Intens3d']-df['Intens']) > 2.0*df['Intens3d']))
+goodIDX = (df['chiSq'] < 50.0) & (df['Intens3d'] > 3)  & (df['notOutlier']) & (df['chiSq3d']<10) 
+tooFarIDX = (np.abs(df['Intens3d'] > 100)) & ((np.abs(df['Intens3d']-df['IntensEll']) > 2.*df['Intens3d']) |  (np.abs(df['Intens3d']-df['IntensEll']) > 2.*df['Intens3d']) | (df['Intens3d'] > 5.*df['IntensEll']))
 
 goodIDX = goodIDX & ~tooFarIDX
+
+negHighIDX = ((df['IntensEll']<100) & (df['Intens3d'] > 500)) #| ((df['IntensEll']<100) & (df['Intens3d'] > 500))  | ((df['IntensEll']<1000) & (df['Intens3d'] > 2000))
+#goodIDX = goodIDX & ~negHighIDX
 
 dEdge = 3
 edgeIDX = (df['Row'] <= dEdge) | (df['Row'] >= 255-dEdge) | (df['Col'] <= dEdge) | (df['Col'] >= 255-dEdge)
 goodIDX = goodIDX & ~edgeIDX 
 
-
-p = np.array([1.14757325, -746.16871354])
-
+goodIDX[33173] = False; 
 plt.figure(3); plt.clf();
 plt.plot(df[goodIDX]['IntensEll'], df[goodIDX]['Intens3d'],'.',ms=2)
 
@@ -189,5 +216,5 @@ for i in range(len(df)):
         pass
 
 print 'Saving LaueNorm Input'
-SaveLauenorm(InputWorkspace=ws, Filename=workDir+descriptorBVG+'/laue/laueNorm', ScalePeaks=3.0, minDSpacing=2.0, minWavelength=2.0, MaxWavelength=4.0, SortFilesBy='RunNumber', MinIsigI=1, MinIntensity=0)
+SaveLauenorm(InputWorkspace=ws, Filename=workDir+descriptorBVG+'/laue/laueNorm', ScalePeaks=3.0, minDSpacing=1.5, minWavelength=2.0, MaxWavelength=4.0, SortFilesBy='RunNumber', MinIsigI=1., MinIntensity=0)
 
