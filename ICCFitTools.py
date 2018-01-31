@@ -259,7 +259,7 @@ def getBGRemovedIndices(n_events,zBG=1.96,calc_pp_lambda=False, neigh_length_m=3
             except KeyboardInterrupt:
                 sys.exit()
             except:
-                raise
+                #raise
                 pplmin_frac -= 0.4
     print 'ERROR WITH ICCFT:getBGRemovedIndices!' 
 
@@ -484,7 +484,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, qMa
     tC = 3176.507 * flightPath * np.sin(scatteringHalfAngle)/np.linalg.norm([qx[qx.shape[0]//2], qy[qy.shape[0]//2], qz[qz.shape[0]//2]])
     tD = 3176.507 * flightPath * np.sin(scatteringHalfAngle)/np.linalg.norm([qx[qx.shape[0]//2 + 1], qy[qy.shape[0]//2+1], qz[qz.shape[0]//2+1]])
     dtBinWidth = np.abs(tD-tC)
-    dtBinWidth = max(15, dtBinWidth)
+    dtBinWidth = max(1, dtBinWidth)
      
     tBins = np.arange(tMin, tMax, dtBinWidth)
     weightList = n_events[hasEventsIDX] #- pp_lambda

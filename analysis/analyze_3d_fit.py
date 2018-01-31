@@ -13,6 +13,7 @@ import pickle
 from scipy.optimize import curve_fit
 
 #------------------------------Load the bvgFit files
+'''
 #PsbO
 sampleRuns = range(6154, 6165+1)
 workDir = '/SNS/users/ntv/dropbox/'
@@ -23,7 +24,7 @@ peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF) #TOF fi
 ellipseFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 61 2 2")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
-
+'''
 '''
 #Beta lactamase
 sampleRuns = range(4999,5004)
@@ -36,18 +37,17 @@ ellipseFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_
 sg = SpaceGroupFactory.createSpaceGroup("P 32 2 1")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
 '''
-'''
+
 #DNA
 sampleRuns = range(8758,8769+1)
 workDir = '/SNS/users/ntv/dropbox/'
-descriptorBVG = 'dna_3D_full_lab'
-descriptorTOF = 'dna_lab'
+descriptorBVG = 'dna_3D_full_lab_newpredppl'
+descriptorTOF = 'dna_lab_newpredppl'
 #peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
 peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
 ellipseFile = '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 21 21 21")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
-'''
 
 '''
 #NaK

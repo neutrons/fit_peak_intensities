@@ -1,10 +1,19 @@
+
+
+import sys
+#remove the original mantid path
+popList = []
+for i in range(len(sys.path))[::-1]:
+    if 'antid' in sys.path[i]:
+        sys.path.pop(i)
+sys.path.append('/home/ntv/mantid/mantid/bin/')
+
+
 import matplotlib.pyplot as plt
 plt.ion()
-import sys
 sys.path.append('../')
 import numpy as np
 from scipy.optimize import curve_fit
-sys.path.append("/opt/mantidnightly/bin")
 from mantid.simpleapi import *
 from mantid.kernel import V3D
 import ICCFitTools as ICCFT
@@ -14,6 +23,7 @@ import getEdgePixels as EdgeTools
 from timeit import default_timer as timer
 reload(EdgeTools)
 reload(ICCFT)
+
 
 print "Which peak?"
 peakToGet = int(input())
@@ -41,6 +51,7 @@ workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
 '''
+'''
 #PsbO 2016
 peaksFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.integrate'
 UBFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.mat'
@@ -55,6 +66,7 @@ predpplCoefficients = np.array([14.36827809, 10.889742, 0.28754095]) #Go with IC
 #predpplCoefficients = np.array([12.51275, 13.078622, 0.18924]) #Go with ICCFT.oldScatFun
 q_frame = 'lab'
 pplmin_frac=0.8; pplmax_frac=1.5
+'''
 
 '''
 #NaK 2017
@@ -85,6 +97,22 @@ dtBinWidth = 25
 dQPixel=0.005#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = None##np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 '''
+#CORELLI - beryl
+peaksFile = '/SNS/users/ntv/integrate/corelli_beryl/combined_hexagonal_indexedonly.integrate'
+UBFile =  '/SNS/users/ntv/integrate/corelli_beryl/combined_hexagonal.mat'
+DetCalFile = None
+workDir = '/SNS/users/ntv/dropbox/' #End with '/'
+loadDir = '/data/corelli_beryl/IPTS-20302/'
+nxsTemplate = loadDir+'CORELLI_%i.nxs.h5'
+#panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
+dtBinWidth = 25 
+dQPixel=0.02#np.array([0.003, 0.003, 0.003])
+#predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
+q_frame='lab'
+pplmin_frac=0.; pplmax_frac=1.
+
+
 '''
 #DNA
 peaksFile = '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.integrate'
@@ -96,10 +124,11 @@ nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
 #panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
 dtBinWidth = 25 
 dQPixel=0.007#np.array([0.003, 0.003, 0.003])
-predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+#predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
 q_frame='lab'
+pplmin_frac=0.8; pplmax_frac=2.0
 '''
-
 
 '''
 #Beta Lac

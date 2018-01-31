@@ -79,7 +79,7 @@ def doIntegration(sampleRunsList=None):
     '''
 
 
-
+    '''
     #PsbO - 2016 - MANDI
     loadDir = '/SNS/MANDI/IPTS-16286/data/'
     nxsTemplate = loadDir+'MANDI_%i_event.nxs'
@@ -104,7 +104,7 @@ def doIntegration(sampleRunsList=None):
     predpplCoefficients = np.array([14.36827809, 10.889742, 0.28754095]) #Go with ICCFT.oldScatFun
     q_frame='lab'
     minppl_frac=0.8; maxppl_frac=1.5;
-
+    '''
     '''
     # DNA - 2017 - MANDI
     loadDir = '/SNS/MANDI/IPTS-18552/nexus/'
@@ -120,14 +120,14 @@ def doIntegration(sampleRunsList=None):
     dtBinWidth = 30 #Width (in us) in TOF profile bins
     dQPixel = [0.007,0.007] #dQ for each voxel in qBox - recommended to decrease for successive fits
     dQMax = 0.15 #tune this
-    descriptor = 'dna_lab' #Does not end with '/'
+    descriptor = 'dna_lab_newpredppl' #Does not end with '/'
     doIterativeBackgroundFitting = False
     nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
-    predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+    #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+    predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
     q_frame='lab'
-    '''
-
+    minppl_frac=0.8; maxppl_frac=1.5
     '''
     #Beta lactamase - 2016 - MANDI
     loadDir = '/SNS/MANDI/IPTS-15000/data/'
@@ -153,7 +153,7 @@ def doIntegration(sampleRunsList=None):
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     q_frame='lab'
-    '''
+    minppl_frac=0.8; maxppl_frac=1.5
 
     '''
     #Natrolite - 2016 - MANDI
