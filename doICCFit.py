@@ -103,6 +103,7 @@ def doIntegration(sampleRunsList=None):
     #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     predpplCoefficients = np.array([14.36827809, 10.889742, 0.28754095]) #Go with ICCFT.oldScatFun
     q_frame='lab'
+    minppl_frac=0.8; maxppl_frac=1.5;
 
     '''
     # DNA - 2017 - MANDI
@@ -257,7 +258,7 @@ def doIntegration(sampleRunsList=None):
 
     #Write the log
     logFile = workDir + descriptor + '/log.log'
-    ICFitLog.writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, fracStop, refineCenter, removeEdges, doVolumeNormalization, peaksFormat, UBFormat, DetCalFile, moderatorCoefficientsFile, calibrationDictFile, descriptor,zBG,neigh_length_m)
+    ICFitLog.writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, fracStop, refineCenter, removeEdges, doVolumeNormalization, peaksFormat, UBFormat, DetCalFile, moderatorCoefficientsFile, calibrationDictFile, descriptor,zBG,neigh_length_m, predpplCoefficients, minppl_frac, maxppl_frac)
     if sampleRunsList != -1:
         sampleRunsToAnalyze = np.array(sampleRuns).astype(np.int)[sampleRunsList]
     else: sampleRunsToAnalyze = sampleRuns
