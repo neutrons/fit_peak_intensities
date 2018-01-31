@@ -110,7 +110,7 @@ dQPixel=0.02#np.array([0.003, 0.003, 0.003])
 #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
 q_frame='lab'
-pplmin_frac=0.; pplmax_frac=1.
+pplmin_frac=0.; pplmax_frac=1.; mindtBinWidth=15
 
 
 '''
@@ -262,10 +262,10 @@ if True:
     scatteringHalfAngle = 0.5*peak.getScattering()
     edgesToCheck = []#EdgeTools.needsEdgeRemoval(Box,panelDict,peak)
     for dtS in dtSpreadToPlot:
-        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtS,doVolumeNormalization=False, minFracPixels=0.015, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=False, zBG=-1., calc_pp_lambda=False)
+        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtS,doVolumeNormalization=False, minFracPixels=0.015, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=False, zBG=-1., calc_pp_lambda=False, mindtBinWidth=mindtBinWidth)
         plt.subplot(2,1,2)
         plt.plot(tofWS.readX(0), tofWS.readY(0),'o',label='%2.3f'%dtS)
-        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtS,doVolumeNormalization=False, minFracPixels=0.005, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=False, zBG=1.96,neigh_length_m=3, padeCoefficients=ICCFT.getModeratorCoefficients('franz_coefficients_2017.dat'), predCoefficients=predpplCoefficients, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac)
+        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtS,doVolumeNormalization=False, minFracPixels=0.005, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=False, zBG=1.96,neigh_length_m=3, padeCoefficients=ICCFT.getModeratorCoefficients('franz_coefficients_2017.dat'), predCoefficients=predpplCoefficients, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac,mindtBinWidth=mindtBinWidth)
         print pp_lambda
         plt.subplot(2,1,2)
         plt.plot(tofWS.readX(0), tofWS.readY(0),'-o',label='%2.3f'%dtS)

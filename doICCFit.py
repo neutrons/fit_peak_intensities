@@ -153,7 +153,7 @@ def doIntegration(sampleRunsList=None):
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     q_frame='lab'
-    minppl_frac=0.8; maxppl_frac=1.5
+    minppl_frac=0.8; maxppl_frac=1.5; mindtBinWidth=15
 
     '''
     #Natrolite - 2016 - MANDI
