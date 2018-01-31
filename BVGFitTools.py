@@ -17,7 +17,7 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 # BVGFT.compareBVGFitData(box,params[0])
 
 
-def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxToHistogram=1.0,numTimesToInterpolate=1, plotResults=False,nBG=15, dtBinWidth=4,zBG=1.96,bgPolyOrder=1, fICCParams = None, oldICCFit=None, strongPeakParams=None, forceCutoff=250, edgeCutoff=15, predCoefficients=None, neigh_length_m=3, q_frame = 'sample', dtSpread=0.03):
+def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxToHistogram=1.0,numTimesToInterpolate=1, plotResults=False,nBG=15, dtBinWidth=4,zBG=1.96,bgPolyOrder=1, fICCParams = None, oldICCFit=None, strongPeakParams=None, forceCutoff=250, edgeCutoff=15, predCoefficients=None, neigh_length_m=3, q_frame = 'sample', dtSpread=0.03, pplmin_frac=0.8, pplmax_frac=1.5):
     n_events = box.getNumEventsArray()
 
     if q_frame == 'lab':
@@ -28,10 +28,9 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
         raise ValueError('BVGFT:get3DPeak - q_frame must be either \'lab\' or \'sample\'; %s was provided'%q_frame)
 
 
-
     if fICCParams is None:
-        goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events, peak=peak, box=box,qMask=qMask, calc_pp_lambda=True, padeCoefficients=padeCoefficients, dtBinWidth=dtBinWidth,nBG=nBG, predCoefficients=predCoefficients,neigh_length_m=neigh_length_m, pp_lambda=None)
-        YTOF, fICC, x_lims = fitTOFCoordinate(box,peak,padeCoefficients,dtSpread=dtSpread,dtBinWidth=dtBinWidth,qMask=qMask,bgPolyOrder=bgPolyOrder,nBG=nBG,zBG=zBG,plotResults=plotResults, pp_lambda=pp_lambda, neigh_length_m=neigh_length_m)
+        goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events, peak=peak, box=box,qMask=qMask, calc_pp_lambda=True, padeCoefficients=padeCoefficients, dtBinWidth=dtBinWidth,nBG=nBG, predCoefficients=predCoefficients,neigh_length_m=neigh_length_m, pp_lambda=None, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac)
+        YTOF, fICC, x_lims = fitTOFCoordinate(box,peak,padeCoefficients,dtSpread=dtSpread,dtBinWidth=dtBinWidth,qMask=qMask,bgPolyOrder=bgPolyOrder,nBG=nBG,zBG=zBG,plotResults=plotResults, pp_lambda=pp_lambda, neigh_length_m=neigh_length_m, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac)
 
     else: #we already did I-C profile, so we'll just read the parameters
         pp_lambda = fICCParams[-1]
@@ -265,7 +264,7 @@ def getXTOF(box, peak):
     return tList
 
 
-def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVolumeNormalization=False,minFracPixels=0.01,removeEdges=False,calcTOFPerPixel=False,neigh_length_m=3,zBG=1.96,bgPolyOrder=1,panelDict=None,qMask=None,calibrationDict=None,nBG=15, plotResults=False,fracStop=0.01, pp_lambda=None):
+def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVolumeNormalization=False,minFracPixels=0.01,removeEdges=False,calcTOFPerPixel=False,neigh_length_m=3,zBG=1.96,bgPolyOrder=1,panelDict=None,qMask=None,calibrationDict=None,nBG=15, plotResults=False,fracStop=0.01, pp_lambda=None, pplmin_frac=0.8, pplmax_frac=1.5):
     
     #Get info from the peak
     tof = peak.getTOF() #in us
@@ -280,7 +279,7 @@ def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVol
         qMask = np.ones_like(box.getNumEventsArray()).astype(np.bool) 
     
     #Calculate the optimal pp_lambda and 
-    tofWS,ppl = ICCFT.getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG,pp_lambda=pp_lambda)
+    tofWS,ppl = ICCFT.getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG,pp_lambda=pp_lambda, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac)
 
     try:
         fitResults,fICC = ICCFT.doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,nBG=nBG,fitOrder=bgPolyOrder,constraintScheme=1)
@@ -330,7 +329,7 @@ def getYTOF(fICC, XTOF, xlims):
     YTOF = ftof(XTOF)
     return YTOF
 
-def getTOFParameters(box, peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVolumeNormalization=False,minFracPixels=0.01,removeEdges=False,calcTOFPerPixel=False,neigh_length_m=3,zBG=1.96,bgPolyOrder=1,panelDict=None,qMask=None,calibrationDict=None,nBG=15):
+def getTOFParameters(box, peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVolumeNormalization=False,minFracPixels=0.01,removeEdges=False,calcTOFPerPixel=False,neigh_length_m=3,zBG=1.96,bgPolyOrder=1,panelDict=None,qMask=None,calibrationDict=None,nBG=15, pplmin_frac=0.8, pplmax_frac=1.5):
     tof = peak.getTOF() #in us
     wavelength = peak.getWavelength() #in Angstrom
     flightPath = peak.getL1() + peak.getL2() #in m
@@ -339,13 +338,14 @@ def getTOFParameters(box, peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVo
     detNumber = 0#EdgeTools.getDetectorBank(panelDict, peak.getDetectorID())['bankNumber']
     if qMask is None:
         qMask = np.ones_like(box.getNumEventsArray()).astype(np.bool)
-    tofWS,ppl = ICCFT.getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG)
+    tofWS,ppl = ICCFT.getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac)
 
     fitResults,fICC = ICCFT.doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,nBG=nBG,fitOrder=bgPolyOrder)
     for i, param in enumerate(['A','B','R','T0','scale', 'hatWidth', 'k_conv']):
         fICC[param] = mtd['fit_Parameters'].row(i)['Value']
     return fICC 
 
+#This is not a very recent version of this
 def fitPeak3D(box, X, n_events, peak,goodIDX,padeCoefficients):
 
     fICC = getTOFParameters(box, peak, padeCoefficients)

@@ -55,6 +55,7 @@ predpplCoefficients = np.array([14.36827809, 10.889742, 0.28754095]) #Go with IC
 #predpplCoefficients = np.array([12.51275, 13.078622, 0.18924]) #Go with ICCFT.oldScatFun
 q_frame = 'lab'
 pplmin_frac=0.8; pplmax_frac=1.5
+
 '''
 #NaK 2017
 peaksFile = '/SNS/users/ntv/integrate/mandi_nak/MANDI_nak_8275_8282.integrate'
