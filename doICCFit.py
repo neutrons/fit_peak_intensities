@@ -129,6 +129,7 @@ def doIntegration(sampleRunsList=None):
     q_frame='lab'
     minppl_frac=0.8; maxppl_frac=1.5
     '''
+    '''
     #Beta lactamase - 2016 - MANDI
     loadDir = '/SNS/MANDI/IPTS-15000/data/'
     nxsTemplate = loadDir+'MANDI_%i_event.nxs'
@@ -154,8 +155,8 @@ def doIntegration(sampleRunsList=None):
     predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     q_frame='lab'
     minppl_frac=0.8; maxppl_frac=1.5; mindtBinWidth=15
-
     '''
+
     # CORELLI - beryl
     loadDir = '/data/corelli_beryl/IPTS-20302/'
     peaksFile = '/SNS/users/ntv/integrate/corelli_beryl/combined_hexagonal_indexedonly.integrate'
@@ -171,14 +172,14 @@ def doIntegration(sampleRunsList=None):
     dtBinWidth = 30 #Width (in us) in TOF profile bins
     dQPixel = [0.02,0.02] #dQ for each voxel in qBox - recommended to decrease for successive fits
     dQMax = 0.15 #tune this
-    descriptor = 'beryl_lab' #Does not end with '/'
+    descriptor = 'beryl_lab_cs1' #Does not end with '/'
     doIterativeBackgroundFitting = False
     nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     q_frame='lab'
     minppl_frac=0.0; maxppl_frac=4.5; mindtBinWidth=10
-    '''
+
     '''
     #Natrolite - 2016 - MANDI
     loadDir = '/SNS/MANDI/IPTS-8776/nexus/'
@@ -306,6 +307,7 @@ def doIntegration(sampleRunsList=None):
         peaks_ws,paramList,fitDict = ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients,parameterDict, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.01, fracStop=fracStop, removeEdges=removeEdges, calibrationDict=calibrationDict,dQPixel=dQPixel, calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG, bgPolyOrder=bgPolyOrder, nBG=nBG, doIterativeBackgroundFitting=doIterativeBackgroundFitting,predCoefficients=predpplCoefficients, q_frame=q_frame, progressFile=workDir+descriptor+'/progress_%i_%s.txt'%(sampleRun, descriptor))
 
         #Save the results and delete the leftovers
+        os.system('rm ' + workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))
         SaveIsawPeaks(InputWorkspace='peaks_ws', Filename=workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))
         np.savetxt(workDir+descriptor+'/params_%i_%s.dat'%(sampleRun, descriptor), np.array(paramList))
         pickle.dump(fitDict, open(workDir+descriptor+'/fitDict_%i_%s.pkl'%(sampleRun,descriptor),'wb'))

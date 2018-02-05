@@ -51,7 +51,6 @@ workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
 '''
-'''
 #PsbO 2016
 peaksFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.integrate'
 UBFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.mat'
@@ -66,7 +65,6 @@ predpplCoefficients = np.array([14.36827809, 10.889742, 0.28754095]) #Go with IC
 #predpplCoefficients = np.array([12.51275, 13.078622, 0.18924]) #Go with ICCFT.oldScatFun
 q_frame = 'lab'
 pplmin_frac=0.8; pplmax_frac=1.5
-'''
 
 '''
 #NaK 2017
@@ -115,6 +113,7 @@ pplmin_frac=0.; pplmax_frac=4.5; mindtBinWidth=10
 '''
 
 
+'''
 #DNA
 peaksFile = '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.integrate'
 UBFile =  '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.mat'
@@ -129,6 +128,7 @@ dQPixel=0.007#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
 q_frame='lab'
 pplmin_frac=0.8; pplmax_frac=2.0; mindtBinWidth=15
+'''
 
 '''
 #Beta Lac
