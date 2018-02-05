@@ -117,9 +117,8 @@ def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, dtBi
     t0 = param.row(3)['Value']
 
 
-    intensity, sigma, xStart, xStop = integratePeak(r.readX(0), icProfile,r.readY(0), np.polyval(bgCoefficients, r.readX(1)), pp_lambda=pp_lambda, fracStop=0.01,totEvents=np.sum(n_events[goodIDX*qMask]), bgEvents=np.sum(goodIDX*qMask)*pp_lambda)
+    intensity, sigma, xStart, xStop = integratePeak(r.readX(0), icProfile,r.readY(0), np.polyval(bgCoefficients, r.readX(1)), pp_lambda=pp_lambda, fracStop=0.01,totEvents=np.sum(n_events[goodIDX*qMask]), bgEvents=np.sum(goodIDX*qMask)*pp_lambda, varFit=chiSq)
 
- 
     return chiSq, h, intensity, sigma
 
 
@@ -349,7 +348,7 @@ def padeWrapper(x,a,b,c,d,f,g,h,i,j,k):
 def pade(c,x): #c are coefficients, x is the energy in eV
     return c[0]*x**c[1]*(1+c[2]*x+c[3]*x**2+(x/c[4])**c[5])/(1+c[6]*x+c[7]*x**2+(x/c[8])**c[9])
 
-def integratePeak(x, yFit, yData, bg, pp_lambda=0, fracStop = 0.01,totEvents=1, bgEvents=1):
+def integratePeak(x, yFit, yData, bg, pp_lambda=0, fracStop = 0.01,totEvents=1, bgEvents=1, varFit=0. ):
     #Find out start/stop point
     yScaled = (yFit-bg) / np.max(yFit-bg)
     goodIDX = yScaled > fracStop
@@ -369,7 +368,7 @@ def integratePeak(x, yFit, yData, bg, pp_lambda=0, fracStop = 0.01,totEvents=1, 
     yFitSum = np.sum(yFit[iStart:iStop])
     bgSum = np.abs(np.sum(bg[iStart:iStop]))
     #sigma = np.sqrt(totEvents + bgEvents) 
-    sigma = np.sqrt(intensity + 2.0*bgEvents)
+    sigma = np.sqrt(intensity + 2.0*bgEvents + varFit)
     print 'Intensity: ', intensity, 'Sigma: ', sigma, 'pp_lambda:', pp_lambda
     return intensity, sigma, xStart, xStop
 
@@ -888,19 +887,13 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 #peak.setSigmaIntensity(np.sqrt(np.sum(icProfile)))i
                 t0 = param.row(3)['Value']
                 
-                #from scipy.ndimage import label
-                #g = label(goodIDX*qMask)
-                #bgPixels = np.sort(np.bincount(g[0].ravel()))[-2] #num bg pixels - -1 is 0s
-                #bgIDX = np.argsort(np.bincount(g[0].ravel()))[-2] #num bg pixels - -1 is 0s
-
                 convBox = 1.0*np.ones([neigh_length_m, neigh_length_m,neigh_length_m]) / neigh_length_m**3
                 conv_n_events = convolve(n_events,convBox)
                 
                 totEvents = np.sum(n_events[goodIDX*qMask[0]])
                 bgIDX = reduce(np.logical_and,[~goodIDX, qMask[0], conv_n_events>0])
                 bgEvents = np.mean(n_events[bgIDX])*np.sum(goodIDX*qMask[0])
-                intensity, sigma, xStart, xStop = integratePeak(r.readX(0), icProfile,r.readY(0), np.polyval(bgCoefficients, r.readX(1)), pp_lambda=pp_lambda, fracStop=fracStop,totEvents=totEvents, bgEvents=bgEvents)
-                #print '~~~ ', intensity, sigma
+                intensity, sigma, xStart, xStop = integratePeak(r.readX(0), icProfile,r.readY(0), np.polyval(bgCoefficients, r.readX(1)), pp_lambda=pp_lambda, fracStop=fracStop,totEvents=totEvents, bgEvents=bgEvents, varFit=chiSq)
                 icProfile = icProfile - np.polyval(bgCoefficients, r.readX(1)) #subtract background
                 peak.setIntensity(intensity)
                 peak.setSigmaIntensity(sigma)

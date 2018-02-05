@@ -221,7 +221,7 @@ def doBVGFits(sampleRunsList=None):
                     # TODO: It's not clear to me if we should be normalizing by #params - so we'll leave it for now.
                     w_events = n_events.copy()
                     w_events[w_events==0] = 1
-                    varFit = np.average((n_events[peakIDX]-Y3D[peakIDX])*(n_events[peakIDX]-Y3D[peakIDX]), weights=(w_events[peakIDX]-bgEvents))
+                    varFit = np.average((n_events[peakIDX]-Y3D[peakIDX])*(n_events[peakIDX]-Y3D[peakIDX]), weights=(w_events[peakIDX]))
 
                     # Comapre with the old way
                     bgOld = np.sum(goodIDX[Y3D[::skipIDX,::skipIDX,::skipIDX]/Y3D[::skipIDX,::skipIDX,::skipIDX].max()>0.05]*pp_lambda)
