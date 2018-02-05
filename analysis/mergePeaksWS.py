@@ -13,9 +13,9 @@ loadDir = '/SNS/MANDI/IPTS-15000/data/'
 eventWS = Load(loadDir+'MANDI_%i_event.nxs'%sampleRuns[0])
 '''
 #PsbO
-sampleRuns = range(6154,6162+1)
+sampleRuns = range(6154,6165+1)
 workDir = '/SNS/users/ntv/dropbox/'
-descriptor = 'psbo_lab'
+descriptor = 'psbo_lab_newpredppl_highres'
 loadDir = '/SNS/MANDI/IPTS-16286/data/'
 eventWS = Load(loadDir+'MANDI_%i_event.nxs'%sampleRuns[0])
 

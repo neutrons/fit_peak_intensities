@@ -156,6 +156,30 @@ def doIntegration(sampleRunsList=None):
     minppl_frac=0.8; maxppl_frac=1.5; mindtBinWidth=15
 
     '''
+    # CORELLI - beryl
+    loadDir = '/data/corelli_beryl/IPTS-20302/'
+    peaksFile = '/SNS/users/ntv/integrate/corelli_beryl/combined_hexagonal_indexedonly.integrate'
+    UBFile =  '/SNS/users/ntv/integrate/corelli_beryl/combined_hexagonal.mat'
+    DetCalFile = None
+    workDir = '/SNS/users/ntv/dropbox/' #End with '/'
+    nxsTemplate = loadDir+'CORELLI_%i.nxs.h5'
+    sampleRuns = range(58411,58592+1)
+    peaksFormat = peaksFile
+    UBFormat = UBFile
+    qLow = -25.0; qHigh = 25.0
+    dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+    dtBinWidth = 30 #Width (in us) in TOF profile bins
+    dQPixel = [0.02,0.02] #dQ for each voxel in qBox - recommended to decrease for successive fits
+    dQMax = 0.15 #tune this
+    descriptor = 'beryl_lab' #Does not end with '/'
+    doIterativeBackgroundFitting = False
+    nBG=5
+    parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
+    predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+    q_frame='lab'
+    minppl_frac=0.0; maxppl_frac=4.5; mindtBinWidth=10
+    '''
+    '''
     #Natrolite - 2016 - MANDI
     loadDir = '/SNS/MANDI/IPTS-8776/nexus/'
     nxsTemplate = loadDir+'MANDI_%i.nxs.h5'

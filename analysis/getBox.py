@@ -97,12 +97,13 @@ dtBinWidth = 25
 dQPixel=0.005#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = None##np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 '''
+'''
 #CORELLI - beryl
+loadDir = '/data/corelli_beryl/IPTS-20302/'
 peaksFile = '/SNS/users/ntv/integrate/corelli_beryl/combined_hexagonal_indexedonly.integrate'
 UBFile =  '/SNS/users/ntv/integrate/corelli_beryl/combined_hexagonal.mat'
 DetCalFile = None
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
-loadDir = '/data/corelli_beryl/IPTS-20302/'
 nxsTemplate = loadDir+'CORELLI_%i.nxs.h5'
 #panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
 dtBinWidth = 25 
@@ -110,10 +111,10 @@ dQPixel=0.02#np.array([0.003, 0.003, 0.003])
 #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
 q_frame='lab'
-pplmin_frac=0.; pplmax_frac=1.; mindtBinWidth=15
-
-
+pplmin_frac=0.; pplmax_frac=4.5; mindtBinWidth=10
 '''
+
+
 #DNA
 peaksFile = '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.integrate'
 UBFile =  '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.mat'
@@ -127,8 +128,7 @@ dQPixel=0.007#np.array([0.003, 0.003, 0.003])
 #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
 q_frame='lab'
-pplmin_frac=0.8; pplmax_frac=2.0
-'''
+pplmin_frac=0.8; pplmax_frac=2.0; mindtBinWidth=15
 
 '''
 #Beta Lac
