@@ -39,6 +39,60 @@ numTimesToInterpolate=1
 dtBinWidth = 4 #Width (in us) in TOF profile bins
 qLow = -25; qHigh=25;
 '''
+
+#PsbO
+loadDir = '/SNS/MANDI/IPTS-16286/data/'
+nxsTemplate = loadDir+'MANDI_%i_event.nxs'
+sampleRuns = range(6154,6165+1)
+peaksFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.integrate'
+peaksFormat = peaksFile
+UBFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.mat'
+UBFormat = UBFile
+DetCalFile = None
+qLow = -5.0; qHigh = 5.0
+dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+dtBinWidth = 40 #Width (in us) in TOF profile bins
+dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
+descriptor = 'psbo_3D_full_lab_newpredpws_highres' #Does not end with '/'
+doIterativeBackgroundFitting = False
+nBG=5
+parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
+numTimesToInterpolate=0
+workDir = '/SNS/users/ntv/dropbox/'
+descriptorRead = 'psbo_lab_newpredpws_highres'
+#predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+predpplCoefficients = np.array([14.36827809, 10.889742, 0.28754095]) #Go with ICCFT.oldScatFun
+q_frame='lab'
+
+'''
+#DNA
+loadDir = '/SNS/MANDI/IPTS-18552/nexus/'
+nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
+sampleRuns = range(8758,8769+1)
+peaksFile = '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.integrate'
+peaksFormat = peaksFile
+UBFile = '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.mat'
+UBFormat = UBFile
+DetCalFile = None
+qLow = -5.0; qHigh = 5.0
+dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+dtBinWidth = 40 #Width (in us) in TOF profile bins
+dQPixel = 0.007 #dQ for each voxel in qBox - recommended to decrease for successive fits
+descriptor = 'dna_3D_full_lab_newpredppl' #Does not end with '/'
+doIterativeBackgroundFitting = False
+nBG=5
+parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
+numTimesToInterpolate=0
+workDir = '/SNS/users/ntv/dropbox/'
+descriptorRead = 'dna_lab_newpredppl'
+#predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
+q_frame='lab'
+'''
+
+
+
+'''
 #Beta Lac
 loadDir = '/SNS/MANDI/IPTS-15000/data/'
 nxsTemplate = loadDir+'MANDI_%i_event.nxs'
@@ -52,15 +106,42 @@ qLow = -5.0; qHigh = 5.0
 dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
 dtBinWidth = 40 #Width (in us) in TOF profile bins
 dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
-descriptor = 'beta_lac_3D_full' #Does not end with '/'
+descriptor = 'beta_lac_3D_full_lab3' #Does not end with '/'
 doIterativeBackgroundFitting = False
 nBG=5
 parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
 numTimesToInterpolate=0
 workDir = '/SNS/users/ntv/dropbox/'
-descriptorRead = 'beta_lac_predpws5'
+descriptorRead = 'beta_lac_lab'
 predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+q_frame='lab'
+'''
 
+
+'''
+#NaK
+loadDir = '/SNS/MANDI/IPTS-17495/nexus/'
+nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
+sampleRuns = range(8275,8282+1)
+peaksFile = '/SNS/users/ntv/integrate/mandi_nak/MANDI_nak_8275_8282.integrate'
+UBFile = '/SNS/users/ntv/integrate/mandi_nak/MANDI_NAK_UB.mat'
+peaksFormat = peaksFile
+UBFormat = UBFile
+DetCalFile = None
+qLow = -5.0; qHigh = 5.0
+dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+dtBinWidth = 40 #Width (in us) in TOF profile bins
+dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
+descriptor = 'nak_3D_full_lab_2' #Does not end with '/'
+doIterativeBackgroundFitting = False
+nBG=5
+parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
+numTimesToInterpolate=0
+workDir = '/SNS/users/ntv/dropbox/'
+descriptorRead = 'nak_predpws5_lab'
+predpplCoefficients = np.array([12.51275, 13.078622, 0.18924]) #Go with ICCFT.oldScatFun
+q_frame='lab'
+'''
 
 peaks_ws = LoadIsawPeaks(Filename = peaksFile)
 LoadIsawUB(InputWorkspace=peaks_ws, FileName=UBFile)
@@ -73,7 +154,7 @@ qMask = ICCFT.getHKLMask(UBMatrix, frac=fracHKL, dQPixel=dQPixel,dQ=dQ)
 padeCoefficients = ICCFT.getModeratorCoefficients('franz_coefficients_2017.dat')
 ICCFitParams = ICAT.getFitParameters(workDir, descriptorRead, sampleRuns[0], sampleRuns[-1], sampleRuns=sampleRuns)
 ICCFitDict = ICAT.getFitDicts(workDir, descriptorRead,sampleRuns[0], sampleRuns[-1], sampleRuns=sampleRuns)
-strongPeakParams = pickle.load(open('strongPeakParams.pkl', 'rb'))
+strongPeakParams = pickle.load(open('strongPeakParams_betalac_lab.pkl', 'rb'))
 
 from timeit import default_timer as timer
 
@@ -81,7 +162,7 @@ badFits = []
 oldNewList = []
 for sampleRun in sampleRuns:
     fileName = nxsTemplate%sampleRun
-    MDdata = ICCFT.getSample(sampleRun, DetCalFile, workDir, fileName,qLow=qLow, qHigh=qHigh)
+    MDdata = ICCFT.getSample(sampleRun, DetCalFile, workDir, fileName,qLow=qLow, qHigh=qHigh, q_frame=q_frame)
     t1 = timer()
     numerrors=0
     numgood=0
@@ -93,8 +174,11 @@ for sampleRun in sampleRuns:
         try:
             if peak.getRunNumber() == sampleRun:
                 print 'Integrating peak %i'%peakNumber
-                box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel)
-                Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=70, nPhi=70, plotResults=False,nBG=5, dtBinWidth=dtBinWidth,zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1,numTimesToInterpolate=numTimesToInterpolate, fICCParams=ICCFitParams[peakNumber], oldICCFit=ICCFitDict[peakNumber], strongPeakParams=strongPeakParams, predCoefficients=predpplCoefficients)
+                box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel, q_frame=q_frame)
+                #Will force weak peaks to be fit using a neighboring peak profile
+                Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False,nBG=5, dtBinWidth=dtBinWidth,zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1,numTimesToInterpolate=numTimesToInterpolate, fICCParams=ICCFitParams[peakNumber], oldICCFit=ICCFitDict[peakNumber], strongPeakParams=strongPeakParams, predCoefficients=predpplCoefficients, q_frame=q_frame)
+                #Does not force weak peaks
+                #Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=70, nPhi=70, plotResults=False,nBG=5, dtBinWidth=dtBinWidth,zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1,numTimesToInterpolate=numTimesToInterpolate, fICCParams=ICCFitParams[peakNumber], oldICCFit=ICCFitDict[peakNumber],  predCoefficients=predpplCoefficients)
 
                 intensity = np.sum(Y3D[Y3D/Y3D.max() >0.05])/2**(3*numTimesToInterpolate)
                 skipIDX = 2**numTimesToInterpolate
@@ -130,3 +214,10 @@ for sampleRun in sampleRuns:
     os.system('rm %s'%(workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor)))
     SaveIsawPeaks(InputWorkspace='peaks_ws', Filename=workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))
     pickle.dump(paramList, open(workDir+descriptor+'/bvgParams_%i_%s.pkl'%(sampleRun, descriptor),'wb'))
+
+    wsList = mtd.getObjectNames()
+    for ws in wsList:
+        if 'peaks' not in ws:
+            print 'Removing %s'%ws
+            mtd.remove(ws)
+

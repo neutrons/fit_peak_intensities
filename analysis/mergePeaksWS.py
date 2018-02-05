@@ -3,15 +3,24 @@ from mantid.simpleapi import *
 import matplotlib.pyplot as plt
 import sys
 import ICCAnalysisTools as ICAT
+
+'''
+#betalac
 sampleRuns = range(4999,5003+1)
 workDir = '/SNS/users/ntv/dropbox/'
-descriptor = 'beta_lac_predpws6'
-
+descriptor = 'beta_lac_highres3'
+loadDir = '/SNS/MANDI/IPTS-15000/data/'
+eventWS = Load(loadDir+'MANDI_%i_event.nxs'%sampleRuns[0])
+'''
+#PsbO
+sampleRuns = range(6154,6165+1)
+workDir = '/SNS/users/ntv/dropbox/'
+descriptor = 'psbo_lab_newpredppl_highres'
+loadDir = '/SNS/MANDI/IPTS-16286/data/'
+eventWS = Load(loadDir+'MANDI_%i_event.nxs'%sampleRuns[0])
 
 peaksFile = workDir+descriptor+'/peaks_%i_%s.integrate'
 
-loadDir = '/SNS/MANDI/IPTS-15000/data/'
-eventWS = Load(loadDir+'MANDI_%i_event.nxs'%sampleRuns[0])
 ws = CreatePeaksWorkspace(NumberOfPeaks=0, OutputWorkspace="ws",InstrumentWorkspace=eventWS)
 #First one - remove extra peaks
 peaks_ws = LoadIsawPeaks(FileName=peaksFile%(sampleRuns[0],descriptor),OutputWorkspace='pws%i'%sampleRuns[0])

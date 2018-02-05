@@ -1,10 +1,19 @@
+
+
+import sys
+#remove the original mantid path
+popList = []
+for i in range(len(sys.path))[::-1]:
+    if 'antid' in sys.path[i]:
+        sys.path.pop(i)
+sys.path.append('/home/ntv/mantid/mantid/bin/')
+
+
 import matplotlib.pyplot as plt
 plt.ion()
-import sys
 sys.path.append('../')
 import numpy as np
 from scipy.optimize import curve_fit
-sys.path.append("/opt/mantidnightly/bin")
 from mantid.simpleapi import *
 from mantid.kernel import V3D
 import ICCFitTools as ICCFT
@@ -15,9 +24,9 @@ from timeit import default_timer as timer
 reload(EdgeTools)
 reload(ICCFT)
 
+
 print "Which peak?"
 peakToGet = int(input())
-
 '''
 #Scolecite
 peaksFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Monoclinic_C.integrate'
@@ -30,6 +39,8 @@ loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
 dtBinWidth = 4 
 dQPixel=0.005#np.array([0.003, 0.003, 0.003])
+predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+q_frame='lab'
 '''
 '''
 #Si 2016
@@ -41,21 +52,42 @@ loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
 '''
 '''
+#PsbO 2016
+peaksFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.integrate'
+UBFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.mat'
+DetCalFile = None
+workDir = '/SNS/users/ntv/dropbox/' #End with '/'
+loadDir = '/SNS/MANDI/IPTS-16286/data/'
+nxsTemplate = loadDir+'MANDI_%i_event.nxs'
+#panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
+dtBinWidth = 25 
+dQPixel=0.003#np.array([0.003, 0.003, 0.003])
+predpplCoefficients = np.array([14.36827809, 10.889742, 0.28754095]) #Go with ICCFT.oldScatFun
+#predpplCoefficients = np.array([12.51275, 13.078622, 0.18924]) #Go with ICCFT.oldScatFun
+q_frame = 'lab'
+pplmin_frac=0.8; pplmax_frac=1.5
+'''
+
+'''
 #NaK 2017
 peaksFile = '/SNS/users/ntv/integrate/mandi_nak/MANDI_nak_8275_8282.integrate'
-UBFile =  '/SNS/users/ntv/integrate/mandi_nak/MANDI_NAK_UB_8275.mat'
+UBFile = '/SNS/users/ntv/integrate/mandi_nak/MANDI_NAK_UB.mat'
 DetCalFile = None
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/MANDI/IPTS-17495/nexus/'
 nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
 #panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
 dtBinWidth = 25 
-dQPixel=0.005#np.array([0.003, 0.003, 0.003])
+dQPixel=0.003#np.array([0.003, 0.003, 0.003])
+predpplCoefficients = np.array([12.51275, 13.078622, 0.18924]) #Go with ICCFT.oldScatFun
+q_frame = 'lab'
 '''
+
+
 '''
 #MaNDI natrolite
-peaksFile = '/SNS/users//ntv/integrate/mandi_natrolite/mandi_natrolite_peaks.integrate'
-UBFile =  '/SNS/users/ntv/integrate/mandi_natrolite/mandi_natrolite_niggli_ub.mat'
+peaksFile = '/SNS/users//ntv/integrate/mandi_natrolite/peaks_8679.integrate'
+UBFile =  '/SNS/users/ntv/integrate/mandi_natrolite/mandi_8679_niggli.mat'
 DetCalFile = None
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/MANDI/IPTS-8776/nexus/'
@@ -65,7 +97,40 @@ dtBinWidth = 25
 dQPixel=0.005#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = None##np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 '''
+'''
+#CORELLI - beryl
+loadDir = '/data/corelli_beryl/IPTS-20302/'
+peaksFile = '/SNS/users/ntv/integrate/corelli_beryl/combined_hexagonal_indexedonly.integrate'
+UBFile =  '/SNS/users/ntv/integrate/corelli_beryl/combined_hexagonal.mat'
+DetCalFile = None
+workDir = '/SNS/users/ntv/dropbox/' #End with '/'
+nxsTemplate = loadDir+'CORELLI_%i.nxs.h5'
+#panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
+dtBinWidth = 25 
+dQPixel=0.02#np.array([0.003, 0.003, 0.003])
+#predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
+q_frame='lab'
+pplmin_frac=0.; pplmax_frac=4.5; mindtBinWidth=10
+'''
 
+
+#DNA
+peaksFile = '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.integrate'
+UBFile =  '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.mat'
+DetCalFile = None
+workDir = '/SNS/users/ntv/dropbox/' #End with '/'
+loadDir = '/SNS/MANDI/IPTS-18552/nexus/'
+nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
+#panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
+dtBinWidth = 25 
+dQPixel=0.007#np.array([0.003, 0.003, 0.003])
+#predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
+q_frame='lab'
+pplmin_frac=0.8; pplmax_frac=2.0; mindtBinWidth=15
+
+'''
 #Beta Lac
 peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
 UBFile =  '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
@@ -77,11 +142,10 @@ nxsTemplate = loadDir+'MANDI_%i_event.nxs'
 dtBinWidth = 25 
 dQPixel=0.003#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
-
+q_frame='lab'
+'''
 
 # Some parameters
-
-
 removeEdges = False 
 importPeaks = True
 for ws in mtd.getObjectNames():
@@ -105,15 +169,15 @@ for ws in mtd.getObjectNames():
         break
 if importFlag:
     fileName = nxsTemplate%peak.getRunNumber()
-    MDdata = ICCFT.getSample(peak.getRunNumber(), DetCalFile, workDir, fileName)
+    MDdata = ICCFT.getSample(peak.getRunNumber(), DetCalFile, workDir, fileName, q_frame=q_frame)
     MDdata.setComment('BSGETBOX%i'%peak.getRunNumber())
 
 figNumber =1 
 
 fracHKL = 0.5
 #dQPixel = ICCFT.getPixelStep(peak)
-dtSpread = 0.03
-dtSpreadToPlot = [0.03]
+dtSpread = 0.015
+dtSpreadToPlot = [0.01]
 wavelength = peak.getWavelength() #in Angstrom
 energy = 81.804 / wavelength**2 / 1000.0 #in eV
 flightPath = peak.getL1() + peak.getL2() #in m
@@ -124,7 +188,7 @@ dQ[dQ>0.4]=0.4
 
 print dQPixel
 print peak.getQSampleFrame()
-Box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakToGet, dQ, fracHKL=fracHKL,dQPixel=dQPixel, refineCenter=False)
+Box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakToGet, dQ, fracHKL=fracHKL,dQPixel=dQPixel, refineCenter=False, q_frame=q_frame)
 box = Box
 Box.setTitle('Box for peak %i'%peakToGet)
 #SaveMD(InputWorkspace=Box, Filename = 'Box.nxs')
@@ -144,7 +208,7 @@ else:
 
 n_events = Box.getNumEventsArray()
 
-qMask = ICCFT.getHKLMask(UBMatrix, frac=fracHKL, dQPixel=dQPixel, dQ=dQ)
+qMask = ICCFT.getHKLMask(UBMatrix, frac=0.5, dQPixel=dQPixel, dQ=dQ)
 if not removeEdges:
     mask = np.ones_like(n_events)
 else:
@@ -198,10 +262,10 @@ if True:
     scatteringHalfAngle = 0.5*peak.getScattering()
     edgesToCheck = []#EdgeTools.needsEdgeRemoval(Box,panelDict,peak)
     for dtS in dtSpreadToPlot:
-        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtS,doVolumeNormalization=False, minFracPixels=0.015, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=False, zBG=-1.)
+        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtS,doVolumeNormalization=False, minFracPixels=0.015, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=False, zBG=-1., calc_pp_lambda=False, mindtBinWidth=mindtBinWidth)
         plt.subplot(2,1,2)
         plt.plot(tofWS.readX(0), tofWS.readY(0),'o',label='%2.3f'%dtS)
-        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtS,doVolumeNormalization=False, minFracPixels=0.005, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=False, zBG=1.96,neigh_length_m=3, padeCoefficients=ICCFT.getModeratorCoefficients('franz_coefficients_2017.dat'), predCoefficients=predpplCoefficients)
+        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtS,doVolumeNormalization=False, minFracPixels=0.005, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=False, zBG=1.96,neigh_length_m=3, padeCoefficients=ICCFT.getModeratorCoefficients('franz_coefficients_2017.dat'), predCoefficients=predpplCoefficients, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac,mindtBinWidth=mindtBinWidth)
         print pp_lambda
         plt.subplot(2,1,2)
         plt.plot(tofWS.readX(0), tofWS.readY(0),'-o',label='%2.3f'%dtS)

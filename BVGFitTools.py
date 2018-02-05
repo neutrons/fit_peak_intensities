@@ -17,12 +17,20 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 # BVGFT.compareBVGFitData(box,params[0])
 
 
-def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxToHistogram=1.0,numTimesToInterpolate=1, plotResults=False,nBG=15, dtBinWidth=4,zBG=1.96,bgPolyOrder=1, fICCParams = None, oldICCFit=None, strongPeakParams=None, forceCutoff=250, edgeCutoff=15, predCoefficients=None, neigh_length_m=3):
+def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxToHistogram=1.0,numTimesToInterpolate=1, plotResults=False,nBG=15, dtBinWidth=4,zBG=1.96,bgPolyOrder=1, fICCParams = None, oldICCFit=None, strongPeakParams=None, forceCutoff=250, edgeCutoff=15, predCoefficients=None, neigh_length_m=3, q_frame = 'sample', dtSpread=0.03, pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1):
     n_events = box.getNumEventsArray()
 
+    if q_frame == 'lab':
+        q0 = peak.getQLabFrame()
+    elif q_frame == 'sample':
+        q0 = peak.getQSampleFrame()
+    else:
+        raise ValueError('BVGFT:get3DPeak - q_frame must be either \'lab\' or \'sample\'; %s was provided'%q_frame)
+
+
     if fICCParams is None:
-        goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events, peak=peak, box=box,qMask=qMask, calc_pp_lambda=True, padeCoefficients=padeCoefficients, dtBinWidth=dtBinWidth,nBG=nBG, predCoefficients=predCoefficients,neigh_length_m=neigh_length_m)
-        YTOF, fICC, x_lims = fitTOFCoordinate(box,peak,padeCoefficients,dtSpread=0.03,dtBinWidth=dtBinWidth,qMask=qMask,bgPolyOrder=bgPolyOrder,nBG=nBG,zBG=zBG,plotResults=plotResults, pp_lambda=pp_lambda, neigh_length_m=neigh_length_m)
+        goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events, peak=peak, box=box,qMask=qMask, calc_pp_lambda=True, padeCoefficients=padeCoefficients, dtBinWidth=dtBinWidth,nBG=nBG, predCoefficients=predCoefficients,neigh_length_m=neigh_length_m, pp_lambda=None, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac)
+        YTOF, fICC, x_lims = fitTOFCoordinate(box,peak,padeCoefficients,dtSpread=dtSpread,dtBinWidth=dtBinWidth,qMask=qMask,bgPolyOrder=bgPolyOrder,nBG=nBG,zBG=zBG,plotResults=plotResults, pp_lambda=pp_lambda, neigh_length_m=neigh_length_m, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac, mindtBinWidth=mindtBinWidth)
 
     else: #we already did I-C profile, so we'll just read the parameters
         pp_lambda = fICCParams[-1]
@@ -34,22 +42,21 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
         fICC['T0'] = fICCParams[8]  
         fICC['scale'] = fICCParams[9]  
         fICC['hatWidth'] = fICCParams[10]  
-        fICC['k_conv'] = fICCParams[11]  
-        goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events, pp_lambda=pp_lambda,predCoefficients=predCoefficients)
+        fICC['k_conv'] = fICCParams[11] 
+        goodIDX, _ = ICCFT.getBGRemovedIndices(n_events, pp_lambda=pp_lambda, qMask=qMask)
         x_lims = [np.min(oldICCFit[0]), np.max(oldICCFit[0])]
-        tofxx = oldICCFit[0]; tofyy = oldICCFit[1]
+        tofxx = oldICCFit[0]; tofyy = oldICCFit[2]
         ftof = interp1d(tofxx, tofyy,bounds_error=False,fill_value=0.0)
         XTOF = boxToTOFThetaPhi(box,peak)[:,:,:,0]
         YTOF = ftof(XTOF)
 
+    goodIDX *= qMask #TODO: we can do this when we get the goodIDX
     X = boxToTOFThetaPhi(box,peak)
     dEdge = edgeCutoff
     useForceParams = peak.getIntensity() < forceCutoff or peak.getRow() <= dEdge or peak.getRow() >= 255-dEdge or peak.getCol() <= dEdge or peak.getCol() >= 255-dEdge
     if strongPeakParams is not None and useForceParams:
-        q = peak.getQSampleFrame()
-        print peak.getQSampleFrame()
-        th = np.arctan2(q[1],q[0])
-        ph = np.arctan2(q[2],np.hypot(q[0],q[1]))
+        th = np.arctan2(q0[1],q0[0])
+        ph = np.arctan2(q0[2],np.hypot(q0[0],q0[1]))
         thphPeak = np.array([th,ph])
         nnIDX = np.argmin(np.linalg.norm(strongPeakParams[:,:2] - thphPeak,axis=1))
         print 'Using ', strongPeakParams[nnIDX,:2], 'for ', thphPeak
@@ -109,11 +116,9 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
     QX, QY, QZ = ICCFT.getQXQYQZ(box)
     fitMaxIDX = tuple(np.array(np.unravel_index(Y2.argmax(), Y2.shape)) // (numTimesToInterpolate+1))
     newCenter = np.array([QX[fitMaxIDX], QY[fitMaxIDX], QZ[fitMaxIDX]])
-    print np.unravel_index(Y2.argmax(), Y2.shape)
-    print newCenter, peak.getQSampleFrame(), 'dQ: ', np.linalg.norm(newCenter - peak.getQSampleFrame())
 
-    retParams['dQ'] =  np.linalg.norm(newCenter - peak.getQSampleFrame())
-    retParams['newQSample'] =  newCenter 
+    retParams['dQ'] =  np.linalg.norm(newCenter - q0)
+    retParams['newQ'] =  newCenter 
 
     return Y2, goodIDX, pp_lambda, retParams
 
@@ -212,7 +217,9 @@ def fitScaling(n_events,box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
     fitMaxIDX = tuple(np.array(np.unravel_index(YJOINT.argmax(), YJOINT.shape)))
     if goodIDX is None:
         goodIDX = np.zeros_like(YJOINT).astype(np.bool)
-        goodIDX[fitMaxIDX[0]-dP:fitMaxIDX[0]+dP, fitMaxIDX[1]-dP:fitMaxIDX[1]+dP,fitMaxIDX[2]-dP:fitMaxIDX[2]+dP] = True
+        goodIDX[max(fitMaxIDX[0]-dP,0):min(fitMaxIDX[0]+dP,goodIDX.shape[0]), 
+                max(fitMaxIDX[1]-dP,0):min(fitMaxIDX[1]+dP,goodIDX.shape[1]),
+                max(fitMaxIDX[2]-dP,0):min(fitMaxIDX[2]+dP,goodIDX.shape[2])] = True
         goodIDX = np.logical_and(goodIDX, conv_n_events>0)
         #goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events)
         #goodIDX = np.logical_and(goodIDX, n_events>0)
@@ -221,12 +228,10 @@ def fitScaling(n_events,box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
     weights = np.sqrt(n_events).copy()
     weights[weights<1] = 1.
     bounds = ([0,0],[np.inf,np.inf])
-
-    p, cov = curve_fit(fitScalingFunction,convYJOINT[goodIDX],conv_n_events[goodIDX],p0=p0)#, sigma=np.sqrt(weights[goodIDX]))
+    p, cov = curve_fit(fitScalingFunction,convYJOINT[goodIDX],conv_n_events[goodIDX],p0=p0, bounds=bounds)#, sigma=np.sqrt(weights[goodIDX]))
     
     #highIDX = YJOINT > 0.7
     #p[0] = np.mean(n_events[highIDX] / YJOINT[highIDX])
-    print p
     YRET = p[0]*YJOINT + p[1] 
     
     chiSq = np.sum((YRET[goodIDX]-n_events[goodIDX])**2 / weights[goodIDX])
@@ -259,7 +264,7 @@ def getXTOF(box, peak):
     return tList
 
 
-def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVolumeNormalization=False,minFracPixels=0.01,removeEdges=False,calcTOFPerPixel=False,neigh_length_m=3,zBG=1.96,bgPolyOrder=1,panelDict=None,qMask=None,calibrationDict=None,nBG=15, plotResults=False,fracStop=0.01, pp_lambda=None):
+def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVolumeNormalization=False,minFracPixels=0.01,removeEdges=False,calcTOFPerPixel=False,neigh_length_m=3,zBG=1.96,bgPolyOrder=1,panelDict=None,qMask=None,calibrationDict=None,nBG=15, plotResults=False,fracStop=0.01, pp_lambda=None, pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1):
     
     #Get info from the peak
     tof = peak.getTOF() #in us
@@ -274,7 +279,7 @@ def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVol
         qMask = np.ones_like(box.getNumEventsArray()).astype(np.bool) 
     
     #Calculate the optimal pp_lambda and 
-    tofWS,ppl = ICCFT.getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG,pp_lambda=pp_lambda)
+    tofWS,ppl = ICCFT.getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG,pp_lambda=pp_lambda, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac, mindtBinWidth=mindtBinWidth)
 
     try:
         fitResults,fICC = ICCFT.doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,nBG=nBG,fitOrder=bgPolyOrder,constraintScheme=1)
@@ -283,12 +288,11 @@ def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVol
     
     for i, param in enumerate(['A','B','R','T0','scale', 'hatWidth', 'k_conv']):
         fICC[param] = mtd['fit_Parameters'].row(i)['Value']
-    
     bgParamsRows = [7 + i for i in range(bgPolyOrder+1)]
     bgCoeffs = []
     for bgRow in bgParamsRows[::-1]:#reverse for numpy order 
         bgCoeffs.append(mtd['fit_Parameters'].row(bgRow)['Value'])
-    print bgCoeffs
+    #print bgCoeffs
     x = tofWS.readX(0)
     bg = np.polyval(bgCoeffs, x)
     yFit = mtd['fit_Workspace'].readY(1)
@@ -300,7 +304,6 @@ def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVol
         iStart = np.min(np.where(goodIDX))
         iStop = np.max(np.where(goodIDX))
 
-    print 'bg: ', np.sum(bg[iStart:iStop])
    
     interpF = interp1d(x, yFit, kind='cubic')
     tofxx = np.linspace(tofWS.readX(0).min(), tofWS.readX(0).max(),1000)
@@ -310,6 +313,7 @@ def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVol
         plt.plot(tofxx,tofyy,label='Interpolated')
         plt.plot(tofWS.readX(0), tofWS.readY(0),'o',label='Data')
         print 'sum:', np.sum(fICC.function1D(tofWS.readX(0)))
+        print 'bg: ', np.sum(bg[iStart:iStop])
         plt.plot(mtd['fit_Workspace'].readX(1), mtd['fit_Workspace'].readY(1),label='Fit')
         plt.title(fitResults.OutputChi2overDoF)
         plt.legend(loc='best')
@@ -325,7 +329,7 @@ def getYTOF(fICC, XTOF, xlims):
     YTOF = ftof(XTOF)
     return YTOF
 
-def getTOFParameters(box, peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVolumeNormalization=False,minFracPixels=0.01,removeEdges=False,calcTOFPerPixel=False,neigh_length_m=3,zBG=1.96,bgPolyOrder=1,panelDict=None,qMask=None,calibrationDict=None,nBG=15):
+def getTOFParameters(box, peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVolumeNormalization=False,minFracPixels=0.01,removeEdges=False,calcTOFPerPixel=False,neigh_length_m=3,zBG=1.96,bgPolyOrder=1,panelDict=None,qMask=None,calibrationDict=None,nBG=15, pplmin_frac=0.8, pplmax_frac=1.5):
     tof = peak.getTOF() #in us
     wavelength = peak.getWavelength() #in Angstrom
     flightPath = peak.getL1() + peak.getL2() #in m
@@ -334,13 +338,14 @@ def getTOFParameters(box, peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,doVo
     detNumber = 0#EdgeTools.getDetectorBank(panelDict, peak.getDetectorID())['bankNumber']
     if qMask is None:
         qMask = np.ones_like(box.getNumEventsArray()).astype(np.bool)
-    tofWS,ppl = ICCFT.getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG)
+    tofWS,ppl = ICCFT.getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=doVolumeNormalization, minFracPixels=minFracPixels, removeEdges=False,calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac)
 
     fitResults,fICC = ICCFT.doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,nBG=nBG,fitOrder=bgPolyOrder)
     for i, param in enumerate(['A','B','R','T0','scale', 'hatWidth', 'k_conv']):
         fICC[param] = mtd['fit_Parameters'].row(i)['Value']
     return fICC 
 
+#This is not a very recent version of this
 def fitPeak3D(box, X, n_events, peak,goodIDX,padeCoefficients):
 
     fICC = getTOFParameters(box, peak, padeCoefficients)
@@ -465,12 +470,11 @@ def integrateBVGFit(Y,params):
     sigma = np.sqrt(fitSum + bgSum)
     return intensity, sigma
 
-def integrateBVGPeak(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.005,fracHKL = 0.5, refineCenter=False, fracHKLRefine = 0.2,nTheta=400,nPhi=400):
-    box = getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel)
+def integrateBVGPeak(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.005,fracHKL = 0.5, refineCenter=False, fracHKLRefine = 0.2,nTheta=400,nPhi=400, q_frame='sample'):
+    box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel,q_frame=q_frame)
     params,h,t,p = doBVGFit(box,nTheta=nTheta,nPhi=nPhi)
     Y = getBVGResult(box, params[0],nTheta=nTheta,nPhi=nPhi)
     intens, sigma = integrateBVGFit(Y,params)
-    print peak.getIntensity(), intens, sigma
     peak.setIntensity(intens)
     peak.setSigmaIntensity(sigma)
 
@@ -490,14 +494,14 @@ def compareBVGFitData(box,params,nTheta=200,nPhi=200,figNumber=2,fracBoxToHistog
     nX, nY = Y.shape
     plt.figure(figNumber); plt.clf()
     plt.subplot(2,2,1);
-    plt.imshow(h,vmin=0,vmax=np.max(h),interpolation='None')
+    plt.imshow(h,vmin=0,vmax=0.7*np.max(h),interpolation='None')
     plt.xlim([pLow*nX, pHigh*nX])
     plt.ylim([pLow*nY, pHigh*nY])
     if useIDX is None: plt.title('Measured Peak')
     else: plt.title('BG Removed Measured Peak')
     plt.colorbar() 
     plt.subplot(2,2,2);
-    plt.imshow(Y,vmin=0,vmax=np.max(h),interpolation='None' )
+    plt.imshow(Y,vmin=0,vmax=0.7*np.max(h),interpolation='None' )
     #plt.imshow(Y,interpolation='None' )
     plt.title('Modeled Peak')
     plt.xlim([pLow*nX, pHigh*nX])
@@ -513,7 +517,7 @@ def compareBVGFitData(box,params,nTheta=200,nPhi=200,figNumber=2,fracBoxToHistog
     if useIDX is not None:
         h0, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram, useIDX=None)
         plt.subplot(2,2,4);
-        plt.imshow(h0,interpolation='None')
+        plt.imshow(h0,vmin=0,vmax=1.0*np.max(h0),interpolation='None')
         plt.xlim([pLow*nX, pHigh*nX])
         plt.ylim([pLow*nY, pHigh*nY])
         plt.xlabel('Measured Peak')
@@ -523,7 +527,7 @@ def compareBVGFitData(box,params,nTheta=200,nPhi=200,figNumber=2,fracBoxToHistog
 
 
 
-def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX=None, forceParams=None, forceTolerance = 0.01):
+def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX=None, forceParams=None, forceTolerance = 0.1, dph=10, dth=10):
     h, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi,zBG=zBG,fracBoxToHistogram=fracBoxToHistogram,useIDX=goodIDX)
     dtH = np.mean(np.diff(thBins))
     dpH = np.mean(np.diff(phBins))
@@ -535,18 +539,28 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
     weights = np.sqrt(h)
     weights[weights<1] = 1
 
+    def fSigX(x,a,k,x0,b):
+        return a*np.exp(-k*(x-x0)) + b
+        #return a/(x-x0) + b
+
+    def fSigP(x,a,k,phi,b):
+        return a*np.sin(k*x-phi) + b*x 
+
+
     if forceParams is None:
             meanTH = TH.mean()
             meanPH = PH.mean()
-            sigX0 = np.polyval([ 0.00173264,  0.0002208 ,  0.00185031, -0.00012078,  0.00189967], meanPH)
-            sigY0 = np.polyval([ 0.00045678, -0.0017618 ,  0.0045013 , -0.00480677,  0.00376619], meanTH)
+            #sigX0 = np.polyval([ 0.00173264,  0.0002208 ,  0.00185031, -0.00012078,  0.00189967], meanPH)
+            sigX0 = fSigX(meanPH,  1.12555136e-02, 1.00831667e+01,1.24807005e-01, 4.50501824e-03)
+            sigY0 = 0.018#np.polyval([ 0.00045678, -0.0017618 ,  0.0045013 , -0.00480677,  0.00376619], meanTH)
+            sigP0 = fSigP(meanTH,  0.1460775 ,  1.85816592,  0.26850086, -0.00725352) 
              
-            p0=[np.max(h), meanTH, meanPH, sigX0, sigY0, 0.00,0.0]
+            p0=[np.max(h), meanTH, meanPH, sigX0, sigY0, sigP0,0.0]
             print p0 
             bounds = ([0.0, thBins[thBins.size//2 - 2], phBins[phBins.size//2 - 2], 0.000, 0.000, -np.inf, 0], 
                     [np.inf, thBins[thBins.size//2 + 2], phBins[phBins.size//2 + 2], 0.02, 0.02, np.inf, np.inf])
             params= curve_fit(bvgFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(),p0=p0, bounds=bounds, sigma=np.sqrt(weights[fitIDX]))
-            print params[0]
+            print '!!!', params[0]
 
     elif forceParams is not None:
         p0 = np.zeros(7)
@@ -554,12 +568,16 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         p0[3] = forceParams[5]; p0[4] = forceParams[6]; p0[5] = forceParams[7];
         isPos = np.sign(p0)
         bounds = ((1.0-isPos*forceTolerance)*p0, (1.0+isPos*forceTolerance)*p0)
-        bounds[0][0] = 0.0;  bounds[1][0] = np.inf; 
+        bounds[0][0] = 0.0;  bounds[1][0] = np.inf; #Amplitude
+        bounds[0][1] = min(thBins[thBins.size//2 - dth], thBins[thBins.size//2 + dth]);
+        bounds[1][1] = max(thBins[thBins.size//2 - dth], thBins[thBins.size//2 + dth]);
+        bounds[0][2] = min(phBins[phBins.size//2 - dph], phBins[phBins.size//2 + dph]);
+        bounds[1][2] = max(phBins[phBins.size//2 - dph], phBins[phBins.size//2 + dph]);
         bounds[1][-1] = np.inf
-        print '~~', forceParams[2:]
-        print '~~~',p0
+        print 'forcing: ', forceParams
+        print '~~~ p0:',p0
         params = curve_fit(bvgFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX],p0=p0, bounds=bounds)
-        print '~~', params[0]
+        print '~~ params:', params[0]
     return params, h, thBins, phBins
 
 def bvgFitFun(x, A, mu0, mu1,sigX,sigY,p,bg):

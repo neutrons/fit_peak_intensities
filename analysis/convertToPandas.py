@@ -6,8 +6,8 @@ import sys
 sys.path.append('../')
 import getEdgePixels as EdgeTools
 import ICCAnalysisTools as ICAT
-import xgboost as xgb
-from sklearn.model_selection import train_test_split
+#import xgboost as xgb
+#from sklearn.model_selection import train_test_split
 import ICConvoluted as ICC
 import ICCFitTools as ICCFT
 from scipy.stats import pearsonr as corr
@@ -63,10 +63,12 @@ def getDictForPandasPeak(peak, fitParams, fitDict, panelDict, i, pg):
         't':'fitDict[i][0]',  
         'yData':'fitDict[i][1]',  
         'yFit':'fitDict[i][2]',
-        'hklFam': 'pg.getReflectionFamily(peak.getHKL())'}
+        'hklFam': 'tuple(np.array(pg.getReflectionFamily(peak.getHKL())))'}
 
-    if len(fitParams[0]) == 17:  
-        colFunDict['bg_quad'] = 'fitParams[i,14]'
+    try:
+        if len(fitParams[0]) == 17:  
+            colFunDict['bg_quad'] = 'fitParams[i,14]'
+    except: pass
     d = {}
     for key in colFunDict.keys():
         command = 'd[\'%s\'] = %s'%(key, colFunDict[key])
@@ -74,8 +76,8 @@ def getDictForPandasPeak(peak, fitParams, fitDict, panelDict, i, pg):
         except KeyError:
             pass
         except:
-            print command 
-            raise#print command
+            pass#print command 
+            #raise#print command
     d['PeakNumber'] = i
     return d
 
