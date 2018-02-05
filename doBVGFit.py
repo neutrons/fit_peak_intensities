@@ -48,6 +48,7 @@ def doBVGFits(sampleRunsList=None):
     descriptorRead = 'beryl_lab'
     predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     q_frame='lab'
+    mindtBinWidth=10
 
     '''
     #PsbO
@@ -70,9 +71,9 @@ def doBVGFits(sampleRunsList=None):
     numTimesToInterpolate=0
     workDir = '/SNS/users/ntv/dropbox/'
     descriptorRead = 'psbo_lab_newpredppl_highres'
-    #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
-    predpplCoefficients = np.array([14.36827809, 10.889742, 0.28754095]) #Go with ICCFT.oldScatFun
+    predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     q_frame='lab'
+    mindtBinWidth = 15
     '''
 
     '''
@@ -185,7 +186,7 @@ def doBVGFits(sampleRunsList=None):
         paramList = []
         for peakNumber in range(peaks_ws.getNumberPeaks()):
             progressFile = workDir+descriptor+'/progress_%i_%s.txt'%(sampleRun, descriptor)
-            if progressFile is not None and i%100==0:
+            if progressFile is not None and peakNumber%100==0:
                 with open(progressFile, 'w') as f:
                     f.write('%i\n'%(i))
 
@@ -197,14 +198,37 @@ def doBVGFits(sampleRunsList=None):
                     print 'Integrating peak %i'%peakNumber
                     box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel, q_frame=q_frame)
                     #Will force weak peaks to be fit using a neighboring peak profile
-                    Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False,nBG=5, dtBinWidth=dtBinWidth,zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1,numTimesToInterpolate=numTimesToInterpolate, fICCParams=ICCFitParams[peakNumber], oldICCFit=ICCFitDict[peakNumber], strongPeakParams=strongPeakParams, predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=15)
+                    #Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False,nBG=5, dtBinWidth=dtBinWidth,zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1,numTimesToInterpolate=numTimesToInterpolate, fICCParams=ICCFitParams[peakNumber], oldICCFit=ICCFitDict[peakNumber], strongPeakParams=strongPeakParams, predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth)
                     #Does not force weak peaks
-                    #Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=70, nPhi=70, plotResults=False,nBG=5, dtBinWidth=dtBinWidth,zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1,numTimesToInterpolate=numTimesToInterpolate, fICCParams=ICCFitParams[peakNumber], oldICCFit=ICCFitDict[peakNumber],  predCoefficients=predpplCoefficients)
+                    Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False,nBG=5, dtBinWidth=dtBinWidth,zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1,numTimesToInterpolate=numTimesToInterpolate, fICCParams=ICCFitParams[peakNumber], oldICCFit=ICCFitDict[peakNumber],  predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth)
 
-                    intensity = np.sum(Y3D[Y3D/Y3D.max() >0.05])/2**(3*numTimesToInterpolate)
+
+                    # First we get the peak intensity
+                    peakIDX = Y3D/Y3D.max() > 0.05
+                    intensity = np.sum(Y3D[peakIDX])/2**(3*numTimesToInterpolate)
                     skipIDX = 2**numTimesToInterpolate
-                    bg = np.sum(goodIDX[Y3D[::skipIDX,::skipIDX,::skipIDX]/Y3D[::skipIDX,::skipIDX,::skipIDX].max()>0.05]*pp_lambda)
-                    sigma = np.sqrt(intensity + bg)
+                   
+
+                    # Now the number of background counts under the peak assuming a constant bg across the box
+                    convBox = 1.0*np.ones([neigh_length_m, neigh_length_m,neigh_length_m]) / neigh_length_m**3
+                    conv_n_events = convolve(n_events,convBox)
+                    bgIDX = reduce(np.logical_and,[~goodIDX, qMask, conv_n_events>0])
+                    bgEvents = np.mean(n_events[bgIDX])*np.sum(peakIDX)
+
+                    # Now we consider the variation of the fit.  These are done as three independent fits.  So we need to consider
+                    # the variance within our fit sig^2 = sum(N*(yFit-yData)) / sum(N) and scale by the number of parameters that go into
+                    # the fit.  In total: 10 (removing scale variables)
+                    # TODO: It's not clear to me if we should be normalizing by #params - so we'll leave it for now.
+                    w_events = n_events.copy()
+                    w_events[w_events==0] = 1
+                    varFit = np.average((n_events[peakIDX]-Y3D[peakIDX])*(n_events[peakIDX]-Y3D[peakIDX]), weights=(w_events[peakIDX]-bgEvents))
+
+                    # Comapre with the old way
+                    bgOld = np.sum(goodIDX[Y3D[::skipIDX,::skipIDX,::skipIDX]/Y3D[::skipIDX,::skipIDX,::skipIDX].max()>0.05]*pp_lambda)
+                    sigmaOld = np.sqrt(intensity + bgOld)
+                    print sigma, sigmaOld
+                    # Now we add them all together.  Variances add linearly, so we just take the square root at the end.
+                    sigma = np.sqrt(intensity + bgEvents + varFit)
                     oldNewVals = [peaks_ws.getPeak(peakNumber).getIntensity(), peaks_ws.getPeak(peakNumber).getSigmaIntensity(), intensity, sigma]
                     print 'original: %4.2f +- %4.2f;  new: %4.2f +- %4.2f'%(oldNewVals[0], oldNewVals[1], oldNewVals[2], oldNewVals[3])
                     oldNewList.append(oldNewVals)

@@ -1,5 +1,3 @@
-
-
 import sys
 #remove the original mantid path
 popList = []
@@ -11,7 +9,7 @@ sys.path.append('/home/ntv/mantid/mantid/bin/')
 
 import matplotlib.pyplot as plt
 plt.ion()
-sys.path.append('../')
+if '../' not in sys.path: sys.path.append('../')
 import numpy as np
 from scipy.optimize import curve_fit
 from mantid.simpleapi import *
@@ -64,7 +62,7 @@ dQPixel=0.003#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = np.array([14.36827809, 10.889742, 0.28754095]) #Go with ICCFT.oldScatFun
 #predpplCoefficients = np.array([12.51275, 13.078622, 0.18924]) #Go with ICCFT.oldScatFun
 q_frame = 'lab'
-pplmin_frac=0.8; pplmax_frac=1.5
+pplmin_frac=0.8; pplmax_frac=1.5; mindtBinWidth=15
 
 '''
 #NaK 2017
