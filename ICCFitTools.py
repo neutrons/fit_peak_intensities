@@ -96,7 +96,7 @@ def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, dtBi
         calc_pp_lambda=True
 
     tofWS,ppl = getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, None, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=False, minFracPixels=0.01, removeEdges=False,calcTOFPerPixel=False,neigh_length_m=3,zBG=1.96,pp_lambda=pp_lambda,calc_pp_lambda=calc_pp_lambda, pplmin_frac=minppl_frac, pplmax_frac=minppl_frac,mindtBinWidth=mindtBinWidth)
-    fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=nBG,fitOrder=1,constraintScheme=2)
+    fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=nBG,fitOrder=1,constraintScheme=1)
     h = [tofWS.readY(0), tofWS.readX(0)]
     chiSq = fitResults.OutputChi2overDoF
     
@@ -869,7 +869,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     #TODO: Make sure we calculate it here - it seems to not work well for scolecute, but works for beta lac?
 
 
-                fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=nBG,fitOrder=bgPolyOrder,constraintScheme=2)
+                fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=nBG,fitOrder=bgPolyOrder,constraintScheme=1)
                 fitStatus = fitResults.OutputStatus
                 chiSq = fitResults.OutputChi2overDoF
 
