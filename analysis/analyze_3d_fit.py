@@ -25,29 +25,30 @@ ellipseFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 61 2 2")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
 '''
-'''
+
 #Beta lactamase
 sampleRuns = range(4999,5004)
 workDir = '/SNS/users/ntv/dropbox/'
-descriptorBVG = 'beta_lac_3D_full_lab3'
+descriptorBVG = 'beta_lac_3D_full_lab3_newsigi'
 descriptorTOF = 'beta_lac_lab'
 #peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
 peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
 ellipseFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 32 2 1")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
-'''
 
+'''
 #DNA
 sampleRuns = range(8758,8769+1)
 workDir = '/SNS/users/ntv/dropbox/'
-descriptorBVG = 'dna_3D_full_lab_newpredppl'
+descriptorBVG = 'dna_3D_full_lab_newpredppl_newsigi'
 descriptorTOF = 'dna_lab_newpredppl'
 #peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
 peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
 ellipseFile = '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 21 21 21")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
+'''
 
 '''
 #NaK
@@ -197,7 +198,7 @@ goodIDX[33173] = False;
 plt.figure(3); plt.clf();
 plt.plot(df[goodIDX]['IntensEll'], df[goodIDX]['Intens3d'],'.',ms=2)
 
-laueOutput = (df['DSpacing'] > 2.0) & (df['Wavelength'] > 2.0) & (df['Wavelength']<4.0) & (df['Intens']/df['SigInt'] > 1.0)
+laueOutput = (df['DSpacing'] > 1.2) & (df['Wavelength'] > 2.0) & (df['Wavelength']<4.0) & (df['Intens3d']/df['SigInt3d'] > 1.0)
 print ' '
 print 'Removing bad peaks from peaks_ws.  This can take some time...'
 ws = CreatePeaksWorkspace(NumberOfPeaks=0, OutputWorkspace="ws")

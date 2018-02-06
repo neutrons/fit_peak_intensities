@@ -13,9 +13,8 @@ elif 'pcwf' in hostName:
 else:
     mantidPythonPath=None
     
-numRuns = 181; numJobs = 25
-
-#numRuns=5; numJobs=5
+#numRuns = 181; numJobs = 25
+numRuns=5; numJobs=5
 
 jobsList = np.array_split(range(numRuns), numJobs)
 

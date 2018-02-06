@@ -39,7 +39,7 @@ def doBVGFits(sampleRunsList=None):
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
     dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.02 #dQ for each voxel in qBox - recommended to decrease for successive fits
-    descriptor = 'beryl_3D_full' #Does not end with '/'
+    descriptor = 'beryl_3D_full_newsigi' #Does not end with '/'
     doIterativeBackgroundFitting = False
     nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
@@ -64,7 +64,7 @@ def doBVGFits(sampleRunsList=None):
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
     dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
-    descriptor = 'psbo_3D_full_lab_newpredpws_highres' #Does not end with '/'
+    descriptor = 'psbo_3D_full_lab_newpredppl_highres_newsigi' #Does not end with '/'
     doIterativeBackgroundFitting = False
     nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
@@ -75,7 +75,6 @@ def doBVGFits(sampleRunsList=None):
     q_frame='lab'
     mindtBinWidth = 15
     '''
-
     '''
     #DNA
     loadDir = '/SNS/MANDI/IPTS-18552/nexus/'
@@ -90,7 +89,7 @@ def doBVGFits(sampleRunsList=None):
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
     dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.007 #dQ for each voxel in qBox - recommended to decrease for successive fits
-    descriptor = 'dna_3D_full_lab_newpredppl' #Does not end with '/'
+    descriptor = 'dna_3D_full_lab_newpredppl_newsigi' #Does not end with '/'
     doIterativeBackgroundFitting = False
     nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
@@ -100,6 +99,7 @@ def doBVGFits(sampleRunsList=None):
     #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
     q_frame='lab'
+    mindtBinWidth = 15
     '''
 
 
@@ -118,7 +118,7 @@ def doBVGFits(sampleRunsList=None):
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
     dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
-    descriptor = 'beta_lac_3D_full_lab3' #Does not end with '/'
+    descriptor = 'beta_lac_3D_full_lab3_newsigi' #Does not end with '/'
     doIterativeBackgroundFitting = False
     nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
@@ -127,6 +127,7 @@ def doBVGFits(sampleRunsList=None):
     descriptorRead = 'beta_lac_lab'
     predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     q_frame='lab'
+    mindtBinWidth = 15
     '''
 
 
@@ -188,7 +189,7 @@ def doBVGFits(sampleRunsList=None):
             progressFile = workDir+descriptor+'/progress_%i_%s.txt'%(sampleRun, descriptor)
             if progressFile is not None and peakNumber%100==0:
                 with open(progressFile, 'w') as f:
-                    f.write('%i\n'%(i))
+                    f.write('%i\n'%(peakNumber))
 
             TPS = timer()
             peak = peaks_ws.getPeak(peakNumber)
@@ -210,6 +211,7 @@ def doBVGFits(sampleRunsList=None):
                    
 
                     # Now the number of background counts under the peak assuming a constant bg across the box
+                    n_events = box.getNumEventsArray()
                     convBox = 1.0*np.ones([neigh_length_m, neigh_length_m,neigh_length_m]) / neigh_length_m**3
                     conv_n_events = convolve(n_events,convBox)
                     bgIDX = reduce(np.logical_and,[~goodIDX, qMask, conv_n_events>0])
@@ -226,9 +228,12 @@ def doBVGFits(sampleRunsList=None):
                     # Comapre with the old way
                     bgOld = np.sum(goodIDX[Y3D[::skipIDX,::skipIDX,::skipIDX]/Y3D[::skipIDX,::skipIDX,::skipIDX].max()>0.05]*pp_lambda)
                     sigmaOld = np.sqrt(intensity + bgOld)
-                    print sigma, sigmaOld
+
                     # Now we add them all together.  Variances add linearly, so we just take the square root at the end.
                     sigma = np.sqrt(intensity + bgEvents + varFit)
+                    print sigma, sigmaOld
+
+
                     oldNewVals = [peaks_ws.getPeak(peakNumber).getIntensity(), peaks_ws.getPeak(peakNumber).getSigmaIntensity(), intensity, sigma]
                     print 'original: %4.2f +- %4.2f;  new: %4.2f +- %4.2f'%(oldNewVals[0], oldNewVals[1], oldNewVals[2], oldNewVals[3])
                     oldNewList.append(oldNewVals)
@@ -290,6 +295,7 @@ if __name__ == '__main__':
                 sys.path.pop(i)
         sys.path.append(args.pythonPathForMantid)
 
+    from scipy.ndimage import convolve
     import ICCFitTools as ICCFT
     reload(ICCFT)
     import BVGFitTools as BVGFT

@@ -129,7 +129,6 @@ def doIntegration(sampleRunsList=None):
     q_frame='lab'
     minppl_frac=0.8; maxppl_frac=1.5
     '''
-    '''
     #Beta lactamase - 2016 - MANDI
     loadDir = '/SNS/MANDI/IPTS-15000/data/'
     nxsTemplate = loadDir+'MANDI_%i_event.nxs'
@@ -156,7 +155,6 @@ def doIntegration(sampleRunsList=None):
     q_frame='lab'
     minppl_frac=0.8; maxppl_frac=1.5; mindtBinWidth=15
     '''
-
     # CORELLI - beryl
     loadDir = '/data/corelli_beryl/IPTS-20302/'
     peaksFile = '/SNS/users/ntv/integrate/corelli_beryl/combined_hexagonal_indexedonly.integrate'
@@ -179,7 +177,7 @@ def doIntegration(sampleRunsList=None):
     predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     q_frame='lab'
     minppl_frac=0.0; maxppl_frac=4.5; mindtBinWidth=10
-
+    '''
     '''
     #Natrolite - 2016 - MANDI
     loadDir = '/SNS/MANDI/IPTS-8776/nexus/'

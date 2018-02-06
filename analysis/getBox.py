@@ -49,6 +49,7 @@ workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
 '''
+'''
 #PsbO 2016
 peaksFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.integrate'
 UBFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.mat'
@@ -63,6 +64,7 @@ predpplCoefficients = np.array([14.36827809, 10.889742, 0.28754095]) #Go with IC
 #predpplCoefficients = np.array([12.51275, 13.078622, 0.18924]) #Go with ICCFT.oldScatFun
 q_frame = 'lab'
 pplmin_frac=0.8; pplmax_frac=1.5; mindtBinWidth=15
+'''
 
 '''
 #NaK 2017
@@ -128,7 +130,6 @@ q_frame='lab'
 pplmin_frac=0.8; pplmax_frac=2.0; mindtBinWidth=15
 '''
 
-'''
 #Beta Lac
 peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
 UBFile =  '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
@@ -141,7 +142,7 @@ dtBinWidth = 25
 dQPixel=0.003#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 q_frame='lab'
-'''
+pplmin_frac=0.8; pplmax_frac=2.0; mindtBinWidth=15
 
 # Some parameters
 removeEdges = False 
