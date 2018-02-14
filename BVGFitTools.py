@@ -44,12 +44,18 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
         fICC['hatWidth'] = fICCParams[10]  
         fICC['k_conv'] = fICCParams[11] 
         goodIDX, _ = ICCFT.getBGRemovedIndices(n_events, pp_lambda=pp_lambda, qMask=qMask)
-        x_lims = [np.min(oldICCFit[0]), np.max(oldICCFit[0])]
-        tofxx = oldICCFit[0]; tofyy = oldICCFit[2]
+
+        if oldICCFit is not None:
+            x_lims = [np.min(oldICCFit[0]), np.max(oldICCFit[0])]
+            tofxx = oldICCFit[0]; tofyy = oldICCFit[2]
+        else:
+            dtSpread = 0.03
+            x_lims = [(1-dtSpread)*peak.getTOF(), (1+dtSpread)*peak.getTOF()]
+            tofxx = np.arange(x_lims[0], x_lims[1], 5)
+            tofyy = fICC.function1D(tofxx)
         ftof = interp1d(tofxx, tofyy,bounds_error=False,fill_value=0.0)
         XTOF = boxToTOFThetaPhi(box,peak)[:,:,:,0]
         YTOF = ftof(XTOF)
-
     goodIDX *= qMask #TODO: we can do this when we get the goodIDX
     X = boxToTOFThetaPhi(box,peak)
     dEdge = edgeCutoff

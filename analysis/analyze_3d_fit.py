@@ -17,23 +17,36 @@ from scipy.optimize import curve_fit
 #PsbO
 sampleRuns = range(6154, 6165+1)
 workDir = '/SNS/users/ntv/dropbox/'
-descriptorBVG = 'psbo_3D_full_lab'
-descriptorTOF = 'psbo_lab'
+descriptorBVG = 'psbo_3D_full_lab_newpredppl_highres_newsigi'
+descriptorTOF = 'psbo_lab_newpredppl_highres'
 peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF) #TOF file, BVGxTOF is from fitDict
 #peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
-ellipseFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.integrate'
+ellipseFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal_highres.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 61 2 2")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
 '''
 
+
+'''
+# CORELLI - beryl
+sampleRuns = range(58411,58592+1)
+workDir = '/SNS/users/ntv/dropbox/'
+descriptorBVG = 'beryl_3D_full_newsigi'
+descriptorTOF = 'beryl_lab_cs1'
+#peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
+peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
+ellipseFile = '/SNS/users/ntv/integrate/corelli_beryl/combined_hexagonal_indexedonly.integrate'
+pg = PointGroupFactory.createPointGroup("6/mmm")
+'''
 #Beta lactamase
 sampleRuns = range(4999,5004)
 workDir = '/SNS/users/ntv/dropbox/'
-descriptorBVG = 'beta_lac_3D_full_lab3_newsigi'
-descriptorTOF = 'beta_lac_lab'
+descriptorBVG = 'beta_lac_3D_highres'
+descriptorTOF = 'beta_lac_lab_highres'
 #peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
 peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
-ellipseFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
+#ellipseFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
+ellipseFile = '/SNS/users/ntv/integrate/mandi_betalactamase/combined_triclinic.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 32 2 1")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
 
@@ -182,40 +195,43 @@ df['notOutlier'] = ~df['isOutlier']
 
 
 #---------------------Select outputs and save a LaueNorm File
-goodIDX = (df['chiSq'] < 50.0) & (df['Intens3d'] > 3)  & (df['notOutlier']) & (df['chiSq3d']<10) 
+goodIDX = (df['chiSq'] < 50.0) & (df['Intens3d'] > 1)  & (df['chiSq3d']<10) & (df['notOutlier']) 
 tooFarIDX = (np.abs(df['Intens3d'] > 100)) & ((np.abs(df['Intens3d']-df['IntensEll']) > 2.*df['Intens3d']) |  (np.abs(df['Intens3d']-df['IntensEll']) > 2.*df['Intens3d']) | (df['Intens3d'] > 5.*df['IntensEll']))
 
 goodIDX = goodIDX & ~tooFarIDX
 
-negHighIDX = ((df['IntensEll']<100) & (df['Intens3d'] > 500)) #| ((df['IntensEll']<100) & (df['Intens3d'] > 500))  | ((df['IntensEll']<1000) & (df['Intens3d'] > 2000))
-#goodIDX = goodIDX & ~negHighIDX
 
-dEdge = 3
+dEdge = 1
 edgeIDX = (df['Row'] <= dEdge) | (df['Row'] >= 255-dEdge) | (df['Col'] <= dEdge) | (df['Col'] >= 255-dEdge)
 goodIDX = goodIDX & ~edgeIDX 
 
-goodIDX[33173] = False; 
 plt.figure(3); plt.clf();
 plt.plot(df[goodIDX]['IntensEll'], df[goodIDX]['Intens3d'],'.',ms=2)
 
-laueOutput = (df['DSpacing'] > 1.2) & (df['Wavelength'] > 2.0) & (df['Wavelength']<4.0) & (df['Intens3d']/df['SigInt3d'] > 1.0)
+laueOutput = (df['DSpacing'] > 1.75) & (df['Wavelength'] > 2.0) & (df['Wavelength']<4.0) & (df['Intens3d']/df['SigInt3d'] > 1.0)
 print ' '
 print 'Removing bad peaks from peaks_ws.  This can take some time...'
+#events = Load('/data/corelli_beryl/IPTS-20302/CORELLI_58417.nxs.h5')
+#events = Load('/SNS/MANDI/IPTS-16286/data/MANDI_6154_event.nxs')
+#ws = CreatePeaksWorkspace(NumberOfPeaks=0, OutputWorkspace="ws", InstrumentWorkspace='events')
 ws = CreatePeaksWorkspace(NumberOfPeaks=0, OutputWorkspace="ws")
 peaksAdded = 0
 peaks_ws_clone = CloneWorkspace(InputWorkspace=peaks_ws, OutputWorkspace='peaks_ws_clone')
 for i in range(len(df)):
     ICAT.print_progress(i,len(df),prefix='Cleaning df: ',suffix='Complete')
     try:
-        if goodIDX[i]:
+        if goodIDX[i] & laueOutput[i]:
             ws.addPeak(peaks_ws_clone.getPeak(df.iloc[i]['peakNumber']))
             ws.getPeak(peaksAdded).setIntensity(float(df.iloc[i]['Intens3d']))
             ws.getPeak(peaksAdded).setSigmaIntensity(float(df.iloc[i]['SigInt3d']))
+            #ws.getPeak(peaksAdded).setIntensity(float(df.iloc[i]['lorentzInt3d']))
+            #ws.getPeak(peaksAdded).setSigmaIntensity(float(df.iloc[i]['lorentzSig3d']))
+            
             peaksAdded += 1
     except KeyError:
         raise
         pass
 
 print 'Saving LaueNorm Input'
-SaveLauenorm(InputWorkspace=ws, Filename=workDir+descriptorBVG+'/laue/laueNorm', ScalePeaks=3.0, minDSpacing=1.5, minWavelength=2.0, MaxWavelength=4.0, SortFilesBy='RunNumber', MinIsigI=1., MinIntensity=0)
+SaveLauenorm(InputWorkspace=ws, Filename=workDir+descriptorBVG+'/laue/laueNorm', ScalePeaks=3.0, minDSpacing=1.2, minWavelength=2.0, MaxWavelength=4.0, SortFilesBy='RunNumber', MinIsigI=1., MinIntensity=0)
 

@@ -26,6 +26,7 @@ def doBVGFits(sampleRunsList=None):
     dtBinWidth = 4 #Width (in us) in TOF profile bins
     qLow = -25; qHigh=25;
     '''
+    '''
     # CORELLI - beryl
     loadDir = '/data/corelli_beryl/IPTS-20302/'
     nxsTemplate = loadDir+'CORELLI_%i.nxs.h5'
@@ -49,32 +50,36 @@ def doBVGFits(sampleRunsList=None):
     predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     q_frame='lab'
     mindtBinWidth=10
+    '''
 
     '''
     #PsbO
     loadDir = '/SNS/MANDI/IPTS-16286/data/'
     nxsTemplate = loadDir+'MANDI_%i_event.nxs'
     sampleRuns = range(6154,6165+1)
-    peaksFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal_highres.integrate'
+    peaksFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.integrate'#_highres.integrate'
     peaksFormat = peaksFile
-    UBFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal_highres.mat'
+    UBFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.mat'#_highres.mat'
     UBFormat = UBFile
     DetCalFile = None
     qLow = -5.0; qHigh = 5.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
     dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
-    descriptor = 'psbo_3D_full_lab_newpredppl_highres_newsigi' #Does not end with '/'
+    descriptor = 'psbo_3D_full_lab_newpredppl'#_highres_newsigi' #Does not end with '/'
     doIterativeBackgroundFitting = False
     nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     numTimesToInterpolate=0
     workDir = '/SNS/users/ntv/dropbox/'
     descriptorRead = 'psbo_lab_newpredppl_highres'
-    predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+    #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+    predpplCoefficients = np.array([14.36827809, 10.889742, 0.28754095]) #Go with ICCFT.oldScatFun
     q_frame='lab'
     mindtBinWidth = 15
     '''
+
+
     '''
     #DNA
     loadDir = '/SNS/MANDI/IPTS-18552/nexus/'
@@ -102,33 +107,31 @@ def doBVGFits(sampleRunsList=None):
     mindtBinWidth = 15
     '''
 
-
-
-    '''
     #Beta Lac
     loadDir = '/SNS/MANDI/IPTS-15000/data/'
     nxsTemplate = loadDir+'MANDI_%i_event.nxs'
     sampleRuns = range(4999,5003+1)
-    peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
+    #peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
+    peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/combined_triclinic.integrate'
     peaksFormat = peaksFile
-    UBFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
+    #UBFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
+    UBFile = '/SNS/users/ntv/integrate/mandi_betalactamase/combined_triclinic.mat'
     UBFormat = UBFile
     DetCalFile = None
-    qLow = -5.0; qHigh = 5.0
+    qLow = -10.0; qHigh = 10.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
     dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
-    descriptor = 'beta_lac_3D_full_lab3_newsigi' #Does not end with '/'
+    descriptor = 'beta_lac_3D_highres' #Does not end with '/'
     doIterativeBackgroundFitting = False
     nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     numTimesToInterpolate=0
     workDir = '/SNS/users/ntv/dropbox/'
-    descriptorRead = 'beta_lac_lab'
+    descriptorRead = 'beta_lac_lab_highres'
     predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     q_frame='lab'
     mindtBinWidth = 15
-    '''
 
 
     '''
@@ -200,8 +203,9 @@ def doBVGFits(sampleRunsList=None):
                     box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel, q_frame=q_frame)
                     #Will force weak peaks to be fit using a neighboring peak profile
                     #Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False,nBG=5, dtBinWidth=dtBinWidth,zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1,numTimesToInterpolate=numTimesToInterpolate, fICCParams=ICCFitParams[peakNumber], oldICCFit=ICCFitDict[peakNumber], strongPeakParams=strongPeakParams, predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth)
+                    Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False,nBG=5, dtBinWidth=dtBinWidth,zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1,numTimesToInterpolate=numTimesToInterpolate, strongPeakParams=strongPeakParams, predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth)
                     #Does not force weak peaks
-                    Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False,nBG=5, dtBinWidth=dtBinWidth,zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1,numTimesToInterpolate=numTimesToInterpolate, fICCParams=ICCFitParams[peakNumber], oldICCFit=ICCFitDict[peakNumber],  predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth)
+                    #Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False,nBG=5, dtBinWidth=dtBinWidth,zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1,numTimesToInterpolate=numTimesToInterpolate, fICCParams=ICCFitParams[peakNumber], oldICCFit=ICCFitDict[peakNumber],  predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth)
 
 
                     # First we get the peak intensity

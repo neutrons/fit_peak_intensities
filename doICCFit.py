@@ -78,7 +78,6 @@ def doIntegration(sampleRunsList=None):
     q_frame = 'lab'
     '''
 
-
     '''
     #PsbO - 2016 - MANDI
     loadDir = '/SNS/MANDI/IPTS-16286/data/'
@@ -133,12 +132,12 @@ def doIntegration(sampleRunsList=None):
     loadDir = '/SNS/MANDI/IPTS-15000/data/'
     nxsTemplate = loadDir+'MANDI_%i_event.nxs'
     sampleRuns = range(4999,5003+1)
-    peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/combined_triclinic.integrate'
-    UBFile = '/SNS/users/ntv/integrate/mandi_betalactamase/combined_triclinic.mat'
+    #peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/combined_triclinic.integrate'
+    #UBFile = '/SNS/users/ntv/integrate/mandi_betalactamase/combined_triclinic.mat'
     #peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
     #UBFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
-    #peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_3.integrate'
-    #UBFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
+    peaksFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase2/combined.integrate'
+    UBFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase2/combined.mat'
     peaksFormat = peaksFile
     UBFormat = UBFile
     DetCalFile = None
@@ -147,7 +146,7 @@ def doIntegration(sampleRunsList=None):
     dtBinWidth = 30 #Width (in us) in TOF profile bins
     dQPixel = [0.003,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
     dQMax = 0.15 #tune this
-    descriptor = 'beta_lac_lab_highres' #Does not end with '/'
+    descriptor = 'beta_lac_lab_highres2' #Does not end with '/'
     doIterativeBackgroundFitting = False
     nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))

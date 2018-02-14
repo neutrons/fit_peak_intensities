@@ -7,7 +7,7 @@ import ICCAnalysisTools as ICAT
 #betalac
 sampleRuns = range(4999,5003+1)
 workDir = '/SNS/users/ntv/dropbox/'
-descriptor = 'beta_lac_highres3'
+descriptor = 'beta_lac_lab_highres'
 loadDir = '/SNS/MANDI/IPTS-15000/data/'
 eventWS = Load(loadDir+'MANDI_%i_event.nxs'%sampleRuns[0])
 
@@ -19,6 +19,7 @@ descriptor = 'psbo_lab_newpredppl_highres'
 loadDir = '/SNS/MANDI/IPTS-16286/data/'
 eventWS = Load(loadDir+'MANDI_%i_event.nxs'%sampleRuns[0])
 '''
+
 '''
 # DNA
 sampleRuns = range(8758,8769+1)

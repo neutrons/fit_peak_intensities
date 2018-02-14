@@ -133,6 +133,8 @@ pplmin_frac=0.8; pplmax_frac=2.0; mindtBinWidth=15
 #Beta Lac
 peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
 UBFile =  '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
+peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/combined_triclinic.integrate'
+UBFile =  '/SNS/users/ntv/integrate/mandi_betalactamase/combined_triclinic.mat'
 DetCalFile = None
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/MANDI/IPTS-15000/data/'
