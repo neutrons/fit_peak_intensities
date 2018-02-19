@@ -7,7 +7,7 @@ import ICCAnalysisTools as ICAT
 #betalac
 sampleRuns = range(4999,5003+1)
 workDir = '/SNS/users/ntv/dropbox/'
-descriptor = 'beta_lac_lab_highres'
+descriptor = 'beta_lac_lab_highres2'
 loadDir = '/SNS/MANDI/IPTS-15000/data/'
 eventWS = Load(loadDir+'MANDI_%i_event.nxs'%sampleRuns[0])
 

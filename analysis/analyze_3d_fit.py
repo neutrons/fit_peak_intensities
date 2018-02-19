@@ -26,7 +26,6 @@ sg = SpaceGroupFactory.createSpaceGroup("P 61 2 2")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
 '''
 
-
 '''
 # CORELLI - beryl
 sampleRuns = range(58411,58592+1)
@@ -41,12 +40,13 @@ pg = PointGroupFactory.createPointGroup("6/mmm")
 #Beta lactamase
 sampleRuns = range(4999,5004)
 workDir = '/SNS/users/ntv/dropbox/'
-descriptorBVG = 'beta_lac_3D_highres'
-descriptorTOF = 'beta_lac_lab_highres'
-#peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
-peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
+descriptorBVG = 'beta_lac_3D_highres2'
+descriptorTOF = 'beta_lac_lab_highres2'
+peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
+#peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
 #ellipseFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
-ellipseFile = '/SNS/users/ntv/integrate/mandi_betalactamase/combined_triclinic.integrate'
+#ellipseFile = '/SNS/users/ntv/integrate/mandi_betalactamase/combined_triclinic.integrate'
+ellipseFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase2/combined.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 32 2 1")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
 
@@ -212,9 +212,9 @@ laueOutput = (df['DSpacing'] > 1.75) & (df['Wavelength'] > 2.0) & (df['Wavelengt
 print ' '
 print 'Removing bad peaks from peaks_ws.  This can take some time...'
 #events = Load('/data/corelli_beryl/IPTS-20302/CORELLI_58417.nxs.h5')
-#events = Load('/SNS/MANDI/IPTS-16286/data/MANDI_6154_event.nxs')
-#ws = CreatePeaksWorkspace(NumberOfPeaks=0, OutputWorkspace="ws", InstrumentWorkspace='events')
-ws = CreatePeaksWorkspace(NumberOfPeaks=0, OutputWorkspace="ws")
+events = Load('/SNS/MANDI/IPTS-16286/data/MANDI_6154_event.nxs')
+ws = CreatePeaksWorkspace(NumberOfPeaks=0, OutputWorkspace="ws", InstrumentWorkspace='events')
+#ws = CreatePeaksWorkspace(NumberOfPeaks=0, OutputWorkspace="ws")
 peaksAdded = 0
 peaks_ws_clone = CloneWorkspace(InputWorkspace=peaks_ws, OutputWorkspace='peaks_ws_clone')
 for i in range(len(df)):

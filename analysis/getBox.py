@@ -4,7 +4,11 @@ popList = []
 for i in range(len(sys.path))[::-1]:
     if 'antid' in sys.path[i]:
         sys.path.pop(i)
-sys.path.append('/home/ntv/mantid/mantid/bin/')
+import socket
+if 'sns' in socket.gethostname():
+    sys.path.append('/SNS/users/ntv/mantid/mantid/release/bin')
+else:
+    sys.path.append('/home/ntv/mantid/mantid/bin/')
 
 
 import matplotlib.pyplot as plt
@@ -131,10 +135,12 @@ pplmin_frac=0.8; pplmax_frac=2.0; mindtBinWidth=15
 '''
 
 #Beta Lac
-peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
-UBFile =  '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
-peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/combined_triclinic.integrate'
-UBFile =  '/SNS/users/ntv/integrate/mandi_betalactamase/combined_triclinic.mat'
+#peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
+#UBFile =  '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
+#peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/combined_triclinic.integrate'
+#UBFile =  '/SNS/users/ntv/integrate/mandi_betalactamase/combined_triclinic.mat'
+peaksFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase2/combined.integrate'
+UBFile =  '/SNS/users/ntv/integrate/mandi_beta_lactamase2/combined.mat'
 DetCalFile = None
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/MANDI/IPTS-15000/data/'
