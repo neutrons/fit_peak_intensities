@@ -37,10 +37,24 @@ peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1],
 ellipseFile = '/SNS/users/ntv/integrate/corelli_beryl/combined_hexagonal_indexedonly.integrate'
 pg = PointGroupFactory.createPointGroup("6/mmm")
 '''
+'''
+#Beta lactamase mutant
+sampleRuns = range(5921,5931+1)
+workDir = '/SNS/users/ntv/dropbox/'
+descriptorBVG = 'beta_lac_3D_lab_mutant'
+descriptorTOF = 'beta_lac_lab_highres_mut2'
+peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
+#peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
+#ellipseFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
+#ellipseFile = '/SNS/users/ntv/integrate/mandi_betalactamase/combined_triclinic.integrate'
+ellipseFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.integrate'
+sg = SpaceGroupFactory.createSpaceGroup("P 32 2 1")
+pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
+'''
 #Beta lactamase
 sampleRuns = range(4999,5004)
 workDir = '/SNS/users/ntv/dropbox/'
-descriptorBVG = 'beta_lac_3D_highres2'
+descriptorBVG = 'beta_lac_3D_lab_highres2'
 descriptorTOF = 'beta_lac_lab_highres2'
 peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
 #peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
@@ -49,7 +63,6 @@ peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
 ellipseFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase2/combined.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 32 2 1")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
-
 '''
 #DNA
 sampleRuns = range(8758,8769+1)
@@ -108,8 +121,8 @@ dfBVG = pd.DataFrame(bvgParams)
 #--------------------------Join the two dataframes and create some geometric columns
 dfBVG['PeakNumber'] = dfBVG['peakNumber']
 df = dfTOF.merge(dfBVG, on='PeakNumber')
-df['phi'] = df['QLab'].apply(lambda x: np.arctan2(x[2],np.hypot(x[0],x[1])))
-df['theta'] = df['QLab'].apply(lambda x: np.arctan2(x[1],x[0]))
+df['theta'] = df['QLab'].apply(lambda x: np.arctan2(x[2],np.hypot(x[0],x[1])))
+df['phi'] = df['QLab'].apply(lambda x: np.arctan2(x[1],x[0]))
 
 #---------------------------Let's get some trends
 plt.close('all')
@@ -124,14 +137,14 @@ def fSigX(x,a,k,x0,b):
 def fSigP(x,a,k,phi,b):
     return a*np.sin(k*x-phi) + b*x
 
-graph1 = sns.jointplot(df[goodIDX]['phi'], np.abs(df[goodIDX]['sigX']),s=1)
+graph1 = sns.jointplot(df[goodIDX]['theta'], np.abs(df[goodIDX]['sigX']),s=1)
 #pX = np.polyfit(df[goodIDX]['phi'], np.abs(df[goodIDX]['sigX']),4)
 x = np.linspace(df[goodIDX]['phi'].min(), df[goodIDX]['phi'].max(), 100)
 #y = np.polyval(pX, x)
 pX,cov = curve_fit(fSigX, df[goodIDX]['phi'], df[goodIDX]['sigX'],maxfev=10000,p0=[0.02,0.4,0.05,0.005])
 graph1.x = x; graph1.y = fSigX(x,pX[0],pX[1],pX[2],pX[3]); graph1.plot_joint(plt.plot)
 
-graph2 = sns.jointplot(df[goodIDX]['theta'], df[goodIDX]['sigY'],s=1)
+graph2 = sns.jointplot(df[goodIDX]['phi'], df[goodIDX]['sigY'],s=1)
 pY = np.polyfit(df[goodIDX]['theta'], np.abs(df[goodIDX]['sigY']),2)
 x = np.linspace(-0.5, 2.5, 100)
 y = np.polyval(pY, x)
@@ -224,7 +237,7 @@ for i in range(len(df)):
             ws.addPeak(peaks_ws_clone.getPeak(df.iloc[i]['peakNumber']))
             ws.getPeak(peaksAdded).setIntensity(float(df.iloc[i]['Intens3d']))
             ws.getPeak(peaksAdded).setSigmaIntensity(float(df.iloc[i]['SigInt3d']))
-            #ws.getPeak(peaksAdded).setIntensity(float(df.iloc[i]['lorentzInt3d']))
+            ws.getPeak(peaksAdded).setIntensity(float(df.iloc[i]['lorentzInt3d']))
             #ws.getPeak(peaksAdded).setSigmaIntensity(float(df.iloc[i]['lorentzSig3d']))
             
             peaksAdded += 1
@@ -233,5 +246,5 @@ for i in range(len(df)):
         pass
 
 print 'Saving LaueNorm Input'
-SaveLauenorm(InputWorkspace=ws, Filename=workDir+descriptorBVG+'/laue/laueNorm', ScalePeaks=3.0, minDSpacing=1.2, minWavelength=2.0, MaxWavelength=4.0, SortFilesBy='RunNumber', MinIsigI=1., MinIntensity=0)
+SaveLauenorm(InputWorkspace=ws, Filename=workDir+descriptorBVG+'/laue/ellControl/laueNorm', ScalePeaks=3.0, minDSpacing=1.2, minWavelength=2.0, MaxWavelength=4.0, SortFilesBy='RunNumber', MinIsigI=1., MinIntensity=0)
 

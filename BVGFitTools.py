@@ -440,14 +440,14 @@ def getAngularHistogram(box, useIDX=None, nTheta=200, nPhi=200,zBG=1.96,neigh_le
     QX, QY, QZ = ICCFT.getQXQYQZ(box)
     R, THETA, PHI = ICCFT.cart2sph(QX,QY,QZ)
 
+
     thetaMin = np.min(THETA); 
     thetaMax = np.max(THETA)
     dTheta = thetaMax - thetaMin
     thetaMid = 0.5*(thetaMin + thetaMax)
     thetaMin = max(thetaMin, thetaMid-dTheta*fracBoxToHistogram/2.0)
     thetaMax = min(thetaMax, thetaMid+dTheta*fracBoxToHistogram/2.0)
-
-
+    
     phiMin = np.min(PHI); 
     phiMax = np.max(PHI) 
     dPhi = phiMax - phiMin
@@ -557,8 +557,8 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
             meanTH = TH.mean()
             meanPH = PH.mean()
             #sigX0 = np.polyval([ 0.00173264,  0.0002208 ,  0.00185031, -0.00012078,  0.00189967], meanPH)
-            sigX0 = fSigX(meanPH,  1.12555136e-02, 1.00831667e+01,1.24807005e-01, 4.50501824e-03)
-            sigY0 = 0.018#np.polyval([ 0.00045678, -0.0017618 ,  0.0045013 , -0.00480677,  0.00376619], meanTH)
+            sigX0 = 0.0018#fSigX(meanPH,  1.12555136e-02, 1.00831667e+01,1.24807005e-01, 4.50501824e-03)
+            sigY0 = 0.0018#np.polyval([ 0.00045678, -0.0017618 ,  0.0045013 , -0.00480677,  0.00376619], meanTH)
             sigP0 = fSigP(meanTH,  0.1460775 ,  1.85816592,  0.26850086, -0.00725352) 
              
             p0=[np.max(h), meanTH, meanPH, sigX0, sigY0, sigP0,0.0]
@@ -566,6 +566,8 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
             bounds = ([0.0, thBins[thBins.size//2 - 2], phBins[phBins.size//2 - 2], 0.000, 0.000, -np.inf, 0], 
                     [np.inf, thBins[thBins.size//2 + 2], phBins[phBins.size//2 + 2], 0.02, 0.02, np.inf, np.inf])
             params= curve_fit(bvgFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(),p0=p0, bounds=bounds, sigma=np.sqrt(weights[fitIDX]))
+            #params= curve_fit(bvgFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(),p0=p0, sigma=np.sqrt(weights[fitIDX]))
+            #params= curve_fit(bvgFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(),p0=p0)
             print '!!!', params[0]
 
     elif forceParams is not None:

@@ -14,7 +14,8 @@ else:
     mantidPythonPath=None
     
 #numRuns = 181; numJobs = 25
-numRuns=5; numJobs=3
+#numRuns=11; numJobs=6
+numRuns=9; numJobs=3
 
 jobsList = np.array_split(range(numRuns), numJobs)
 

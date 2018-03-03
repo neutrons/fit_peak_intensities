@@ -96,7 +96,7 @@ def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, dtBi
         calc_pp_lambda=True
 
     tofWS,ppl = getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, None, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=False, minFracPixels=0.01, removeEdges=False,calcTOFPerPixel=False,neigh_length_m=3,zBG=1.96,pp_lambda=pp_lambda,calc_pp_lambda=calc_pp_lambda, pplmin_frac=minppl_frac, pplmax_frac=minppl_frac,mindtBinWidth=mindtBinWidth)
-    fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=nBG,fitOrder=1,constraintScheme=1)
+    fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=nBG,fitOrder=1,constraintScheme=2)
     h = [tofWS.readY(0), tofWS.readX(0)]
     chiSq = fitResults.OutputChi2overDoF
     
@@ -164,7 +164,6 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
             pred_ppl = oldScatFun(peak.getScattering()/peak.getWavelength(),predCoefficients[0],predCoefficients[1],predCoefficients[2])  
             minppl = minppl_frac*pred_ppl
             maxppl = maxppl_frac*pred_ppl 
-
             if pred_ppl > 2.0:
                 maxppl = 2.0/1.5*maxppl_frac*pred_ppl 
             pp_lambda_toCheck = pp_lambda_toCheck[pp_lambda_toCheck > minppl]
@@ -484,7 +483,6 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, qMa
     tD = 3176.507 * flightPath * np.sin(scatteringHalfAngle)/np.linalg.norm([qx[qx.shape[0]//2 + 1], qy[qy.shape[0]//2+1], qz[qz.shape[0]//2+1]])
     dtBinWidth = np.abs(tD-tC)
     dtBinWidth = max(mindtBinWidth, dtBinWidth)
-     
     tBins = np.arange(tMin, tMax, dtBinWidth)
     weightList = n_events[hasEventsIDX] #- pp_lambda
     if removeEdges:
@@ -604,7 +602,7 @@ def getInitialGuess(tofWS, paramNames, energy, flightPath, padeCoefficients,detN
     x0[1] = pade(padeCoefficients['B'], energy)
     x0[2] = pade(padeCoefficients['R'], energy)
     #x0[3] = oneOverXSquared(energy, calibDict['det_%i'%detNumber]['T0'][0], calibDict['det_%i'%detNumber]['T0'][1])
-    #x0[3] = pade(padeCoefficients['T0'], energy) + getT0Shift(energy, flightPath) #extra is for ~18m downstream we are
+    x0[3] = pade(padeCoefficients['T0'], energy) + getT0Shift(energy, flightPath) #extra is for ~18m downstream we are
 
     #These are still phenomenological
     #x0[0] /= 1.2
@@ -615,7 +613,6 @@ def getInitialGuess(tofWS, paramNames, energy, flightPath, padeCoefficients,detN
 
     x0[5] = 0.5 #hat width in IDX units
     x0[6] = 120.0 #Exponential decay rate for convolution
-
     return x0
 
 #Get sample loads the NeXus evnts file and converts from detector space to
@@ -808,9 +805,9 @@ def doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibration
             #fICC.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[0.5*x0[2], 1.5*x0[2]], T00=[x0[3]-150, x0[3]+150],k_conv0=[100,140],penalty=None)
     if constraintScheme == 2:
         try:
-            fICC.setPenalizedConstraints(A0=[0.02, 1.0], B0=[1.0e-6, 1.5], R0=[0.00, 1.], scale0=[0.0, 1.0e10],T00=[0,1.0e10], k_conv0=[0.,500], penalty=1.0e20)
+            fICC.setPenalizedConstraints(A0=[0.0001, 1.0], B0=[0.005, 1.5], R0=[0.00, 1.], scale0=[0.0, 1.0e10],T00=[0,1.0e10], k_conv0=[100.,140.], penalty=1.0e20)
         except:
-            fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[1.0e-6, 1.5], R0=[0.00, 1.], scale0=[0.0, 1.0e10], T00=[0,1.0e10], k_conv0=[0,500], penalty=None)
+            fICC.setPenalizedConstraints(A0=[0.0001, 1.0], B0=[0.005, 1.5], R0=[0.00, 1.], scale0=[0.0, 1.0e10], T00=[0,1.0e10], k_conv0=[100,140.], penalty=None)
     f = FunctionWrapper(fICC)
     bg = Polynomial(n=fitOrder)
     
@@ -854,7 +851,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     mtd.remove('MDbox_'+str(run)+'_'+str(i))
                     continue
                 n_events = Box.getNumEventsArray()
-                goodIDX, pp_lambda = getBGRemovedIndices(n_events, peak=peak, box=Box,qMask=qMask[0], calc_pp_lambda=True, padeCoefficients=padeCoefficients, dtBinWidth=dtBinWidth,nBG=nBG,predCoefficients=predCoefficients,mindtBinWidth=mindtBinWidth)
+                goodIDX, pp_lambda = getBGRemovedIndices(n_events, peak=peak, box=Box,qMask=qMask[0], calc_pp_lambda=True, padeCoefficients=padeCoefficients, dtBinWidth=dtBinWidth,nBG=nBG,predCoefficients=predCoefficients,mindtBinWidth=mindtBinWidth, pplmin_frac=minpplfrac, pplmax_frac=maxpplfrac)
                 #Do background removal (optionally) and construct the TOF workspace for fitting
                 if removeEdges:
                     edgesToCheck = EdgeTools.needsEdgeRemoval(Box,panelDict,peak) 
@@ -868,7 +865,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     #TODO: Make sure we calculate it here - it seems to not work well for scolecute, but works for beta lac?
 
 
-                fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=nBG,fitOrder=bgPolyOrder,constraintScheme=1)
+                fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=nBG,fitOrder=bgPolyOrder,constraintScheme=2)
                 fitStatus = fitResults.OutputStatus
                 chiSq = fitResults.OutputChi2overDoF
 

@@ -4,12 +4,21 @@ import matplotlib.pyplot as plt
 import sys
 import ICCAnalysisTools as ICAT
 
+#betalac mut
+sampleRuns = range(5921,5931+1)
+workDir = '/SNS/users/ntv/dropbox/'
+descriptor = 'beta_lac_lab_highres_mut2'
+loadDir = '/SNS/MANDI/IPTS-8776/data/'
+eventWS = Load(loadDir+'MANDI_%i_event.nxs'%sampleRuns[0])
+
+'''
 #betalac
 sampleRuns = range(4999,5003+1)
 workDir = '/SNS/users/ntv/dropbox/'
 descriptor = 'beta_lac_lab_highres2'
 loadDir = '/SNS/MANDI/IPTS-15000/data/'
 eventWS = Load(loadDir+'MANDI_%i_event.nxs'%sampleRuns[0])
+'''
 
 '''
 #PsbO
