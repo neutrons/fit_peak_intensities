@@ -98,10 +98,35 @@ def doBVGFits(sampleRunsList=None):
     q_frame='lab'
     mindtBinWidth = 15
     '''
+    #pth
+    loadDir = 'SNS/MANDI/2013_2_11B_SCI/{0}/{1}/NeXus/MANDI_{1}_event.nxs'
+    peaksFile = '/SNS/users/ntv/integrate/mandi_pth/peaks_combined.integrate'
+    UBFile = '/SNS/users/ntv/integrate/mandi_pth/UB_combined.mat'
+    nxsTemplate = '/SNS/MANDI/IPTS-10943/{0}/{1}/NeXus/MANDI_{1}_event.nxs'
+    sampleRuns = [870,872,873,874,875,876]
+    DetCalFile = '/home/ntv/Desktop/runReduction/MaNDi2015.DetCal'
+    qLow = -4.0; qHigh = 4.0
+    dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+    dtBinWidth = 40 #Width (in us) in TOF profile bins
+    dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
+    descriptor = 'pth_3d_detcal' #Does not end with '/'
+    doIterativeBackgroundFitting = False
+    nBG=5
+    parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
+    numTimesToInterpolate=0
+    workDir = '/SNS/users/ntv/dropbox/'
+    descriptorRead = 'pth_tof_secondTry'
+    predpplCoefficients = np.array([ 6.12383767,  8.8677518 , -0.02761688]) #Go with ICCFT.oldScatFun
+    q_frame='lab'
+    mindtBinWidth = 15
+    fracHKLQMask = 0.25
+    pplmin_frac = 0.7; pplmax_frac = 1.5
+
+    '''
     #gfp
     loadDir = 'SNS/MANDI/2013_2_11B_SCI/{0}/{1}/NeXus/MANDI_{1}_event.nxs'
-    peaksFile = '/SNS/users/ntv/integrate/mandi_gfp/combined.integrate'
-    UBFile = '/SNS/users/ntv/integrate/mandi_gfp/combined.mat'
+    peaksFile = '/SNS/users/ntv/integrate/gfp/combined.integrate'
+    UBFile = '/SNS/users/ntv/integrate/gfp/combined.mat'
     nxsTemplate = '/SNS/MANDI/2013_2_11B_SCI/{0}/{1}/NeXus/MANDI_{1}_event.nxs'
 
     sampleRuns = range(599,607+1)
@@ -110,18 +135,20 @@ def doBVGFits(sampleRunsList=None):
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
     dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
-    descriptor = 'gfp_3d' #Does not end with '/'
+    descriptor = 'gfp_3d_goodhkl' #Does not end with '/'
     doIterativeBackgroundFitting = False
     nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     numTimesToInterpolate=0
     workDir = '/SNS/users/ntv/dropbox/'
     descriptorRead = None#'beta_lac_lab_highres2'
-    predpplCoefficients = np.array([49.70856213,18.293623,2.58462655]) #Go with ICCFT.oldScatFun
+    #predpplCoefficients = np.array([49.70856213,18.293623,2.58462655]) #Go with ICCFT.oldScatFun
+    predpplCoefficients = np.array([23.2736324,10.10909695,0.6229528]) #Go with ICCFT.oldScatFun
     q_frame='lab'
     mindtBinWidth = 15
     fracHKLQMask = 0.25
     pplmin_frac = 0.7; pplmax_frac = 1.5
+    '''
 
     '''
     #Beta Lac Mutant
@@ -210,7 +237,11 @@ def doBVGFits(sampleRunsList=None):
     except: qMask = ICCFT.getHKLMask(UBMatrix, frac=fracHKL, dQPixel=dQPixel,dQ=dQ)
 
     padeCoefficients = ICCFT.getModeratorCoefficients('franz_coefficients_2017.dat')
-    ICCFitParams = None#ICAT.getFitParameters(workDir, descriptorRead, sampleRuns[0], sampleRuns[-1], sampleRuns=sampleRuns)
+    try:
+        ICCFitParams = ICAT.getFitParameters(workDir, descriptorRead, sampleRuns[0], sampleRuns[-1], sampleRuns=sampleRuns)
+    except:
+        print 'Cannot read ICCFitParams - will set to None and fit as we go!'
+        ICCFitParams = None
     try:
         ICCFitDict = ICAT.getFitDicts(workDir, descriptorRead,sampleRuns[0], sampleRuns[-1], sampleRuns=sampleRuns)
     except:

@@ -13,7 +13,6 @@ import pickle
 from scipy.optimize import curve_fit
 
 #------------------------------Load the bvgFit files
-'''
 #PsbO
 sampleRuns = range(6154, 6165+1)
 workDir = '/SNS/users/ntv/dropbox/'
@@ -24,7 +23,6 @@ peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF) #TOF fi
 ellipseFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal_highres.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 61 2 2")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
-'''
 
 '''
 # CORELLI - beryl
@@ -51,6 +49,38 @@ ellipseFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.integrate
 sg = SpaceGroupFactory.createSpaceGroup("P 32 2 1")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
 '''
+
+'''
+#pth
+sampleRuns = [870,872,873,874,875,876]
+workDir = '/SNS/users/ntv/dropbox/'
+descriptorBVG = 'pth_3d'
+descriptorTOF = 'pth_tof_secondRun'
+peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
+#peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
+ellipseFile = '/SNS/users/ntv/integrate/mandi_pth/peaks_combined.integrate'
+sg = SpaceGroupFactory.createSpaceGroup("P 61 2 2")
+pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
+'''
+
+
+
+'''
+#gfp
+sampleRuns = range(599,607+1)
+workDir = '/SNS/users/ntv/dropbox/'
+descriptorBVG = 'gfp_3d_goodhkl'
+descriptorTOF = 'gfp_tof_goodhkl'
+peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
+#peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
+#ellipseFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
+#ellipseFile = '/SNS/users/ntv/integrate/mandi_betalactamase/combined_triclinic.integrate'
+ellipseFile = '/SNS/users/ntv/integrate/gfp/combined.integrate'
+sg = SpaceGroupFactory.createSpaceGroup("P 21 21 2")
+pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
+'''
+
+'''
 #Beta lactamase
 sampleRuns = range(4999,5004)
 workDir = '/SNS/users/ntv/dropbox/'
@@ -63,6 +93,9 @@ peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
 ellipseFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase2/combined.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 32 2 1")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
+'''
+
+
 '''
 #DNA
 sampleRuns = range(8758,8769+1)
@@ -211,25 +244,28 @@ df['notOutlier'] = ~df['isOutlier']
 goodIDX = (df['chiSq'] < 50.0) & (df['Intens3d'] > 1)  & (df['chiSq3d']<10) & (df['notOutlier']) 
 tooFarIDX = (np.abs(df['Intens3d'] > 100)) & ((np.abs(df['Intens3d']-df['IntensEll']) > 2.*df['Intens3d']) |  (np.abs(df['Intens3d']-df['IntensEll']) > 2.*df['Intens3d']) | (df['Intens3d'] > 5.*df['IntensEll']))
 
-goodIDX = goodIDX & ~tooFarIDX
+#goodIDX = goodIDX & ~tooFarIDX
+goodIDX = goodIDX & df['IntensEll'] != 0.0
 
-
-dEdge = 1
+dEdge = 15
 edgeIDX = (df['Row'] <= dEdge) | (df['Row'] >= 255-dEdge) | (df['Col'] <= dEdge) | (df['Col'] >= 255-dEdge)
-goodIDX = goodIDX & ~edgeIDX 
+goodIDX = goodIDX #& ~edgeIDX 
 
 plt.figure(3); plt.clf();
 plt.plot(df[goodIDX]['IntensEll'], df[goodIDX]['Intens3d'],'.',ms=2)
 
-laueOutput = (df['DSpacing'] > 1.75) & (df['Wavelength'] > 2.0) & (df['Wavelength']<4.0) & (df['Intens3d']/df['SigInt3d'] > 1.0)
+laueOutput = (df['DSpacing'] > 1.99) & (df['Wavelength'] > 2.0) & (df['Wavelength']<4.0) & (df['Intens3d']/df['SigInt3d'] > 1.0)
 print ' '
 print 'Removing bad peaks from peaks_ws.  This can take some time...'
 #events = Load('/data/corelli_beryl/IPTS-20302/CORELLI_58417.nxs.h5')
-events = Load('/SNS/MANDI/IPTS-16286/data/MANDI_6154_event.nxs')
+#events = Load('/SNS/MANDI/IPTS-16286/data/MANDI_6154_event.nxs')
+#events = Load('/SNS/MANDI/IPTS-10943/0/870/NeXus/MANDI_870_event.nxs')
 ws = CreatePeaksWorkspace(NumberOfPeaks=0, OutputWorkspace="ws", InstrumentWorkspace='events')
+ws2 = CreatePeaksWorkspace(NumberOfPeaks=0, OutputWorkspace="ws2", InstrumentWorkspace='events')
 #ws = CreatePeaksWorkspace(NumberOfPeaks=0, OutputWorkspace="ws")
 peaksAdded = 0
 peaks_ws_clone = CloneWorkspace(InputWorkspace=peaks_ws, OutputWorkspace='peaks_ws_clone')
+peaks_ws_clone2 = CloneWorkspace(InputWorkspace=peaks_ws, OutputWorkspace='peaks_ws_clone2')
 for i in range(len(df)):
     ICAT.print_progress(i,len(df),prefix='Cleaning df: ',suffix='Complete')
     try:
@@ -237,14 +273,16 @@ for i in range(len(df)):
             ws.addPeak(peaks_ws_clone.getPeak(df.iloc[i]['peakNumber']))
             ws.getPeak(peaksAdded).setIntensity(float(df.iloc[i]['Intens3d']))
             ws.getPeak(peaksAdded).setSigmaIntensity(float(df.iloc[i]['SigInt3d']))
-            ws.getPeak(peaksAdded).setIntensity(float(df.iloc[i]['lorentzInt3d']))
+            ws2.addPeak(peaks_ws_clone2.getPeak(df.iloc[i]['peakNumber']))
+            ws2.getPeak(peaksAdded).setIntensity(float(df.iloc[i]['IntensEll']))
+            ws2.getPeak(peaksAdded).setSigmaIntensity(float(df.iloc[i]['SigEll']))
+            #ws.getPeak(peaksAdded).setIntensity(float(df.iloc[i]['lorentzInt3d']))
             #ws.getPeak(peaksAdded).setSigmaIntensity(float(df.iloc[i]['lorentzSig3d']))
-            
             peaksAdded += 1
     except KeyError:
         raise
         pass
 
-print 'Saving LaueNorm Input'
-SaveLauenorm(InputWorkspace=ws, Filename=workDir+descriptorBVG+'/laue/ellControl/laueNorm', ScalePeaks=3.0, minDSpacing=1.2, minWavelength=2.0, MaxWavelength=4.0, SortFilesBy='RunNumber', MinIsigI=1., MinIntensity=0)
+#print 'Saving LaueNorm Input'
+#SaveLauenorm(InputWorkspace=ws, Filename=workDir+descriptorBVG+'/laue/ellControl/laueNorm', ScalePeaks=3.0, minDSpacing=1.2, minWavelength=2.0, MaxWavelength=4.0, SortFilesBy='RunNumber', MinIsigI=1., MinIntensity=0)
 

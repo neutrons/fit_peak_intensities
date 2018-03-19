@@ -128,11 +128,12 @@ def doIntegration(sampleRunsList=None):
     q_frame='lab'
     minppl_frac=0.8; maxppl_frac=1.5
     '''
+    '''
     #gfp
     sampleRuns = range(599,607+1)
     loadDir = 'SNS/MANDI/2013_2_11B_SCI/{0}/{1}/NeXus/MANDI_{1}_event.nxs'
-    peaksFile = '/SNS/users/ntv/integrate/mandi_gfp/combined.integrate'
-    UBFile = '/SNS/users/ntv/integrate/mandi_gfp/combined.mat'
+    peaksFile = '/SNS/users/ntv/integrate/gfp/combined.integrate'
+    UBFile = '/SNS/users/ntv/integrate/gfp/combined.mat'
     nxsTemplate = '/SNS/MANDI/2013_2_11B_SCI/{0}/{1}/NeXus/MANDI_{1}_event.nxs'
     peaksFormat = peaksFile
     UBFormat = UBFile
@@ -142,12 +143,36 @@ def doIntegration(sampleRunsList=None):
     dtBinWidth = 30 #Width (in us) in TOF profile bins
     dQPixel = [0.003,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
     dQMax = 0.15 #tune this
-    descriptor = 'gfp_tof' #Does not end with '/'
+    descriptor = 'gfp_tof_goodhkl' #Does not end with '/'
     doIterativeBackgroundFitting = False
     nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     #predpplCoefficients = np.array([ 3.56405187,  8.34071842,  0.14134522]) #Go with ICCFT.oldScatFun
-    predpplCoefficients = np.array([49.70856213,18.293623,2.58462655]) #Go with ICCFT.oldScatFun
+    #predpplCoefficients = np.array([49.70856213,18.293623,2.58462655]) #Go with ICCFT.oldScatFun
+    predpplCoefficients = np.array([23.2736324 ,  10.10909695,   0.6229528 ]) #Go with ICCFT.oldScatFun
+    q_frame='lab'
+    fracHKLQMask = 0.25
+    minppl_frac=0.7; maxppl_frac=1.5; mindtBinWidth=15
+    '''
+    #pth
+    sampleRuns = [870,872,873,874,875,876]
+    loadDir = '/SNS/MANDI/IPTS-10943/{0}/{1}/NeXus/MANDI_{1}_event.nxs'
+    peaksFile = '/SNS/users/ntv/integrate/mandi_pth/peaks_combined.integrate'
+    UBFile = '/SNS/users/ntv/integrate/mandi_pth/UB_combined.mat'
+    nxsTemplate = '/SNS/MANDI/IPTS-10943/{0}/{1}/NeXus/MANDI_{1}_event.nxs'
+    peaksFormat = peaksFile
+    UBFormat = UBFile
+    DetCalFile = None
+    qLow = -4.0; qHigh = 4.0
+    dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+    dtBinWidth = 30 #Width (in us) in TOF profile bins
+    dQPixel = [0.003,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
+    dQMax = 0.15 #tune this
+    descriptor = 'pth_tof_secondRun' #Does not end with '/'
+    doIterativeBackgroundFitting = False
+    nBG=5
+    parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
+    predpplCoefficients = np.array([ 6.12383767,  8.8677518 , -0.02761688]) #Go with ICCFT.oldScatFun
     q_frame='lab'
     fracHKLQMask = 0.25
     minppl_frac=0.7; maxppl_frac=1.5; mindtBinWidth=15

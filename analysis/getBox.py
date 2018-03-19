@@ -30,7 +30,6 @@ reload(ICCFT)
 print "Which peak?"
 peakToGet = int(input())
 
-'''
 #Scolecite
 peaksFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Monoclinic_C.integrate'
 #peaksFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/15629_Niggli.integrate'
@@ -45,7 +44,6 @@ dQPixel=0.005#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 q_frame='sample'
 pplmin_frac=3.8; pplmax_frac=4.0; mindtBinWidth=4
-'''
 
 
 '''
@@ -57,9 +55,27 @@ workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
 '''
+'''
+#pth
+peaksFile = '/SNS/users/ntv/integrate/pth/852_pred.integrate'
+UBFile = '/SNS/users/ntv/integrate/pth/combined_3.mat'
+peaksFile = '/home/ntv/Desktop/pth/peaks_combined.integrate'
+UBFile = '/home/ntv/Desktop/pth/UB_combined.mat'
+DetCalFile = '/home/ntv/Desktop/runReduction/MaNDi2015.DetCal'
+workDir = '/SNS/users/ntv/dropbox/' #End with '/'
+nxsTemplate = '/data/pth/MANDI_{1}_event.nxs'
+#panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
+dtBinWidth = 25 
+dQPixel=0.003#np.array([0.003, 0.003, 0.003])
+predpplCoefficients = np.array([ 6.12383767,  8.8677518 , -0.02761688]) #Go with ICCFT.oldScatFun
+#predpplCoefficients = np.array([[23.2736324 ,  10.10909695,   0.6229528 ]]) #Go with ICCFT.oldScatFun
+q_frame = 'lab'
+pplmin_frac=0.7; pplmax_frac=1.5; mindtBinWidth=15
+'''
+'''
 #gfp
-peaksFile = '/SNS/users/ntv/integrate/mandi_gfp/combined_short.integrate'
-UBFile = '/SNS/users/ntv/integrate/mandi_gfp/combined.mat'
+peaksFile = '/SNS/users/ntv/integrate/gfp/combined.integrate'
+UBFile = '/SNS/users/ntv/integrate/gfp/test.mat'
 DetCalFile = None
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = 'SNS/MANDI/2013_2_11B_SCI/{0}/{1}/NeXus/MANDI_{1}_event.nxs'
@@ -67,11 +83,11 @@ nxsTemplate = '/SNS/MANDI/2013_2_11B_SCI/{0}/{1}/NeXus/MANDI_{1}_event.nxs'
 #panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
 dtBinWidth = 25 
 dQPixel=0.003#np.array([0.003, 0.003, 0.003])
-#predpplCoefficients = np.array([14.36827809, 10.889742, 0.28754095]) #Go with ICCFT.oldScatFun
-predpplCoefficients = np.array([12.51275, 13.078622, 0.18924]) #Go with ICCFT.oldScatFun
+predpplCoefficients = np.array([14.36827809, 10.889742, 0.28754095]) #Go with ICCFT.oldScatFun
+#predpplCoefficients = np.array([[23.2736324 ,  10.10909695,   0.6229528 ]]) #Go with ICCFT.oldScatFun
 q_frame = 'lab'
-pplmin_frac=0.0; pplmax_frac=100.5; mindtBinWidth=15
-
+pplmin_frac=0.7; pplmax_frac=1.5; mindtBinWidth=15
+'''
 '''
 #PsbO 2016
 peaksFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.integrate'
@@ -88,7 +104,6 @@ predpplCoefficients = np.array([14.36827809, 10.889742, 0.28754095]) #Go with IC
 q_frame = 'lab'
 pplmin_frac=0.8; pplmax_frac=1.5; mindtBinWidth=15
 '''
-
 '''
 #NaK 2017
 peaksFile = '/SNS/users/ntv/integrate/mandi_nak/MANDI_nak_8275_8282.integrate'
@@ -104,7 +119,6 @@ predpplCoefficients = np.array([12.51275, 13.078622, 0.18924]) #Go with ICCFT.ol
 q_frame = 'lab'
 pplmin_frac=0.8; pplmax_frac=1.5; mindtBinWidth=4
 '''
-
 
 '''
 #MaNDI natrolite
@@ -246,7 +260,7 @@ else:
 
 n_events = Box.getNumEventsArray()
 
-qMask = ICCFT.getHKLMask(UBMatrix, frac=0.25, dQPixel=dQPixel, dQ=dQ)
+qMask = ICCFT.getHKLMask(UBMatrix, frac=0.35, dQPixel=dQPixel, dQ=dQ)
 if not removeEdges:
     mask = np.ones_like(n_events)
 else:

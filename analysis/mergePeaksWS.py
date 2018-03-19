@@ -4,12 +4,33 @@ import matplotlib.pyplot as plt
 import sys
 import ICCAnalysisTools as ICAT
 
+#pth
+sampleRuns = [870,872,873,874,875,876]
+workDir = '/SNS/users/ntv/dropbox/'
+descriptor = 'pth_tof_secondRun'
+loadDir = '/SNS/MANDI/IPTS-10943/0/NeXus/'
+#eventWS = Load('/SNS/MANDI/IPTS-10943/0/870/NeXus/MANDI_870_event.nxs')
+eventWS = Load('/data/pth/MANDI_870_event.nxs')
+
+
+
+'''
+#gfp
+sampleRuns = range(599,607+1)
+workDir = '/SNS/users/ntv/dropbox/'
+descriptor = 'gfp_tof_goodhkl'
+loadDir = '/SNS/MANDI/IPTS-8776/data/'
+eventWS = Load('/SNS/MANDI/2013_2_11B_SCI/0/599/NeXus/MANDI_599_event.nxs')
+'''
+
+'''
 #betalac mut
 sampleRuns = range(5921,5931+1)
 workDir = '/SNS/users/ntv/dropbox/'
 descriptor = 'beta_lac_lab_highres_mut2'
 loadDir = '/SNS/MANDI/IPTS-8776/data/'
 eventWS = Load(loadDir+'MANDI_%i_event.nxs'%sampleRuns[0])
+'''
 
 '''
 #betalac
