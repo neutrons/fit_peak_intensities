@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import sys
 import matplotlib.pyplot as plt
 plt.ion()
 import convertToPandas as pdTOF
@@ -7,12 +8,18 @@ import ICCAnalysisTools as ICAT
 from scipy.interpolate import interp1d
 import getEdgePixels as EdgeTools
 import seaborn as sns
-from mantid.simpleapi import *
-from mantid.geometry import SpaceGroupFactory, PointGroupFactory
 import pickle
 from scipy.optimize import curve_fit
+for i in range(len(sys.path))[::-1]:
+    if 'antid' in sys.path[i]:
+        sys.path.pop(i)
+sys.path.append("/home/ntv/mantid/mantid/bin")
+
+from mantid.simpleapi import *
+from mantid.geometry import SpaceGroupFactory, PointGroupFactory
 
 #------------------------------Load the bvgFit files
+'''
 #PsbO
 sampleRuns = range(6154, 6165+1)
 workDir = '/SNS/users/ntv/dropbox/'
@@ -23,7 +30,7 @@ peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF) #TOF fi
 ellipseFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal_highres.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 61 2 2")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
-
+'''
 '''
 # CORELLI - beryl
 sampleRuns = range(58411,58592+1)
@@ -80,7 +87,6 @@ sg = SpaceGroupFactory.createSpaceGroup("P 21 21 2")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
 '''
 
-'''
 #Beta lactamase
 sampleRuns = range(4999,5004)
 workDir = '/SNS/users/ntv/dropbox/'
@@ -93,7 +99,6 @@ peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
 ellipseFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase2/combined.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 32 2 1")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
-'''
 
 
 '''
@@ -241,25 +246,25 @@ df['notOutlier'] = ~df['isOutlier']
 
 
 #---------------------Select outputs and save a LaueNorm File
-goodIDX = (df['chiSq'] < 50.0) & (df['Intens3d'] > 1)  & (df['chiSq3d']<10) & (df['notOutlier']) 
+goodIDX = (df['chiSq'] < 50.0) & (df['chiSq3d']<10) & (df['notOutlier']) &  (df['Intens3d'] > 1) 
 tooFarIDX = (np.abs(df['Intens3d'] > 100)) & ((np.abs(df['Intens3d']-df['IntensEll']) > 2.*df['Intens3d']) |  (np.abs(df['Intens3d']-df['IntensEll']) > 2.*df['Intens3d']) | (df['Intens3d'] > 5.*df['IntensEll']))
 
 #goodIDX = goodIDX & ~tooFarIDX
 goodIDX = goodIDX & df['IntensEll'] != 0.0
 
-dEdge = 15
+dEdge = 1
 edgeIDX = (df['Row'] <= dEdge) | (df['Row'] >= 255-dEdge) | (df['Col'] <= dEdge) | (df['Col'] >= 255-dEdge)
 goodIDX = goodIDX #& ~edgeIDX 
 
 plt.figure(3); plt.clf();
 plt.plot(df[goodIDX]['IntensEll'], df[goodIDX]['Intens3d'],'.',ms=2)
 
-laueOutput = (df['DSpacing'] > 1.99) & (df['Wavelength'] > 2.0) & (df['Wavelength']<4.0) & (df['Intens3d']/df['SigInt3d'] > 1.0)
+laueOutput = (df['DSpacing'] > 1.99) & (df['Wavelength'] > 2.0) & (df['Wavelength']<4.0) #& (df['Intens3d']/df['SigInt3d'] > 1.0)
 print ' '
 print 'Removing bad peaks from peaks_ws.  This can take some time...'
 #events = Load('/data/corelli_beryl/IPTS-20302/CORELLI_58417.nxs.h5')
 #events = Load('/SNS/MANDI/IPTS-16286/data/MANDI_6154_event.nxs')
-#events = Load('/SNS/MANDI/IPTS-10943/0/870/NeXus/MANDI_870_event.nxs')
+events = Load('/SNS/MANDI/IPTS-10943/0/870/NeXus/MANDI_870_event.nxs')
 ws = CreatePeaksWorkspace(NumberOfPeaks=0, OutputWorkspace="ws", InstrumentWorkspace='events')
 ws2 = CreatePeaksWorkspace(NumberOfPeaks=0, OutputWorkspace="ws2", InstrumentWorkspace='events')
 #ws = CreatePeaksWorkspace(NumberOfPeaks=0, OutputWorkspace="ws")
@@ -285,4 +290,5 @@ for i in range(len(df)):
 
 #print 'Saving LaueNorm Input'
 #SaveLauenorm(InputWorkspace=ws, Filename=workDir+descriptorBVG+'/laue/ellControl/laueNorm', ScalePeaks=3.0, minDSpacing=1.2, minWavelength=2.0, MaxWavelength=4.0, SortFilesBy='RunNumber', MinIsigI=1., MinIntensity=0)
-
+print 'Saving LaueScale'
+#SaveLauenorm(InputWorkspace=ws, Filename=workDir+descriptorBVG+'/laue/ellControl/lscale_keep_all', ScalePeaks=3.0, minDSpacing=1.2, minWavelength=2.0, MaxWavelength=4.0, SortFilesBy='RunNumber', MinIsigI=-1.0e6, MinIntensity=-1.0e6,LaueScaleFormat=True)
