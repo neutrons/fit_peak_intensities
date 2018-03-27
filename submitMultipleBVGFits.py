@@ -15,13 +15,16 @@ elif 'pcwf' in hostName:
 else:
     mantidPythonPath=None
     
-numRuns = 182; numJobs = 18
+#numRuns = 182; numJobs = 18
 
-#numRuns=12; numJobs=12
+#numRuns=12; numJobs=3
+#numRuns=11; numJobs=4
+#numRuns=9; numJobs=3
+numRuns=6; numJobs=3
 
 jobsList = np.array_split(range(numRuns), numJobs)
 
 for jobs in jobsList:
     command = 'nohup ' + pythonCommand + ' doBVGFit.py -r '+ str(jobs)[1:-1]+ ' -p '+ mantidPythonPath + ' >/dev/null 2>&1  &'
     print command
-    os.system(command)
+    #os.system(command)

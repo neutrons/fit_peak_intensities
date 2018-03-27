@@ -16,9 +16,7 @@ def doBVGFits(sampleRunsList=None):
     loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
     nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
     sampleRuns = range(15629,  15644)
-    peaksFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/%i_Niggli.integrate'
     peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Monoclinic_C.integrate'
-    UBFormat = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/%i_Niggli.mat'
     UBFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Monoclinic_C.mat'
     DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
     descriptor = 'scol_3d' #Does not end with '/'
@@ -26,20 +24,19 @@ def doBVGFits(sampleRunsList=None):
     dtBinWidth = 4 #Width (in us) in TOF profile bins
     qLow = -25; qHigh=25;
     '''
+    '''
     # CORELLI - beryl
     loadDir = '/data/corelli_beryl/IPTS-20302/'
     nxsTemplate = loadDir+'CORELLI_%i.nxs.h5'
     sampleRuns = range(58411,58592+1)
     peaksFile = '/SNS/users/ntv/integrate/corelli_beryl/combined_hexagonal_indexedonly.integrate'
-    peaksFormat = peaksFile
     UBFile = '/SNS/users/ntv/integrate/corelli_beryl/combined_hexagonal.mat'
-    UBFormat = UBFile
     DetCalFile = None
     qLow = -25.0; qHigh = 25.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
     dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.02 #dQ for each voxel in qBox - recommended to decrease for successive fits
-    descriptor = 'beryl_3D_full' #Does not end with '/'
+    descriptor = 'beryl_3D_full_newsigi' #Does not end with '/'
     doIterativeBackgroundFitting = False
     nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
@@ -48,22 +45,22 @@ def doBVGFits(sampleRunsList=None):
     descriptorRead = 'beryl_lab'
     predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     q_frame='lab'
+    mindtBinWidth=10
+    '''
 
     '''
     #PsbO
     loadDir = '/SNS/MANDI/IPTS-16286/data/'
     nxsTemplate = loadDir+'MANDI_%i_event.nxs'
     sampleRuns = range(6154,6165+1)
-    peaksFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal_highres.integrate'
-    peaksFormat = peaksFile
-    UBFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal_highres.mat'
-    UBFormat = UBFile
+    peaksFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.integrate'#_highres.integrate'
+    UBFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.mat'#_highres.mat'
     DetCalFile = None
     qLow = -5.0; qHigh = 5.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
     dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
-    descriptor = 'psbo_3D_full_lab_newpredpws_highres' #Does not end with '/'
+    descriptor = 'psbo_3D_full_lab_newpredppl'#_highres_newsigi' #Does not end with '/'
     doIterativeBackgroundFitting = False
     nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
@@ -73,7 +70,9 @@ def doBVGFits(sampleRunsList=None):
     #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     predpplCoefficients = np.array([14.36827809, 10.889742, 0.28754095]) #Go with ICCFT.oldScatFun
     q_frame='lab'
+    mindtBinWidth = 15
     '''
+
 
     '''
     #DNA
@@ -81,15 +80,13 @@ def doBVGFits(sampleRunsList=None):
     nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
     sampleRuns = range(8758,8769+1)
     peaksFile = '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.integrate'
-    peaksFormat = peaksFile
     UBFile = '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.mat'
-    UBFormat = UBFile
     DetCalFile = None
     qLow = -5.0; qHigh = 5.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
     dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.007 #dQ for each voxel in qBox - recommended to decrease for successive fits
-    descriptor = 'dna_3D_full_lab_newpredppl' #Does not end with '/'
+    descriptor = 'dna_3D_full_lab_newpredppl_newsigi' #Does not end with '/'
     doIterativeBackgroundFitting = False
     nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
@@ -99,35 +96,112 @@ def doBVGFits(sampleRunsList=None):
     #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
     q_frame='lab'
+    mindtBinWidth = 15
+    '''
+    #pth
+    loadDir = 'SNS/MANDI/2013_2_11B_SCI/{0}/{1}/NeXus/MANDI_{1}_event.nxs'
+    peaksFile = '/SNS/users/ntv/integrate/mandi_pth/peaks_combined.integrate'
+    UBFile = '/SNS/users/ntv/integrate/mandi_pth/UB_combined.mat'
+    nxsTemplate = '/SNS/MANDI/IPTS-10943/{0}/{1}/NeXus/MANDI_{1}_event.nxs'
+    sampleRuns = [870,872,873,874,875,876]
+    DetCalFile = '/home/ntv/Desktop/runReduction/MaNDi2015.DetCal'
+    qLow = -4.0; qHigh = 4.0
+    dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+    dtBinWidth = 40 #Width (in us) in TOF profile bins
+    dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
+    descriptor = 'pth_3d_detcal' #Does not end with '/'
+    doIterativeBackgroundFitting = False
+    nBG=5
+    parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
+    numTimesToInterpolate=0
+    workDir = '/SNS/users/ntv/dropbox/'
+    descriptorRead = 'pth_tof_secondTry'
+    predpplCoefficients = np.array([ 6.12383767,  8.8677518 , -0.02761688]) #Go with ICCFT.oldScatFun
+    q_frame='lab'
+    mindtBinWidth = 15
+    fracHKLQMask = 0.25
+    pplmin_frac = 0.7; pplmax_frac = 1.5
+
+    '''
+    #gfp
+    loadDir = 'SNS/MANDI/2013_2_11B_SCI/{0}/{1}/NeXus/MANDI_{1}_event.nxs'
+    peaksFile = '/SNS/users/ntv/integrate/gfp/combined.integrate'
+    UBFile = '/SNS/users/ntv/integrate/gfp/combined.mat'
+    nxsTemplate = '/SNS/MANDI/2013_2_11B_SCI/{0}/{1}/NeXus/MANDI_{1}_event.nxs'
+
+    sampleRuns = range(599,607+1)
+    DetCalFile = None
+    qLow = -5.0; qHigh = 5.0
+    dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+    dtBinWidth = 40 #Width (in us) in TOF profile bins
+    dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
+    descriptor = 'gfp_3d_goodhkl' #Does not end with '/'
+    doIterativeBackgroundFitting = False
+    nBG=5
+    parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
+    numTimesToInterpolate=0
+    workDir = '/SNS/users/ntv/dropbox/'
+    descriptorRead = None#'beta_lac_lab_highres2'
+    #predpplCoefficients = np.array([49.70856213,18.293623,2.58462655]) #Go with ICCFT.oldScatFun
+    predpplCoefficients = np.array([23.2736324,10.10909695,0.6229528]) #Go with ICCFT.oldScatFun
+    q_frame='lab'
+    mindtBinWidth = 15
+    fracHKLQMask = 0.25
+    pplmin_frac = 0.7; pplmax_frac = 1.5
     '''
 
-
+    '''
+    #Beta Lac Mutant
+    loadDir = '/SNS/MANDI/IPTS-8776/data/'
+    peaksFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.integrate'
+    UBFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.mat'
+    nxsTemplate = '/SNS/MANDI/IPTS-8776/data/MANDI_%i_event.nxs'
+    sampleRuns = range(5921,5931+1)
+    DetCalFile = None
+    qLow = -10.0; qHigh = 10.0
+    dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+    dtBinWidth = 40 #Width (in us) in TOF profile bins
+    dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
+    descriptor = 'beta_lac_3D_lab_mutant' #Does not end with '/'
+    doIterativeBackgroundFitting = False
+    nBG=5
+    parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
+    numTimesToInterpolate=0
+    workDir = '/SNS/users/ntv/dropbox/'
+    descriptorRead = 'beta_lac_lab_highres2'
+    predpplCoefficients = np.array([ 3.56405187,  8.34071842,  0.14134522]) #Go with ICCFT.oldScatFun
+    q_frame='lab'
+    mindtBinWidth = 15
+    pplmin_frac = 0.4; pplmax_frac = 1.5
+    '''
 
     '''
     #Beta Lac
     loadDir = '/SNS/MANDI/IPTS-15000/data/'
     nxsTemplate = loadDir+'MANDI_%i_event.nxs'
     sampleRuns = range(4999,5003+1)
-    peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
-    peaksFormat = peaksFile
-    UBFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
-    UBFormat = UBFile
+    #peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
+    #UBFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
+    #peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/combined_triclinic.integrate'
+    #UBFile = '/SNS/users/ntv/integrate/mandi_betalactamase/combined_triclinic.mat'
+    peaksFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase2/combined.integrate'
+    UBFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase2/combined.mat'
     DetCalFile = None
-    qLow = -5.0; qHigh = 5.0
+    qLow = -10.0; qHigh = 10.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
     dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
-    descriptor = 'beta_lac_3D_full_lab3' #Does not end with '/'
+    descriptor = 'changeme' #Does not end with '/'
     doIterativeBackgroundFitting = False
     nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     numTimesToInterpolate=0
     workDir = '/SNS/users/ntv/dropbox/'
-    descriptorRead = 'beta_lac_lab'
+    descriptorRead = 'beta_lac_lab_highres2'
     predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     q_frame='lab'
+    mindtBinWidth = 15
     '''
-
 
     '''
     #NaK
@@ -136,8 +210,6 @@ def doBVGFits(sampleRunsList=None):
     sampleRuns = range(8275,8282+1)
     peaksFile = '/SNS/users/ntv/integrate/mandi_nak/MANDI_nak_8275_8282.integrate'
     UBFile = '/SNS/users/ntv/integrate/mandi_nak/MANDI_NAK_UB.mat'
-    peaksFormat = peaksFile
-    UBFormat = UBFile
     DetCalFile = None
     qLow = -5.0; qHigh = 5.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
@@ -160,11 +232,21 @@ def doBVGFits(sampleRunsList=None):
 
     dQ = np.abs(ICCFT.getDQFracHKL(UBMatrix, frac=0.5))
     dQ[dQ>0.3] = 0.3
-    qMask = ICCFT.getHKLMask(UBMatrix, frac=fracHKL, dQPixel=dQPixel,dQ=dQ)
+
+    try: qMask = ICCFT.getHKLMask(UBMatrix, frac=fracHKLQMask, dQPixel=dQPixel,dQ=dQ)
+    except: qMask = ICCFT.getHKLMask(UBMatrix, frac=fracHKL, dQPixel=dQPixel,dQ=dQ)
 
     padeCoefficients = ICCFT.getModeratorCoefficients('franz_coefficients_2017.dat')
-    ICCFitParams = ICAT.getFitParameters(workDir, descriptorRead, sampleRuns[0], sampleRuns[-1], sampleRuns=sampleRuns)
-    ICCFitDict = ICAT.getFitDicts(workDir, descriptorRead,sampleRuns[0], sampleRuns[-1], sampleRuns=sampleRuns)
+    try:
+        ICCFitParams = ICAT.getFitParameters(workDir, descriptorRead, sampleRuns[0], sampleRuns[-1], sampleRuns=sampleRuns)
+    except:
+        print 'Cannot read ICCFitParams - will set to None and fit as we go!'
+        ICCFitParams = None
+    try:
+        ICCFitDict = ICAT.getFitDicts(workDir, descriptorRead,sampleRuns[0], sampleRuns[-1], sampleRuns=sampleRuns)
+    except:
+        print 'Cannot read ICCFitDict.  Will set to None...'
+        ICCFitDict = None
     strongPeakParams = pickle.load(open('strongPeakParams_betalac_lab.pkl', 'rb'))
 
     from timeit import default_timer as timer
@@ -177,7 +259,12 @@ def doBVGFits(sampleRunsList=None):
     else: sampleRunsToAnalyze = sampleRuns
  
     for sampleRun in sampleRunsToAnalyze:
-        fileName = nxsTemplate%sampleRun
+
+        if '{' not in nxsTemplate:
+            fileName = nxsTemplate%sampleRun
+        else:
+            fileName = nxsTemplate.format(0, sampleRun)
+        
         MDdata = ICCFT.getSample(sampleRun, DetCalFile, workDir, fileName,qLow=qLow, qHigh=qHigh, q_frame=q_frame)
         t1 = timer()
         numerrors=0
@@ -185,9 +272,9 @@ def doBVGFits(sampleRunsList=None):
         paramList = []
         for peakNumber in range(peaks_ws.getNumberPeaks()):
             progressFile = workDir+descriptor+'/progress_%i_%s.txt'%(sampleRun, descriptor)
-            if progressFile is not None and i%100==0:
+            if progressFile is not None and peakNumber%100==0:
                 with open(progressFile, 'w') as f:
-                    f.write('%i\n'%(i))
+                    f.write('%i\n'%(peakNumber))
 
             TPS = timer()
             peak = peaks_ws.getPeak(peakNumber)
@@ -197,14 +284,44 @@ def doBVGFits(sampleRunsList=None):
                     print 'Integrating peak %i'%peakNumber
                     box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel, q_frame=q_frame)
                     #Will force weak peaks to be fit using a neighboring peak profile
-                    Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False,nBG=5, dtBinWidth=dtBinWidth,zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1,numTimesToInterpolate=numTimesToInterpolate, fICCParams=ICCFitParams[peakNumber], oldICCFit=ICCFitDict[peakNumber], strongPeakParams=strongPeakParams, predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=15)
+                    if ICCFitParams is not None:
+                        iccfp = ICCFitParams[peakNumber]
+                    else: iccfp = None
+                    Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False,nBG=5, dtBinWidth=dtBinWidth,zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1,numTimesToInterpolate=numTimesToInterpolate, fICCParams=iccfp, strongPeakParams=strongPeakParams, predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac)
                     #Does not force weak peaks
-                    #Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=70, nPhi=70, plotResults=False,nBG=5, dtBinWidth=dtBinWidth,zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1,numTimesToInterpolate=numTimesToInterpolate, fICCParams=ICCFitParams[peakNumber], oldICCFit=ICCFitDict[peakNumber],  predCoefficients=predpplCoefficients)
+                    #Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False,nBG=5, dtBinWidth=dtBinWidth,zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1,numTimesToInterpolate=numTimesToInterpolate, fICCParams=ICCFitParams[peakNumber], oldICCFit=ICCFitDict[peakNumber],  predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth)
 
-                    intensity = np.sum(Y3D[Y3D/Y3D.max() >0.05])/2**(3*numTimesToInterpolate)
+
+                    # First we get the peak intensity
+                    peakIDX = Y3D/Y3D.max() > 0.05
+                    intensity = np.sum(Y3D[peakIDX])/2**(3*numTimesToInterpolate)
                     skipIDX = 2**numTimesToInterpolate
-                    bg = np.sum(goodIDX[Y3D[::skipIDX,::skipIDX,::skipIDX]/Y3D[::skipIDX,::skipIDX,::skipIDX].max()>0.05]*pp_lambda)
-                    sigma = np.sqrt(intensity + bg)
+                   
+
+                    # Now the number of background counts under the peak assuming a constant bg across the box
+                    n_events = box.getNumEventsArray()
+                    convBox = 1.0*np.ones([neigh_length_m, neigh_length_m,neigh_length_m]) / neigh_length_m**3
+                    conv_n_events = convolve(n_events,convBox)
+                    bgIDX = reduce(np.logical_and,[~goodIDX, qMask, conv_n_events>0])
+                    bgEvents = np.mean(n_events[bgIDX])*np.sum(peakIDX)
+
+                    # Now we consider the variation of the fit.  These are done as three independent fits.  So we need to consider
+                    # the variance within our fit sig^2 = sum(N*(yFit-yData)) / sum(N) and scale by the number of parameters that go into
+                    # the fit.  In total: 10 (removing scale variables)
+                    # TODO: It's not clear to me if we should be normalizing by #params - so we'll leave it for now.
+                    w_events = n_events.copy()
+                    w_events[w_events==0] = 1
+                    varFit = np.average((n_events[peakIDX]-Y3D[peakIDX])*(n_events[peakIDX]-Y3D[peakIDX]), weights=(w_events[peakIDX]))
+
+                    # Comapre with the old way
+                    bgOld = np.sum(goodIDX[Y3D[::skipIDX,::skipIDX,::skipIDX]/Y3D[::skipIDX,::skipIDX,::skipIDX].max()>0.05]*pp_lambda)
+                    sigmaOld = np.sqrt(intensity + bgOld)
+
+                    # Now we add them all together.  Variances add linearly, so we just take the square root at the end.
+                    sigma = np.sqrt(intensity + bgEvents + varFit)
+                    print sigma, sigmaOld
+
+
                     oldNewVals = [peaks_ws.getPeak(peakNumber).getIntensity(), peaks_ws.getPeak(peakNumber).getSigmaIntensity(), intensity, sigma]
                     print 'original: %4.2f +- %4.2f;  new: %4.2f +- %4.2f'%(oldNewVals[0], oldNewVals[1], oldNewVals[2], oldNewVals[3])
                     oldNewList.append(oldNewVals)
@@ -266,6 +383,7 @@ if __name__ == '__main__':
                 sys.path.pop(i)
         sys.path.append(args.pythonPathForMantid)
 
+    from scipy.ndimage import convolve
     import ICCFitTools as ICCFT
     reload(ICCFT)
     import BVGFitTools as BVGFT
