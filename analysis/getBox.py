@@ -25,11 +25,11 @@ import getEdgePixels as EdgeTools
 from timeit import default_timer as timer
 reload(EdgeTools)
 reload(ICCFT)
-
+reload(BVGFT)
 
 print "Which peak?"
 peakToGet = int(input())
-
+'''
 #Scolecite
 peaksFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Monoclinic_C.integrate'
 #peaksFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/15629_Niggli.integrate'
@@ -44,7 +44,7 @@ dQPixel=0.005#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 q_frame='sample'
 pplmin_frac=3.8; pplmax_frac=4.0; mindtBinWidth=4
-
+'''
 
 '''
 #Si 2016
@@ -167,7 +167,6 @@ predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go w
 q_frame='lab'
 pplmin_frac=0.8; pplmax_frac=2.0; mindtBinWidth=15
 '''
-'''
 #Beta Lac
 #peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
 #UBFile =  '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
@@ -190,7 +189,6 @@ pplmin_frac=0.8; pplmax_frac=2.0; mindtBinWidth=15
 #peaksFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.integrate'
 #UBFile =  '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.mat'
 #nxsTemplate = '/SNS/MANDI/IPTS-8776/data/MANDI_%i_event.nxs'
-'''
 
 
 

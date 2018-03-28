@@ -8,6 +8,7 @@ from scipy.misc import factorial
 from scipy.optimize import curve_fit
 from scipy.ndimage.filters import convolve
 from scipy.stats import multivariate_normal
+from multivariate_t import multivariate_lorentzian
 import ICConvoluted as ICC
 FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 
@@ -17,7 +18,7 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 # BVGFT.compareBVGFitData(box,params[0])
 
 
-def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxToHistogram=1.0,numTimesToInterpolate=1, plotResults=False,nBG=15, dtBinWidth=4,zBG=1.96,bgPolyOrder=1, fICCParams = None, oldICCFit=None, strongPeakParams=None, forceCutoff=250, edgeCutoff=15, predCoefficients=None, neigh_length_m=3, q_frame = 'sample', dtSpread=0.03, pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1):
+def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxToHistogram=1.0,numTimesToInterpolate=1, plotResults=False,nBG=15, dtBinWidth=4,zBG=1.96,bgPolyOrder=1, fICCParams = None, oldICCFit=None, strongPeakParams=None, forceCutoff=250, edgeCutoff=15, predCoefficients=None, neigh_length_m=3, q_frame = 'sample', dtSpread=0.03, pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1, peakShape='bvg'):
     n_events = box.getNumEventsArray()
 
     if q_frame == 'lab':
@@ -66,44 +67,89 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
         thphPeak = np.array([th,ph])
         nnIDX = np.argmin(np.linalg.norm(strongPeakParams[:,:2] - thphPeak,axis=1))
         print 'Using ', strongPeakParams[nnIDX,:2], 'for ', thphPeak
-        params,h,t,p = doBVGFit(box,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram, goodIDX=goodIDX, forceParams=strongPeakParams[nnIDX])
+        if peaksShape == 'bvg':
+            params,h,t,p = doBVGFit(box,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram, goodIDX=goodIDX, forceParams=strongPeakParams[nnIDX])
+        if peaksShape == 'lorentzian':
+            params,h,t,p = doLorentzianFit(box,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram, goodIDX=goodIDX, forceParams=strongPeakParams[nnIDX])
     else:
-        params,h,t,p = doBVGFit(box,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram, goodIDX=goodIDX)
-    
+        if peakShape == 'bvg':
+            params,h,t,p = doBVGFit(box,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram, goodIDX=goodIDX)
+        if peakShape == 'lorentzian':
+            params,h,t,p = doLorentzianFit(box,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram, goodIDX=goodIDX)
+   
     if plotResults:
-        compareBVGFitData(box,params[0],nTheta, nPhi, fracBoxToHistogram=fracBoxToHistogram, useIDX=goodIDX)
+        if peakShape == 'bvg':
+            compareBVGFitData(box,params[0],nTheta, nPhi, fracBoxToHistogram=fracBoxToHistogram, useIDX=goodIDX)
+        if peakShape == 'lorentzian':
+            compareBVGFitData(box,params[0],nTheta, nPhi, fracBoxToHistogram=fracBoxToHistogram, useIDX=goodIDX, peakShape='lorentzian')
 
-    A = params[0][0]
-    mu0 = params[0][1]
-    mu1 = params[0][2]
-    sigX = params[0][3]
-    sigY = params[0][4]
-    p = params[0][5]
-    bgBVG = params[0][6]
-    sigma = np.array([[sigX**2,p*sigX*sigY], [p*sigX*sigY,sigY**2]])
-    mu = np.array([mu0,mu1])
-    
-    retParams = {}
-    retParams['Alpha'] = fICC['A']
-    retParams['Beta'] = fICC['B']
-    retParams['R'] = fICC['R']
-    retParams['T0'] = fICC['T0']
-    retParams['scale'] = fICC['scale']
-    retParams['k_conv'] = fICC['k_conv']
-    retParams['muTH'] = mu0
-    retParams['muPH'] = mu1
-    retParams['sigX'] = sigX
-    retParams['sigY'] = sigY
-    retParams['sigP'] = p
-    retParams['bgBVG'] = bgBVG
+    if peakShape == 'bvg':
+        A = params[0][0]
+        mu0 = params[0][1]
+        mu1 = params[0][2]
+        sigX = params[0][3]
+        sigY = params[0][4]
+        p = params[0][5]
+        bgANG = params[0][6]
+        sigma = np.array([[sigX**2,p*sigX*sigY], [p*sigX*sigY,sigY**2]])
+        mu = np.array([mu0,mu1])
+        
+        retParams = {}
+        retParams['Alpha'] = fICC['A']
+        retParams['Beta'] = fICC['B']
+        retParams['R'] = fICC['R']
+        retParams['T0'] = fICC['T0']
+        retParams['scale'] = fICC['scale']
+        retParams['k_conv'] = fICC['k_conv']
+        retParams['muTH'] = mu0
+        retParams['muPH'] = mu1
+        retParams['sigX'] = sigX
+        retParams['sigY'] = sigY
+        retParams['sigP'] = p
+        retParams['bgANG'] = bgANG
 
-    XTOF = X[:,:,:,0]
-    XTHETA = X[:,:,:,1]
-    XPHI = X[:,:,:,2]
-    XANGLE = X[:,:,:,1:]
+        XTOF = X[:,:,:,0]
+        XTHETA = X[:,:,:,1]
+        XPHI = X[:,:,:,2]
+        XANGLE = X[:,:,:,1:]
 
-    YBVG= bvg(1.0, mu,sigma,XTHETA,XPHI,0)
-    Y,redChiSq, scaleFactor = fitScaling(n_events,box, YTOF, YBVG)
+        YANG= bvg(1.0, mu,sigma,XTHETA,XPHI,0)
+    if peakShape == 'lorentzian':
+        A = params[0][0]
+        mu0 = params[0][1]
+        mu1 = params[0][2]
+        sigX = params[0][3]
+        sigY = params[0][4]
+        sigXY = params[0][5]
+        sigYX = params[0][6]
+        bgANG = params[0][7]
+        sigma = np.array([[sigX,sigXY], [sigYX, sigY]])
+        mu = np.array([mu0,mu1])
+        
+        retParams = {}
+        retParams['Alpha'] = fICC['A']
+        retParams['Beta'] = fICC['B']
+        retParams['R'] = fICC['R']
+        retParams['T0'] = fICC['T0']
+        retParams['scale'] = fICC['scale']
+        retParams['k_conv'] = fICC['k_conv']
+        retParams['muTH'] = mu0
+        retParams['muPH'] = mu1
+        retParams['sigX'] = sigX
+        retParams['sigY'] = sigY
+        retParams['sigXY'] = sigXY
+        retParams['sigYX'] = sigYX
+        retParams['bgANG'] = bgANG
+
+        XTOF = X[:,:,:,0]
+        XTHETA = X[:,:,:,1]
+        XPHI = X[:,:,:,2]
+        XANGLE = X[:,:,:,1:]
+
+        YANG= lorentzian(1.0, mu,sigma,XTHETA,XPHI,0)
+
+    print mu, sigma
+    Y,redChiSq, scaleFactor = fitScaling(n_events,box, YTOF, YANG)
     retParams['scale3d'] = scaleFactor
     retParams['chiSq3d'] = redChiSq
 
@@ -114,9 +160,12 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
     XTHETA = X[:,:,:,1]
     XPHI = X[:,:,:,2]
     XANGLE = X[:,:,:,1:]
-    YBVG2 = bvg(1.0, mu,sigma,XTHETA,XPHI,0)
+    if peakShape == 'bvg':
+        YANG2 = bvg(1.0, mu,sigma,XTHETA,XPHI,0)
+    if peakShape == 'lorentzian':
+        YANG2 = lorentzian(1.0, mu,sigma,XTHETA,XPHI,0)
     YTOF2 = getYTOF(fICC, XTOF, x_lims)
-    Y2 = YTOF2*YBVG2
+    Y2 = YTOF2*YANG2
     Y2 = scaleFactor*Y2/Y2.max() 
     
     QX, QY, QZ = ICCFT.getQXQYQZ(box)
@@ -493,9 +542,22 @@ def getBVGResult(box, params,nTheta=200,nPhi=200,fracBoxToHistogram=1.0):
     Y = Y.reshape([nTheta-1,nPhi-1])
     return Y
 
-def compareBVGFitData(box,params,nTheta=200,nPhi=200,figNumber=2,fracBoxToHistogram=1.0, useIDX=None):
+def getLorentzianResult(box, params,nTheta=200,nPhi=200,fracBoxToHistogram=1.0):
+    h, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram)
+    thCenters = 0.5*(thBins[1:] + thBins[:-1])
+    phCenters = 0.5*(phBins[1:] + phBins[:-1])
+    TH, PH = np.meshgrid(thCenters, phCenters,indexing='ij',copy=False)
+    Y = lorentzianFitFun([TH,PH],params[0],params[1],params[2],params[3],params[4],params[5],params[6], params[7])
+    Y = Y.reshape([nTheta-1,nPhi-1])
+    return Y
+
+def compareBVGFitData(box,params,nTheta=200,nPhi=200,figNumber=2,fracBoxToHistogram=1.0, useIDX=None, peakShape='bvg'):
     h, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram, useIDX=useIDX)
-    Y = getBVGResult(box,params,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram)
+    if peakShape == 'bvg':
+        Y = getBVGResult(box,params,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram)
+    if peakShape == 'lorentzian':
+        print '~~~~~~~~', params
+        Y = getLorentzianResult(box,params,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram)
     pLow = 0.0; pHigh = 1.0
     nX, nY = Y.shape
     plt.figure(figNumber); plt.clf()
@@ -610,4 +672,73 @@ def bvg(A, mu,sigma,x,y,bg):
         return A*rv.pdf(pos) +bg
     else:
         print '   BVGFT:bvg:not PSD Matrix'
+        return 0.0*np.ones_like(x)
+
+def doLorentzianFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX=None, forceParams=None, forceTolerance = 0.1, dph=10, dth=10):
+    h, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi,zBG=zBG,fracBoxToHistogram=fracBoxToHistogram,useIDX=goodIDX)
+    dtH = np.mean(np.diff(thBins))
+    dpH = np.mean(np.diff(phBins))
+    thCenters = 0.5*(thBins[1:] + thBins[:-1])
+    phCenters = 0.5*(phBins[1:] + phBins[:-1])
+    TH, PH = np.meshgrid(thCenters, phCenters,indexing='ij',copy=False)
+
+    fitIDX = np.ones_like(h).astype(np.bool)
+    weights = np.sqrt(h)
+    weights[weights<1] = 1
+
+    if forceParams is None:
+            meanTH = TH.mean()
+            meanPH = PH.mean()
+            sigX0 = 0.0005
+            sigY0 = 0.0003
+            sigXY = 0.0 
+            sigYX = 0.0 
+             
+            p0=[np.max(h)/15000, meanTH, meanPH, sigX0, sigY0, sigXY, sigYX, 0.0]
+            print p0
+            bounds = ([0.0, thBins[thBins.size//2 - 2], phBins[phBins.size//2 - 2], 0.000, 0.000, -0.02, -0.02, 0], 
+                    [np.inf, thBins[thBins.size//2 + 2], phBins[phBins.size//2 + 2], 0.02, 0.02,   0.02,  0.02, np.inf])
+            params= curve_fit(lorentzianFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(),p0=p0, bounds=bounds, sigma=np.sqrt(weights[fitIDX]))
+            #params= curve_fit(lorentzianFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(),p0=p0, sigma=np.sqrt(weights[fitIDX]))
+            #params= curve_fit(lorentzianFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(),p0=p0)
+            #params = (p0, params[1])
+            print '!!!', params[0]
+
+    elif forceParams is not None:
+        p0 = np.zeros(7)
+        p0[0] = np.max(h); p0[1] = TH.mean(); p0[2] = PH.mean()
+        p0[3] = forceParams[5]; p0[4] = forceParams[6]; p0[5] = forceParams[7];
+        isPos = np.sign(p0)
+        bounds = ((1.0-isPos*forceTolerance)*p0, (1.0+isPos*forceTolerance)*p0)
+        bounds[0][0] = 0.0;  bounds[1][0] = np.inf; #Amplitude
+        bounds[0][1] = min(thBins[thBins.size//2 - dth], thBins[thBins.size//2 + dth]);
+        bounds[1][1] = max(thBins[thBins.size//2 - dth], thBins[thBins.size//2 + dth]);
+        bounds[0][2] = min(phBins[phBins.size//2 - dph], phBins[phBins.size//2 + dph]);
+        bounds[1][2] = max(phBins[phBins.size//2 - dph], phBins[phBins.size//2 + dph]);
+        bounds[1][-1] = np.inf
+        print 'forcing: ', forceParams
+        print '~~~ p0:',p0
+        params = curve_fit(lorentzianFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX],p0=p0, bounds=bounds)
+        print '~~ params:', params[0]
+    return params, h, thBins, phBins
+
+def lorentzianFitFun(x, A, mu0, mu1,sigX,sigY,sigXY, sigYX,bg):
+    sigma = np.array([[sigX**2,sigXY], [sigYX,sigY**2]])
+    mu = np.array([mu0,mu1])
+    return lorentzian(A, mu,sigma,x[0],x[1],bg).ravel() 
+
+def lorentzian(A, mu,sigma,x,y,bg):
+    pos = np.empty(x.shape+(2,))
+    if pos.ndim == 4:
+        pos[:,:,:,0] = x; pos[:,:,:,1] = y
+    elif pos.ndim == 3:
+        pos[:,:,0] = x; pos[:,:,1] = y
+    else:
+        pos[:,0] = x; pos[:,1] = y
+
+    if is_pos_def(sigma):
+        rv = multivariate_lorentzian(mu, sigma)
+        return A*rv.pdf(pos) +bg
+    else:
+        print '   BVGFT:lorentzian:not PSD Matrix'
         return 0.0*np.ones_like(x)
