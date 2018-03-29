@@ -67,9 +67,9 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
         thphPeak = np.array([th,ph])
         nnIDX = np.argmin(np.linalg.norm(strongPeakParams[:,:2] - thphPeak,axis=1))
         print 'Using ', strongPeakParams[nnIDX,:2], 'for ', thphPeak
-        if peaksShape == 'bvg':
+        if peakShape == 'bvg':
             params,h,t,p = doBVGFit(box,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram, goodIDX=goodIDX, forceParams=strongPeakParams[nnIDX])
-        if peaksShape == 'lorentzian':
+        if peakShape == 'lorentzian':
             params,h,t,p = doLorentzianFit(box,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram, goodIDX=goodIDX, forceParams=strongPeakParams[nnIDX])
     else:
         if peakShape == 'bvg':
@@ -123,7 +123,7 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
         sigXY = params[0][5]
         sigYX = params[0][6]
         bgANG = params[0][7]
-        sigma = np.array([[sigX,sigXY], [sigYX, sigY]])
+        sigma = np.array([[sigX**2,sigXY], [sigYX, sigY**2]])
         mu = np.array([mu0,mu1])
         
         retParams = {}
@@ -689,18 +689,19 @@ def doLorentzianFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, 
     if forceParams is None:
             meanTH = TH.mean()
             meanPH = PH.mean()
-            sigX0 = 0.0005
-            sigY0 = 0.0003
-            sigXY = 0.0 
-            sigYX = 0.0 
+            sigX0 = 0.007
+            sigY0 = 0.003
+            sigXY = 0.
+            sigYX = 0.
              
-            p0=[np.max(h)/15000, meanTH, meanPH, sigX0, sigY0, sigXY, sigYX, 0.0]
+            mvmax = multivariate_lorentzian(np.array([meanTH,meanPH]), np.array([[sigX0**2,sigXY],[sigYX,sigY0**2]])).pdf([meanTH, meanPH])
+            p0=[np.max(h)/mvmax, meanTH, meanPH, sigX0, sigY0, sigXY, sigYX, 0.0]
             print p0
-            bounds = ([0.0, thBins[thBins.size//2 - 2], phBins[phBins.size//2 - 2], 0.000, 0.000, -0.02, -0.02, 0], 
-                    [np.inf, thBins[thBins.size//2 + 2], phBins[phBins.size//2 + 2], 0.02, 0.02,   0.02,  0.02, np.inf])
+            bounds = ([0.0, thBins[thBins.size//2 -5], phBins[phBins.size//2 - 5], 0.000, 0.000, -0.02, -0.02, 0], 
+                    [np.inf, thBins[thBins.size//2 + 5], phBins[phBins.size//2 + 5], 0.02, 0.02,   0.02,  0.02, np.inf])
             params= curve_fit(lorentzianFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(),p0=p0, bounds=bounds, sigma=np.sqrt(weights[fitIDX]))
             #params= curve_fit(lorentzianFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(),p0=p0, sigma=np.sqrt(weights[fitIDX]))
-            #params= curve_fit(lorentzianFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(),p0=p0)
+            #params= curve_fit(lorentzianFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(),p0=p0,maxfev=5000)
             #params = (p0, params[1])
             print '!!!', params[0]
 
