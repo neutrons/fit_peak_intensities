@@ -87,6 +87,7 @@ sg = SpaceGroupFactory.createSpaceGroup("P 21 21 2")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
 '''
 
+'''
 #Beta lactamase
 sampleRuns = range(4999,5004)
 workDir = '/SNS/users/ntv/dropbox/'
@@ -99,20 +100,18 @@ peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
 ellipseFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase2/combined.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 32 2 1")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
-
-
 '''
+
 #DNA
 sampleRuns = range(8758,8769+1)
 workDir = '/SNS/users/ntv/dropbox/'
-descriptorBVG = 'dna_3D_full_lab_newpredppl_newsigi'
-descriptorTOF = 'dna_lab_newpredppl'
+descriptorBVG = 'dna_3D_highres'
+descriptorTOF = 'dna_tof_highres'
 #peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
 peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
-ellipseFile = '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.integrate'
+ellipseFile = '/SNS/users/ntv/integrate/mandi_dna2/combined_1p5A.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 21 21 21")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
-'''
 
 '''
 #NaK
@@ -259,15 +258,16 @@ goodIDX = goodIDX #& ~edgeIDX
 plt.figure(3); plt.clf();
 plt.plot(df[goodIDX]['IntensEll'], df[goodIDX]['Intens3d'],'.',ms=2)
 
-laueOutput = (df['DSpacing'] > 1.99) & (df['Wavelength'] > 2.0) & (df['Wavelength']<4.0) #& (df['Intens3d']/df['SigInt3d'] > 1.0)
+laueOutput = (df['DSpacing'] > 1.49) & (df['Wavelength'] > 2.0) & (df['Wavelength']<4.0) #& (df['Intens3d']/df['SigInt3d'] > 1.0)
 print ' '
 print 'Removing bad peaks from peaks_ws.  This can take some time...'
 #events = Load('/data/corelli_beryl/IPTS-20302/CORELLI_58417.nxs.h5')
 #events = Load('/SNS/MANDI/IPTS-16286/data/MANDI_6154_event.nxs')
-events = Load('/SNS/MANDI/IPTS-10943/0/870/NeXus/MANDI_870_event.nxs')
-ws = CreatePeaksWorkspace(NumberOfPeaks=0, OutputWorkspace="ws", InstrumentWorkspace='events')
-ws2 = CreatePeaksWorkspace(NumberOfPeaks=0, OutputWorkspace="ws2", InstrumentWorkspace='events')
-#ws = CreatePeaksWorkspace(NumberOfPeaks=0, OutputWorkspace="ws")
+#events = Load('/SNS/MANDI/IPTS-10943/0/870/NeXus/MANDI_870_event.nxs')
+#ws = CreatePeaksWorkspace(NumberOfPeaks=0, OutputWorkspace="ws", InstrumentWorkspace='events')
+#ws2 = CreatePeaksWorkspace(NumberOfPeaks=0, OutputWorkspace="ws2", InstrumentWorkspace='events')
+ws = CreatePeaksWorkspace(NumberOfPeaks=0, OutputWorkspace="ws")
+ws2 = CreatePeaksWorkspace(NumberOfPeaks=0, OutputWorkspace="ws2")
 peaksAdded = 0
 peaks_ws_clone = CloneWorkspace(InputWorkspace=peaks_ws, OutputWorkspace='peaks_ws_clone')
 peaks_ws_clone2 = CloneWorkspace(InputWorkspace=peaks_ws, OutputWorkspace='peaks_ws_clone2')
@@ -291,4 +291,4 @@ for i in range(len(df)):
 #print 'Saving LaueNorm Input'
 #SaveLauenorm(InputWorkspace=ws, Filename=workDir+descriptorBVG+'/laue/ellControl/laueNorm', ScalePeaks=3.0, minDSpacing=1.2, minWavelength=2.0, MaxWavelength=4.0, SortFilesBy='RunNumber', MinIsigI=1., MinIntensity=0)
 print 'Saving LaueScale'
-#SaveLauenorm(InputWorkspace=ws, Filename=workDir+descriptorBVG+'/laue/ellControl/lscale_keep_all', ScalePeaks=3.0, minDSpacing=1.2, minWavelength=2.0, MaxWavelength=4.0, SortFilesBy='RunNumber', MinIsigI=-1.0e6, MinIntensity=-1.0e6,LaueScaleFormat=True)
+SaveLauenorm(InputWorkspace=ws, Filename=workDir+descriptorBVG+'/laue/dna', ScalePeaks=3.0, minDSpacing=1.2, minWavelength=2.0, MaxWavelength=4.0, SortFilesBy='RunNumber', MinIsigI=1., MinIntensity=0.,LaueScaleFormat=True)

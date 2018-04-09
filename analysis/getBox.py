@@ -29,7 +29,7 @@ reload(ICCFT)
 
 print "Which peak?"
 peakToGet = int(input())
-
+'''
 #Scolecite
 peaksFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Monoclinic_C.integrate'
 #peaksFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/15629_Niggli.integrate'
@@ -44,7 +44,7 @@ dQPixel=0.005#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 q_frame='sample'
 pplmin_frac=3.8; pplmax_frac=4.0; mindtBinWidth=4
-
+'''
 
 '''
 #Si 2016
@@ -151,22 +151,22 @@ pplmin_frac=0.; pplmax_frac=4.5; mindtBinWidth=10
 '''
 
 
-'''
 #DNA
-peaksFile = '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.integrate'
-UBFile =  '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.mat'
-DetCalFile = None
+peaksFile = '/SNS/users/ntv/integrate/mandi_dna2/combined_leighton.integrate'
+UBFile =  '/SNS/users/ntv/integrate/mandi_dna2/combined_leighton.mat'
+DetCalFile = '/SNS/users/ntv/integrate/mandi_dna2/mandi_dna.DetCal'
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
-loadDir = '/SNS/MANDI/IPTS-18552/nexus/'
+loadDir = '/data/dna/IPTS-18552/'
 nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
 #panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
 dtBinWidth = 25 
-dQPixel=0.007#np.array([0.003, 0.003, 0.003])
+dQPixel=0.008#np.array([0.003, 0.003, 0.003])
 #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
 q_frame='lab'
-pplmin_frac=0.8; pplmax_frac=2.0; mindtBinWidth=15
-'''
+pplmin_frac=0.8; pplmax_frac=5.0; mindtBinWidth=25
+
+
 '''
 #Beta Lac
 #peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'

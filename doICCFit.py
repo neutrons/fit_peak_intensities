@@ -104,30 +104,30 @@ def doIntegration(sampleRunsList=None):
     q_frame='lab'
     minppl_frac=0.8; maxppl_frac=1.5;
     '''
-    '''
     # DNA - 2017 - MANDI
-    loadDir = '/SNS/MANDI/IPTS-18552/nexus/'
+    loadDir = '/data/dna/'
     nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
     sampleRuns = range(8758,8769+1)
-    peaksFile = '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.integrate'
-    UBFile = '/SNS/users/ntv/integrate/mandi_dna/combined_orthorhombic.mat'
+    peaksFile = '/SNS/users/ntv/integrate/mandi_dna2/combined_1p5A.integrate'
+    UBFile = '/SNS/users/ntv/integrate/mandi_dna2/combined_1p5A.mat'
     peaksFormat = peaksFile
     UBFormat = UBFile
-    DetCalFile = None
+    DetCalFile = '/SNS/users/ntv/integrate/mandi_dna2/mandi_dna.DetCal'
     qLow = -5.0; qHigh = 5.0
     dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 30 #Width (in us) in TOF profile bins
+    dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = [0.007,0.007] #dQ for each voxel in qBox - recommended to decrease for successive fits
     dQMax = 0.15 #tune this
-    descriptor = 'dna_lab_newpredppl' #Does not end with '/'
+    descriptor = 'dna_tof_highres' #Does not end with '/'
     doIterativeBackgroundFitting = False
     nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
     q_frame='lab'
-    minppl_frac=0.8; maxppl_frac=1.5
-    '''
+    fracHKLQMask = 0.5
+    minppl_frac=0.7; maxppl_frac=1.5
+    mindtBinWidth=25
     '''
     #gfp
     sampleRuns = range(599,607+1)
@@ -154,6 +154,7 @@ def doIntegration(sampleRunsList=None):
     fracHKLQMask = 0.25
     minppl_frac=0.7; maxppl_frac=1.5; mindtBinWidth=15
     '''
+    '''
     #pth
     sampleRuns = [870,872,873,874,875,876]
     loadDir = '/SNS/MANDI/IPTS-10943/{0}/{1}/NeXus/MANDI_{1}_event.nxs'
@@ -176,6 +177,7 @@ def doIntegration(sampleRunsList=None):
     q_frame='lab'
     fracHKLQMask = 0.25
     minppl_frac=0.7; maxppl_frac=1.5; mindtBinWidth=15
+    '''
 
 
 
