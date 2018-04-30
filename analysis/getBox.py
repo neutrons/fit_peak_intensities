@@ -150,10 +150,9 @@ q_frame='lab'
 pplmin_frac=0.; pplmax_frac=4.5; mindtBinWidth=10
 '''
 
-
 #DNA
-peaksFile = '/SNS/users/ntv/integrate/mandi_dna2/combined_leighton.integrate'
-UBFile =  '/SNS/users/ntv/integrate/mandi_dna2/combined_leighton.mat'
+peaksFile = '/SNS/users/ntv/integrate/mandi_dna2/combined_1p5A.integrate'
+UBFile =  '/SNS/users/ntv/integrate/mandi_dna2/combined_1p5A.mat'
 DetCalFile = '/SNS/users/ntv/integrate/mandi_dna2/mandi_dna.DetCal'
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/data/dna/IPTS-18552/'
@@ -166,6 +165,22 @@ predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go w
 q_frame='lab'
 pplmin_frac=0.8; pplmax_frac=5.0; mindtBinWidth=25
 
+'''
+#secondDNA
+peaksFile = '/SNS/users/ntv/integrate/mandi_secondDNA/combined.integrate'
+UBFile =  '/SNS/users/ntv/integrate/mandi_secondDNA/combined.mat'
+DetCalFile = None#'/SNS/users/ntv/integrate/mandi_dna2/mandi_dna.DetCal'
+workDir = '/SNS/users/ntv/dropbox/' #End with '/'
+loadDir = '/SNS/MANDI/IPTS-15151/data/'
+nxsTemplate = loadDir+'MANDI_%i_event.nxs'
+#panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
+dtBinWidth = 25 
+dQPixel=0.005#np.array([0.003, 0.003, 0.003])
+#predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
+q_frame='lab'
+pplmin_frac=0.6; pplmax_frac=1.5; mindtBinWidth=25
+'''
 
 '''
 #Beta Lac

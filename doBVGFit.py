@@ -73,7 +73,7 @@ def doBVGFits(sampleRunsList=None):
     mindtBinWidth = 15
     '''
 
-
+    '''
     #DNA
     loadDir = '/data/dna/IPTS-18552/'
     nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
@@ -98,6 +98,32 @@ def doBVGFits(sampleRunsList=None):
     mindtBinWidth = 25
     fracHKLQMask = 0.5
     pplmin_frac = 0.7; pplmax_frac = 1.5
+    '''
+    #secondDNA
+    loadDir = '/SNS/MANDI/IPTS-15151/data/'
+    nxsTemplate = loadDir+'MANDI_%i_event.nxs'
+    sampleRuns = range(5280,5291+1)
+    peaksFile = '/SNS/users/ntv/integrate/mandi_secondDNA/combined.integrate'
+    UBFile = '/SNS/users/ntv/integrate/mandi_secondDNA/combined.mat'
+    DetCalFile = None#'/SNS/users/ntv/integrate/mandi_dna2/mandi_dna.DetCal'
+    qLow = -5.0; qHigh = 5.0
+    dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+    dtBinWidth = 40 #Width (in us) in TOF profile bins
+    dQPixel = 0.005 #dQ for each voxel in qBox - recommended to decrease for successive fits
+    descriptor = 'secondDNA_3D' #Does not end with '/'
+    doIterativeBackgroundFitting = False
+    nBG=5
+    parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
+    numTimesToInterpolate=0
+    workDir = '/SNS/users/ntv/dropbox/'
+    descriptorRead = None#'dna_tof_2' 
+    #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+    predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
+    q_frame='lab'
+    mindtBinWidth = 25
+    fracHKLQMask = 0.5
+    pplmin_frac = 0.6; pplmax_frac = 1.5
+
 
     '''
     #pth
@@ -250,8 +276,8 @@ def doBVGFits(sampleRunsList=None):
     except:
         print 'Cannot read ICCFitDict.  Will set to None...'
         ICCFitDict = None
-    #strongPeakParams = pickle.load(open('strongPeakParams_betalac_lab.pkl', 'rb'))
-    strongPeakParams = pickle.load(open('strongPeakParams_dna.pkl', 'rb'))
+    strongPeakParams = pickle.load(open('strongPeakParams_betalac_lab.pkl', 'rb'))
+    #strongPeakParams = pickle.load(open('strongPeakParams_dna.pkl', 'rb'))
 
     from timeit import default_timer as timer
 
