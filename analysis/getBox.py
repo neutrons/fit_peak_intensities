@@ -329,11 +329,11 @@ if True:
     scatteringHalfAngle = 0.5*peak.getScattering()
     edgesToCheck = []#EdgeTools.needsEdgeRemoval(Box,panelDict,peak)
     for dtS in dtSpreadToPlot:
-        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtS,doVolumeNormalization=False, minFracPixels=0.015, removeEdges=removeEdges, edgesToCheck=edgesToCheck, zBG=-1., calc_pp_lambda=False, mindtBinWidth=mindtBinWidth)
+        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtS, minFracPixels=0.015, removeEdges=removeEdges, edgesToCheck=edgesToCheck, zBG=-1., calc_pp_lambda=False, mindtBinWidth=mindtBinWidth)
         YDATA1 = tofWS.readY(0).copy()
         plt.subplot(2,1,2)
         plt.plot(tofWS.readX(0), tofWS.readY(0),'o',label='%2.3f'%dtS)
-        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtS,doVolumeNormalization=False, minFracPixels=0.005, removeEdges=removeEdges, edgesToCheck=edgesToCheck, zBG=1.96,neigh_length_m=3, padeCoefficients=ICCFT.getModeratorCoefficients('franz_coefficients_2017.dat'), predCoefficients=predpplCoefficients, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac,mindtBinWidth=mindtBinWidth)
+        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtS, minFracPixels=0.005, removeEdges=removeEdges, edgesToCheck=edgesToCheck, zBG=1.96,neigh_length_m=3, padeCoefficients=ICCFT.getModeratorCoefficients('franz_coefficients_2017.dat'), predCoefficients=predpplCoefficients, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac,mindtBinWidth=mindtBinWidth)
         YDATA2 = tofWS.readY(0).copy()
         print pp_lambda
         plt.subplot(2,1,2)
@@ -359,7 +359,7 @@ if True:
     yG = gaussian(t,gp[0], gp[1],gp[2],gp[3])
     plt.plot(t,yG,'r--')
 
-    tofWS = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=0.05,doVolumeNormalization=False, minFracPixels=0.015, removeEdges=removeEdges,tListMode=1)
+    tofWS = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=0.05, minFracPixels=0.015, removeEdges=removeEdges,tListMode=1)
     y = tofWS.readY(0) 
     t = tofWS.readX(0)
     bgIDX = np.logical_or(t<peak.getTOF()*0.995, t>peak.getTOF()*1.005)

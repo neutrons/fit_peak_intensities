@@ -2,7 +2,6 @@ def doBVGFits(sampleRunsList=None):
     # Some parameters
     workDir = '/SNS/users/ntv/dropbox/' #End with '/'
     dQPixel = 0.005 #dQ for each voxel in qBox - recommended to decrease for successive fits
-    doVolumeNormalization = False #True if you want to normalize TOF profiles by volume
     refineCenter = False #True if you want to determine new centers - still not very good
     removeEdges = False #True if you want to not consider q-pixels that are off detector faces
     fracHKL = 0.5 #Fraction of HKL to look on either side
