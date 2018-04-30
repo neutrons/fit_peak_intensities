@@ -32,7 +32,6 @@ def doIntegration(sampleRunsList=None):
     descriptor = 'scol_dynamicQuadBG_constraints' #Does not end with '/'
     dQMax = 0.4
     doIterativeBackgroundFitting = False
-    nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     '''
 
@@ -72,7 +71,6 @@ def doIntegration(sampleRunsList=None):
     dQMax = 0.15 #tune this
     descriptor = 'nak_predpws5_lab' #Does not end with '/'
     doIterativeBackgroundFitting = False
-    nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     predpplCoefficients = np.array([12.51275, 13.078622, 0.18924]) #Go with ICCFT.oldScatFun
     q_frame = 'lab'
@@ -97,7 +95,6 @@ def doIntegration(sampleRunsList=None):
     dQMax = 0.15 #tune this
     descriptor = 'psbo_lab_newpredppl_highres' #Does not end with '/'
     doIterativeBackgroundFitting = False
-    nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     predpplCoefficients = np.array([14.36827809, 10.889742, 0.28754095]) #Go with ICCFT.oldScatFun
@@ -122,7 +119,6 @@ def doIntegration(sampleRunsList=None):
     dQMax = 0.15 #tune this
     descriptor = 'dna_tof_highres' #Does not end with '/'
     doIterativeBackgroundFitting = False
-    nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
@@ -147,7 +143,6 @@ def doIntegration(sampleRunsList=None):
     dQMax = 0.15 #tune this
     descriptor = 'secondDNA_tof' #Does not end with '/'
     doIterativeBackgroundFitting = False
-    nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
@@ -174,7 +169,6 @@ def doIntegration(sampleRunsList=None):
     dQMax = 0.15 #tune this
     descriptor = 'gfp_tof_goodhkl' #Does not end with '/'
     doIterativeBackgroundFitting = False
-    nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     #predpplCoefficients = np.array([ 3.56405187,  8.34071842,  0.14134522]) #Go with ICCFT.oldScatFun
     #predpplCoefficients = np.array([49.70856213,18.293623,2.58462655]) #Go with ICCFT.oldScatFun
@@ -200,7 +194,6 @@ def doIntegration(sampleRunsList=None):
     dQMax = 0.15 #tune this
     descriptor = 'pth_tof_secondRun' #Does not end with '/'
     doIterativeBackgroundFitting = False
-    nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     predpplCoefficients = np.array([ 6.12383767,  8.8677518 , -0.02761688]) #Go with ICCFT.oldScatFun
     q_frame='lab'
@@ -228,7 +221,6 @@ def doIntegration(sampleRunsList=None):
     dQMax = 0.15 #tune this
     descriptor = 'beta_lac_lab_highres_mut2' #Does not end with '/'
     doIterativeBackgroundFitting = False
-    nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     predpplCoefficients = np.array([ 3.56405187,  8.34071842,  0.14134522]) #Go with ICCFT.oldScatFun
     q_frame='lab'
@@ -256,7 +248,6 @@ def doIntegration(sampleRunsList=None):
     dQMax = 0.15 #tune this
     descriptor = 'changeme' #Does not end with '/'
     doIterativeBackgroundFitting = False
-    nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     q_frame='lab'
@@ -280,7 +271,6 @@ def doIntegration(sampleRunsList=None):
     dQMax = 0.15 #tune this
     descriptor = 'beryl_lab_cs1' #Does not end with '/'
     doIterativeBackgroundFitting = False
-    nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     q_frame='lab'
@@ -303,7 +293,6 @@ def doIntegration(sampleRunsList=None):
     dQMax = 0.15 #tune this
     descriptor = 'beta_lac_predpws6' #Does not end with '/'
     doIterativeBackgroundFitting = False
-    nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     '''
@@ -327,7 +316,6 @@ def doIntegration(sampleRunsList=None):
     doIterativeBackgroundFitting = False
     descriptor = 'natrolite' #Does not end with '/'
     doIterativeBackgroundFitting = False
-    nBG=5
     parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     q_frame = 'sample'
@@ -415,7 +403,7 @@ def doIntegration(sampleRunsList=None):
         MDdata = ICCFT.getSample(sampleRun, DetCalFile, workDir, fileName, qLow=qLow, qHigh=qHigh, q_frame=q_frame)
         
         #Do the actual integration
-        peaks_ws,paramList,fitDict = ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients,parameterDict, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.01, fracStop=fracStop, removeEdges=removeEdges, calibrationDict=calibrationDict,dQPixel=dQPixel, calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG, bgPolyOrder=bgPolyOrder, nBG=nBG, doIterativeBackgroundFitting=doIterativeBackgroundFitting,predCoefficients=predpplCoefficients, q_frame=q_frame, progressFile=workDir+descriptor+'/progress_%i_%s.txt'%(sampleRun, descriptor), mindtBinWidth=mindtBinWidth,minpplfrac=minppl_frac, maxpplfrac=maxppl_frac)
+        peaks_ws,paramList,fitDict = ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients,parameterDict, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, doVolumeNormalization=doVolumeNormalization, minFracPixels=0.01, fracStop=fracStop, removeEdges=removeEdges, calibrationDict=calibrationDict,dQPixel=dQPixel, calcTOFPerPixel=calcTOFPerPixel,neigh_length_m=neigh_length_m,zBG=zBG, bgPolyOrder=bgPolyOrder, doIterativeBackgroundFitting=doIterativeBackgroundFitting,predCoefficients=predpplCoefficients, q_frame=q_frame, progressFile=workDir+descriptor+'/progress_%i_%s.txt'%(sampleRun, descriptor), mindtBinWidth=mindtBinWidth,minpplfrac=minppl_frac, maxpplfrac=maxppl_frac)
         #Save the results and delete the leftovers
         os.system('rm ' + workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))
         SaveIsawPeaks(InputWorkspace='peaks_ws', Filename=workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))

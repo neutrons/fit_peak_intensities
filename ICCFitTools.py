@@ -81,7 +81,7 @@ def getQXQYQZ(box):
     QX, QY, QZ = np.meshgrid(qx, qy, qz,indexing='ij',copy=False)
     return QX, QY, QZ
 
-def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, dtBinWidth=30, qMask=None, pp_lambda=None, nBG=15, minppl_frac=0.8, maxppl_frac=1.5,mindtBinWidth=1, constraintScheme=1):
+def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, dtBinWidth=30, qMask=None, pp_lambda=None, minppl_frac=0.8, maxppl_frac=1.5,mindtBinWidth=1, constraintScheme=1):
     tof = peak.getTOF() #in us
     wavelength = peak.getWavelength() #in Angstrom
     flightPath = peak.getL1() + peak.getL2() #in m
@@ -96,7 +96,7 @@ def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, dtBi
         calc_pp_lambda=True
 
     tofWS,ppl = getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, None, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, doVolumeNormalization=False, minFracPixels=0.01, removeEdges=False,calcTOFPerPixel=False,neigh_length_m=3,zBG=1.96,pp_lambda=pp_lambda,calc_pp_lambda=calc_pp_lambda, pplmin_frac=minppl_frac, pplmax_frac=minppl_frac,mindtBinWidth=mindtBinWidth)
-    fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=nBG,fitOrder=1,constraintScheme=constraintScheme)
+    fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,fitOrder=1,constraintScheme=constraintScheme)
     h = [tofWS.readY(0), tofWS.readX(0)]
     chiSq = fitResults.OutputChi2overDoF
     
@@ -145,7 +145,7 @@ def getPoissionGoodIDX(n_events, zBG=1.96, neigh_length_m=3):
                 pp_lambda *= 1.05
     return goodIDX, pp_lambda
 
-def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,dtBinWidth=4, qMask=None, peak=None, box=None, pp_lambda=None,peakNumber=-1,nBG=15, minppl_frac=0.8, maxppl_frac=1.5, predCoefficients=None, mindtBinWidth=1, constraintScheme=1):
+def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,dtBinWidth=4, qMask=None, peak=None, box=None, pp_lambda=None,peakNumber=-1, minppl_frac=0.8, maxppl_frac=1.5, predCoefficients=None, mindtBinWidth=1, constraintScheme=1):
     #Set up some things to only consider good pixels
     hasEventsIDX = n_events>0
     N = np.shape(n_events)[0]
@@ -192,7 +192,7 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
             else:
                 oldGoodIDXSum = np.sum(goodIDX)
             try: 
-                chiSq, h, intens, sigma = getQuickTOFWS(box, peak, padeCoefficients, goodIDX=goodIDX,qMask=qMask,pp_lambda=pp_lambda,dtBinWidth=dtBinWidth,nBG=nBG, minppl_frac=minppl_frac, maxppl_frac=maxppl_frac, mindtBinWidth=mindtBinWidth, constraintScheme=constraintScheme)
+                chiSq, h, intens, sigma = getQuickTOFWS(box, peak, padeCoefficients, goodIDX=goodIDX,qMask=qMask,pp_lambda=pp_lambda,dtBinWidth=dtBinWidth, minppl_frac=minppl_frac, maxppl_frac=maxppl_frac, mindtBinWidth=mindtBinWidth, constraintScheme=constraintScheme)
             except:
                 #raise
                 break
@@ -213,14 +213,14 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
     pp_lambda = pp_lambda_toCheck[use_ppl]
     print 'USING PP_LAMBDA', pp_lambda, 'WITH CHISQ:', chiSqList[use_ppl]
     goodIDX, _ = getBGRemovedIndices(n_events, pp_lambda=pp_lambda)
-    chiSq, h, intens, sigma = getQuickTOFWS(box, peak, padeCoefficients, goodIDX=goodIDX,qMask=qMask,pp_lambda=pp_lambda,dtBinWidth=dtBinWidth,nBG=nBG, minppl_frac=minppl_frac, maxppl_frac=maxppl_frac, mindtBinWidth=mindtBinWidth)
+    chiSq, h, intens, sigma = getQuickTOFWS(box, peak, padeCoefficients, goodIDX=goodIDX,qMask=qMask,pp_lambda=pp_lambda,dtBinWidth=dtBinWidth, minppl_frac=minppl_frac, maxppl_frac=maxppl_frac, mindtBinWidth=mindtBinWidth)
     if qMask is not None:
         return goodIDX*qMask, pp_lambda
     return goodIDX, pp_lambda
  
 #Must give this a peak, box, and qMask to do iterative pp_lambda
 def getBGRemovedIndices(n_events,zBG=1.96,calc_pp_lambda=False, neigh_length_m=3,dtBinWidth=4, qMask=None, 
-                        peak=None, box=None, pp_lambda=None,peakNumber=-1, padeCoefficients=None,nBG=15,predCoefficients=None,
+                        peak=None, box=None, pp_lambda=None,peakNumber=-1, padeCoefficients=None,predCoefficients=None,
                         pplmin_frac=0.8, pplmax_frac = 1.5, mindtBinWidth=1, constraintScheme=1):
 
     if calc_pp_lambda is True and pp_lambda is not None:
@@ -252,7 +252,7 @@ def getBGRemovedIndices(n_events,zBG=1.96,calc_pp_lambda=False, neigh_length_m=3
         while pplmin_frac >= 0.0:
             try:
                 return getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=neigh_length_m, minppl_frac=pplmin_frac, maxppl_frac=pplmax_frac,
-                dtBinWidth=dtBinWidth, qMask=qMask, peak=peak, box=box, pp_lambda=pp_lambda,peakNumber=peakNumber,nBG=nBG,
+                dtBinWidth=dtBinWidth, qMask=qMask, peak=peak, box=box, pp_lambda=pp_lambda,peakNumber=peakNumber,
                 predCoefficients=predCoefficients, mindtBinWidth=mindtBinWidth,constraintScheme=constraintScheme)
             except KeyboardInterrupt:
                 sys.exit()
@@ -782,7 +782,7 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.00
     return Box
 
 
-def doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,constraintScheme=None,nBG=15, outputWSName='fit', fitOrder=1):
+def doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,constraintScheme=None, outputWSName='fit', fitOrder=1):
     #Set up our inital guess
     fICC = ICC.IkedaCarpenterConvoluted()
     fICC.init()
@@ -791,8 +791,7 @@ def doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibration
     [fICC.setParameter(iii,v) for iii,v in enumerate(x0[:fICC.numParams()])]
     x = tofWS.readX(0)
     y = tofWS.readY(0)
-    if len(y)//2 < nBG: nBG = len(y)//2
-    bgx0 = np.polyfit(x[np.r_[0:nBG,-nBG:0]], y[np.r_[0:nBG,-nBG:0]], fitOrder)
+    bgx0 = np.polyfit(x[np.r_[0:5,-5:0]], y[np.r_[0:5,-5:0]], fitOrder)
     nPts = x.size                
     scaleFactor = np.max((y-np.polyval(bgx0,x))[nPts//3:2*nPts//3])/np.max(fICC.function1D(x)[nPts//3:2*nPts//3])
     x0[4] = x0[4]*scaleFactor
@@ -820,7 +819,7 @@ def doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibration
     return fitResults, fICC
 
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
-def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients, parameterDict, figsFormat=None, dtBinWidth = 4, nBG=15, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, doVolumeNormalization=False, minFracPixels=0.0000, fracStop = 0.01, removeEdges=False, calibrationDict=None,dQPixel=0.005,calcTOFPerPixel=False, p=None,neigh_length_m=0,zBG=-1.0,bgPolyOrder=1, doIterativeBackgroundFitting=False,predCoefficients=None, q_frame='sample', progressFile=None, minpplfrac=0.8, maxpplfrac=1.5, mindtBinWidth=1, keepFitDict=False, constraintScheme=1):
+def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients, parameterDict, figsFormat=None, dtBinWidth = 4, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, doVolumeNormalization=False, minFracPixels=0.0000, fracStop = 0.01, removeEdges=False, calibrationDict=None,dQPixel=0.005,calcTOFPerPixel=False, p=None,neigh_length_m=0,zBG=-1.0,bgPolyOrder=1, doIterativeBackgroundFitting=False,predCoefficients=None, q_frame='sample', progressFile=None, minpplfrac=0.8, maxpplfrac=1.5, mindtBinWidth=1, keepFitDict=False, constraintScheme=1):
     if removeEdges is True and panelDict is None:
         import sys
         sys.exit('ICCFT:integrateSample - trying to remove edges without a panelDict, this is impossible!')
@@ -852,7 +851,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     mtd.remove('MDbox_'+str(run)+'_'+str(i))
                     continue
                 n_events = Box.getNumEventsArray()
-                goodIDX, pp_lambda = getBGRemovedIndices(n_events, peak=peak, box=Box,qMask=qMask[0], calc_pp_lambda=True, padeCoefficients=padeCoefficients, dtBinWidth=dtBinWidth,nBG=nBG,predCoefficients=predCoefficients,mindtBinWidth=mindtBinWidth, pplmin_frac=minpplfrac, pplmax_frac=maxpplfrac,constraintScheme=constraintScheme)
+                goodIDX, pp_lambda = getBGRemovedIndices(n_events, peak=peak, box=Box,qMask=qMask[0], calc_pp_lambda=True, padeCoefficients=padeCoefficients, dtBinWidth=dtBinWidth,predCoefficients=predCoefficients,mindtBinWidth=mindtBinWidth, pplmin_frac=minpplfrac, pplmax_frac=maxpplfrac,constraintScheme=constraintScheme)
                 #Do background removal (optionally) and construct the TOF workspace for fitting
                 if removeEdges:
                     edgesToCheck = EdgeTools.needsEdgeRemoval(Box,panelDict,peak) 
@@ -866,7 +865,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     #TODO: Make sure we calculate it here - it seems to not work well for scolecute, but works for beta lac?
 
 
-                fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,nBG=nBG,fitOrder=bgPolyOrder,constraintScheme=constraintScheme)
+                fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,fitOrder=bgPolyOrder,constraintScheme=constraintScheme)
                 fitStatus = fitResults.OutputStatus
                 chiSq = fitResults.OutputChi2overDoF
 
