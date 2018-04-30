@@ -3,7 +3,6 @@ def doBVGFits(sampleRunsList=None):
     workDir = '/SNS/users/ntv/dropbox/' #End with '/'
     dQPixel = 0.005 #dQ for each voxel in qBox - recommended to decrease for successive fits
     refineCenter = False #True if you want to determine new centers - still not very good
-    removeEdges = False #True if you want to not consider q-pixels that are off detector faces
     fracHKL = 0.5 #Fraction of HKL to look on either side
     fracStop = 0.01 #Fraction of max counts to include in peak selection
     neigh_length_m = 3 #Will average over a (neigh_length_m)**3 box

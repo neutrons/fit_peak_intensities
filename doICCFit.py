@@ -4,7 +4,6 @@ def doIntegration(sampleRunsList=None):
     workDir = '/SNS/users/ntv/dropbox/' #End with '/'
     bgPolyOrder = 1 #int- bg order for IC fit
     refineCenter = False #True if you want to determine new centers - still not very good
-    removeEdges = False #True if you want to not consider q-pixels that are off detector faces
     fracHKL = 0.5 #Fraction of HKL to look on either side
     fracStop = 0.01 #Fraction of max counts to include in peak selection
     moderatorCoefficientsFile = 'franz_coefficients_2017.dat'
@@ -378,7 +377,7 @@ def doIntegration(sampleRunsList=None):
 
     #Write the log
     logFile = workDir + descriptor + '/log.log'
-    ICFitLog.writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, fracStop, refineCenter, removeEdges, peaksFormat, UBFormat, DetCalFile, moderatorCoefficientsFile, calibrationDictFile, descriptor,zBG,neigh_length_m, predpplCoefficients, minppl_frac, maxppl_frac)
+    ICFitLog.writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, fracStop, refineCenter, peaksFormat, UBFormat, DetCalFile, moderatorCoefficientsFile, calibrationDictFile, descriptor,zBG,neigh_length_m, predpplCoefficients, minppl_frac, maxppl_frac)
     if sampleRunsList != -1:
         sampleRunsToAnalyze = np.array(sampleRuns).astype(np.int)[sampleRunsList]
     else: sampleRunsToAnalyze = sampleRuns
@@ -392,16 +391,13 @@ def doIntegration(sampleRunsList=None):
         #If we want to remove edges, we rebuild the panel dictionary every run
         # TODO this can be reformulated in QLab and apply R each box.
         instrumentFile = EdgeTools.getInstrumentFile(peaks_ws, peaksFile)
-        if removeEdges:
-            panelDict = EdgeTools.getInstrumentDict(instrumentFile, peaks_ws, sampleRun, fitOrder=2)
-        else:
-            panelDict = EdgeTools.getPanelDictionary(instrumentFile)
+        panelDict = EdgeTools.getPanelDictionary(instrumentFile)
 
         #Conver the sample to reciprocal space
         MDdata = ICCFT.getSample(sampleRun, DetCalFile, workDir, fileName, qLow=qLow, qHigh=qHigh, q_frame=q_frame)
         
         #Do the actual integration
-        peaks_ws,paramList,fitDict = ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients,parameterDict, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, minFracPixels=0.01, fracStop=fracStop, removeEdges=removeEdges, calibrationDict=calibrationDict,dQPixel=dQPixel, neigh_length_m=neigh_length_m,zBG=zBG, bgPolyOrder=bgPolyOrder, doIterativeBackgroundFitting=doIterativeBackgroundFitting,predCoefficients=predpplCoefficients, q_frame=q_frame, progressFile=workDir+descriptor+'/progress_%i_%s.txt'%(sampleRun, descriptor), mindtBinWidth=mindtBinWidth,minpplfrac=minppl_frac, maxpplfrac=maxppl_frac)
+        peaks_ws,paramList,fitDict = ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients,parameterDict, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, minFracPixels=0.01, fracStop=fracStop, calibrationDict=calibrationDict,dQPixel=dQPixel, neigh_length_m=neigh_length_m,zBG=zBG, bgPolyOrder=bgPolyOrder, doIterativeBackgroundFitting=doIterativeBackgroundFitting,predCoefficients=predpplCoefficients, q_frame=q_frame, progressFile=workDir+descriptor+'/progress_%i_%s.txt'%(sampleRun, descriptor), mindtBinWidth=mindtBinWidth,minpplfrac=minppl_frac, maxpplfrac=maxppl_frac)
         #Save the results and delete the leftovers
         os.system('rm ' + workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))
         SaveIsawPeaks(InputWorkspace='peaks_ws', Filename=workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))

@@ -95,7 +95,7 @@ def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, dtBi
     if pp_lambda is None:
         calc_pp_lambda=True
 
-    tofWS,ppl = getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, None, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, minFracPixels=0.01, removeEdges=False,neigh_length_m=3,zBG=1.96,pp_lambda=pp_lambda,calc_pp_lambda=calc_pp_lambda, pplmin_frac=minppl_frac, pplmax_frac=minppl_frac,mindtBinWidth=mindtBinWidth)
+    tofWS,ppl = getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, None, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, minFracPixels=0.01, neigh_length_m=3,zBG=1.96,pp_lambda=pp_lambda,calc_pp_lambda=calc_pp_lambda, pplmin_frac=minppl_frac, pplmax_frac=minppl_frac,mindtBinWidth=mindtBinWidth)
     fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,fitOrder=1,constraintScheme=constraintScheme)
     h = [tofWS.readY(0), tofWS.readX(0)]
     chiSq = fitResults.OutputChi2overDoF
@@ -411,7 +411,7 @@ def get_pp_lambda(n_events, hasEventsIDX ):
 #Output:
 #    tofWS: a Workspace2D containing the TOF profile.  X-axis is TOF (units: us) and
 #           Y-axis is the number of events.
-def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, qMask, dtBinWidth=2, zBG=-1.0, dtSpread = 0.02, minFracPixels = 0.005, removeEdges=False, edgesToCheck=None, workspaceNumber=None,neigh_length_m=0, pp_lambda=None, calc_pp_lambda=False, padeCoefficients=None,predCoefficients=None,pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1,constraintScheme=1):  
+def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, qMask, dtBinWidth=2, zBG=-1.0, dtSpread = 0.02, minFracPixels = 0.005, workspaceNumber=None,neigh_length_m=0, pp_lambda=None, calc_pp_lambda=False, padeCoefficients=None,predCoefficients=None,pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1,constraintScheme=1):  
     #Find the qVoxels to use
     n_events = box.getNumEventsArray()
     hasEventsIDX = np.logical_and(n_events>0,qMask)
@@ -466,11 +466,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, qMa
     dtBinWidth = min(50, dtBinWidth)
     tBins = np.arange(tMin, tMax, dtBinWidth)
     weightList = n_events[hasEventsIDX] #- pp_lambda
-    if removeEdges:
-        mask = EdgeTools.getMask(peak, box, panelDict,qMask, edgesToCheck=edgesToCheck)
-        h = np.histogram(tList,tBins,weights=weightList*mask[hasEventsIDX]);
-    else:
-        h = np.histogram(tList,tBins,weights=weightList);
+    h = np.histogram(tList,tBins,weights=weightList);
     #For and plot the TOF distribution
     tPoints = 0.5*(h[1][1:] + h[1][:-1])
     yPoints = h[0]
@@ -748,11 +744,8 @@ def doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibration
     return fitResults, fICC
 
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
-def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients, parameterDict, figsFormat=None, dtBinWidth = 4, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, minFracPixels=0.0000, fracStop = 0.01, removeEdges=False, calibrationDict=None,dQPixel=0.005, p=None,neigh_length_m=0,zBG=-1.0,bgPolyOrder=1, doIterativeBackgroundFitting=False,predCoefficients=None, q_frame='sample', progressFile=None, minpplfrac=0.8, maxpplfrac=1.5, mindtBinWidth=1, keepFitDict=False, constraintScheme=1):
-    if removeEdges is True and panelDict is None:
-        import sys
-        sys.exit('ICCFT:integrateSample - trying to remove edges without a panelDict, this is impossible!')
-    
+def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients, parameterDict, figsFormat=None, dtBinWidth = 4, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, minFracPixels=0.0000, fracStop = 0.01, calibrationDict=None,dQPixel=0.005, p=None,neigh_length_m=0,zBG=-1.0,bgPolyOrder=1, doIterativeBackgroundFitting=False,predCoefficients=None, q_frame='sample', progressFile=None, minpplfrac=0.8, maxpplfrac=1.5, mindtBinWidth=1, keepFitDict=False, constraintScheme=1):
+
     if p is None:
         p = range(peaks_ws.getNumberPeaks())
     fitDict = {}
@@ -781,17 +774,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                     continue
                 n_events = Box.getNumEventsArray()
                 goodIDX, pp_lambda = getBGRemovedIndices(n_events, peak=peak, box=Box,qMask=qMask[0], calc_pp_lambda=True, padeCoefficients=padeCoefficients, dtBinWidth=dtBinWidth,predCoefficients=predCoefficients,mindtBinWidth=mindtBinWidth, pplmin_frac=minpplfrac, pplmax_frac=maxpplfrac,constraintScheme=constraintScheme)
-                #Do background removal (optionally) and construct the TOF workspace for fitting
-                if removeEdges:
-                    edgesToCheck = EdgeTools.needsEdgeRemoval(Box,panelDict,peak) 
-                    if edgesToCheck != []: #At least one plane intersects so we have to fit
-                        tofWS,ppl = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], minFracPixels=minFracPixels, removeEdges=removeEdges, edgesToCheck=edgesToCheck, neigh_length_m=neigh_length_m,zBG=zBG,pp_lambda=pp_lambda,pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac,mindtBinWidth=mindtBinWidth,constraintScheme=constraintScheme )
-                    else:
-                        tofWS,ppl = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], minFracPixels=minFracPixels, removeEdges=False,neigh_length_m=neigh_length_m,zBG=zBG,pp_lambda=pp_lambda, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac,mindtBinWidth=mindtBinWidth,constraintScheme=constraintScheme)
-                else:
-                    #tofWS,pp_lambda = getTOFWS(Box,flightPath, scatteringHalfAngle, tof, peak, panelDict, qMask[0], dtBinWidth=dtBinWidth,dtSpread=dtSpread[0], minFracPixels=minFracPixels, removeEdges=False,neigh_length_m=neigh_length_m,zBG=zBG,pp_lambda=pp_lambda)
-                    tofWS = mtd['tofWS'] # --IN PRINCIPLE!!! WE CALCULATE THIS BEFORE GETTING HERE
-                    #TODO: Make sure we calculate it here - it seems to not work well for scolecute, but works for beta lac?
+                tofWS = mtd['tofWS'] # --IN PRINCIPLE!!! WE CALCULATE THIS BEFORE GETTING HERE
 
 
                 fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,fitOrder=bgPolyOrder,constraintScheme=constraintScheme)
