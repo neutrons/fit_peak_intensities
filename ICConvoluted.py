@@ -1,25 +1,23 @@
 # ICConvoluted.py
 #
-# Defines two IPeakFunctions.  The first is IkedaCarpenterConvoluted
+# Defines the IPeakFunction IkedaCarpenterConvoluted
 # which is the standard Ikeda-Carpenter (IC) function convoluted with 
-# a square wave and a single exponential.  This implementation is 
-# the same as is implemented in Rick's 'est_ic_nn_T.m'.  The second
-# is a gaussian which is taken from the Mantid homepage as an example
-# custom IPeakFunction.
+# a square wave and a Gaussian. 
 #
+# 
 import math
 import numpy as np
 from mantid.api._api import IFunction1D
 
 class IkedaCarpenterConvoluted(IFunction1D):
     def init(self):
-        self.declareParameter("A") #c[0]
-        self.declareParameter("B") #c[1]
-        self.declareParameter("R") #c[2]
-        self.declareParameter("T0") #c[3]
-        self.declareParameter("scale") #c[4]
-        self.declareParameter("hatWidth") #c[5]
-        self.declareParameter("k_conv") #c[6]
+        self.declareParameter("A") #Alpha
+        self.declareParameter("B") #Beta
+        self.declareParameter("R") #R - ratio of fast to slow neutrons
+        self.declareParameter("T0") #T0 - time offset
+        self.declareParameter("scale") #amplitude
+        self.declareParameter("hatWidth") #width of square wave
+        self.declareParameter("k_conv") #k_conv for Gaussian
 
     #n.b. pass penalty=None to not use default mantid penalty - useful for development
     def setPenalizedConstraints(self, A0=None, B0=None, R0=None, T00=None, scale0=None, hatWidth0=None, k_conv0=None, penalty=1.0e20):
@@ -53,10 +51,6 @@ class IkedaCarpenterConvoluted(IFunction1D):
                 self.setConstraintPenaltyFactor("k_conv", penalty)
     #Evaluate the function
     def function1D(self, t):
-        #self.setConstraintPenaltyFactor("A", 1.0e10)
-        #self.setConstraintPenaltyFactor("B", 1.0e10)
-        #self.setConstraintPenaltyFactor("R", 1.0e10)
-        #self.setConstraintPenaltyFactor("T0", 1.0e10)
         A  = self.getParamValue(0) 
         B  = self.getParamValue(1) 
         R  = self.getParamValue(2) 
@@ -64,7 +58,8 @@ class IkedaCarpenterConvoluted(IFunction1D):
         scale = self.getParamValue(4) 
         hatWidth  = self.getParamValue(5) 
         k_conv  = self.getParamValue(6)
-        #n.b. A/2 scale factor has been removed to make A more independent 
+
+        #n.b. A/2 scale factor has been removed to make A and scale independent 
         f_int = scale*( (1-R)*np.power((A*(t-T0)),2)*
             np.exp(-A*(t-T0))+2*R*A**2*B/np.power((A-B),3) *
             (np.exp(-B*(t-T0))-np.exp(-A*(t-T0))*(1+(A-B)*(t-T0)+0.5*np.power((A-B),2)*np.power((t-T0),2)) ) )
@@ -75,8 +70,6 @@ class IkedaCarpenterConvoluted(IFunction1D):
         ppd = 0.0*gc_x
         lowIDX  = int(np.floor(np.max([mid_point_hat-np.abs(hatWidth),0])))
         highIDX = int(np.ceil(np.min([mid_point_hat+np.abs(hatWidth),len(gc_x)])))
-        #print lowIDX, highIDX
-        #print c, lowIDX, highIDX
         
         ppd[lowIDX:highIDX] = 1.0;
         ppd = ppd/sum(ppd);
@@ -85,7 +78,6 @@ class IkedaCarpenterConvoluted(IFunction1D):
         gc_x = 2*(gc_x-np.min(gc_x))/(np.max(gc_x)-np.min(gc_x))-1;
         gc_f = np.exp(-k_conv*np.power(gc_x,2));
         gc_f = gc_f/np.sum(gc_f);
-        #print gc_f
         
         npad = len(f_int) - 1
         first = npad - npad//2
