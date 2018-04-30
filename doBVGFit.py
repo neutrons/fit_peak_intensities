@@ -17,7 +17,6 @@ def doBVGFits(sampleRunsList=None):
     DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
     descriptor = 'scol_3d' #Does not end with '/'
     numTimesToInterpolate=1
-    dtBinWidth = 4 #Width (in us) in TOF profile bins
     qLow = -25; qHigh=25;
     '''
     '''
@@ -30,7 +29,6 @@ def doBVGFits(sampleRunsList=None):
     DetCalFile = None
     qLow = -25.0; qHigh = 25.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.02 #dQ for each voxel in qBox - recommended to decrease for successive fits
     descriptor = 'beryl_3D_full_newsigi' #Does not end with '/'
     doIterativeBackgroundFitting = False
@@ -53,7 +51,6 @@ def doBVGFits(sampleRunsList=None):
     DetCalFile = None
     qLow = -5.0; qHigh = 5.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
     descriptor = 'psbo_3D_full_lab_newpredppl'#_highres_newsigi' #Does not end with '/'
     doIterativeBackgroundFitting = False
@@ -77,7 +74,6 @@ def doBVGFits(sampleRunsList=None):
     DetCalFile = '/SNS/users/ntv/integrate/mandi_dna2/mandi_dna.DetCal'
     qLow = -5.0; qHigh = 5.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.007 #dQ for each voxel in qBox - recommended to decrease for successive fits
     descriptor = 'dna_3D_highres' #Does not end with '/'
     doIterativeBackgroundFitting = False
