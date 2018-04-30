@@ -5,7 +5,6 @@ def doBVGFits(sampleRunsList=None):
     doVolumeNormalization = False #True if you want to normalize TOF profiles by volume
     refineCenter = False #True if you want to determine new centers - still not very good
     removeEdges = False #True if you want to not consider q-pixels that are off detector faces
-    calcTOFPerPixel = False #True to calculate TOF for each pixel in a qBox - uses interpolation for volNorm (if doVolumeNormalization is True)
     fracHKL = 0.5 #Fraction of HKL to look on either side
     fracStop = 0.01 #Fraction of max counts to include in peak selection
     neigh_length_m = 3 #Will average over a (neigh_length_m)**3 box
