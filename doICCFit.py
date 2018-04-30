@@ -22,7 +22,6 @@ def doIntegration(sampleRunsList=None):
     DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
     qLow = -15.0; qHigh = 15.0
     dtSpread = [0.025,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 4 #Width (in us) in TOF profile bins
     dQPixel = [0.005,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
     descriptor = 'scol_dynamicQuadBG_constraints' #Does not end with '/'
     dQMax = 0.4
@@ -42,7 +41,6 @@ def doIntegration(sampleRunsList=None):
     DetCalFile = '/SNS/TOPAZ/IPTS-16903/shared/calibration/TOPAZ_2016B.DetCal'
     qLow = -25.0; qHigh = 25.0
     dtSpread = [0.025,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 4 #Width (in us) in TOF profile bins
     dQPixel = [0.005,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
     dQMax = 0.4
     doIterativeBackgroundFitting = False
@@ -61,7 +59,6 @@ def doIntegration(sampleRunsList=None):
     DetCalFile = None
     qLow = -5.0; qHigh = 5.0
     dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 30 #Width (in us) in TOF profile bins
     dQPixel = [0.003,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
     dQMax = 0.15 #tune this
     descriptor = 'nak_predpws5_lab' #Does not end with '/'
@@ -85,7 +82,6 @@ def doIntegration(sampleRunsList=None):
     DetCalFile = None
     qLow = -5.0; qHigh = 5.0
     dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 30 #Width (in us) in TOF profile bins
     dQPixel = [0.003,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
     dQMax = 0.15 #tune this
     descriptor = 'psbo_lab_newpredppl_highres' #Does not end with '/'
@@ -109,7 +105,6 @@ def doIntegration(sampleRunsList=None):
     DetCalFile = '/SNS/users/ntv/integrate/mandi_dna2/mandi_dna.DetCal'
     qLow = -5.0; qHigh = 5.0
     dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = [0.007,0.007] #dQ for each voxel in qBox - recommended to decrease for successive fits
     dQMax = 0.15 #tune this
     descriptor = 'dna_tof_highres' #Does not end with '/'
@@ -133,7 +128,6 @@ def doIntegration(sampleRunsList=None):
     DetCalFile = None#'/SNS/users/ntv/integrate/mandi_dna2/mandi_dna.DetCal'
     qLow = -5.0; qHigh = 5.0
     dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = [0.005,0.005] #dQ for each voxel in qBox - recommended to decrease for successive fits
     dQMax = 0.15 #tune this
     descriptor = 'secondDNA_tof' #Does not end with '/'
@@ -159,7 +153,6 @@ def doIntegration(sampleRunsList=None):
     DetCalFile = None
     qLow = -5.0; qHigh = 5.0
     dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 30 #Width (in us) in TOF profile bins
     dQPixel = [0.003,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
     dQMax = 0.15 #tune this
     descriptor = 'gfp_tof_goodhkl' #Does not end with '/'
@@ -184,7 +177,6 @@ def doIntegration(sampleRunsList=None):
     DetCalFile = None
     qLow = -4.0; qHigh = 4.0
     dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 30 #Width (in us) in TOF profile bins
     dQPixel = [0.003,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
     dQMax = 0.15 #tune this
     descriptor = 'pth_tof_secondRun' #Does not end with '/'
@@ -211,7 +203,6 @@ def doIntegration(sampleRunsList=None):
     DetCalFile = None
     qLow = -10.0; qHigh = 10.0
     dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 30 #Width (in us) in TOF profile bins
     dQPixel = [0.003,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
     dQMax = 0.15 #tune this
     descriptor = 'beta_lac_lab_highres_mut2' #Does not end with '/'
@@ -238,7 +229,6 @@ def doIntegration(sampleRunsList=None):
     DetCalFile = None
     qLow = -10.0; qHigh = 10.0
     dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 30 #Width (in us) in TOF profile bins
     dQPixel = [0.003,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
     dQMax = 0.15 #tune this
     descriptor = 'changeme' #Does not end with '/'
@@ -261,7 +251,6 @@ def doIntegration(sampleRunsList=None):
     UBFormat = UBFile
     qLow = -25.0; qHigh = 25.0
     dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 30 #Width (in us) in TOF profile bins
     dQPixel = [0.02,0.02] #dQ for each voxel in qBox - recommended to decrease for successive fits
     dQMax = 0.15 #tune this
     descriptor = 'beryl_lab_cs1' #Does not end with '/'
@@ -283,7 +272,6 @@ def doIntegration(sampleRunsList=None):
     DetCalFile = None
     qLow = -5.0; qHigh = 5.0
     dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 30 #Width (in us) in TOF profile bins
     dQPixel = [0.005,0.005] #dQ for each voxel in qBox - recommended to decrease for successive fits
     dQMax = 0.15 #tune this
     descriptor = 'beta_lac_predpws6' #Does not end with '/'
@@ -305,7 +293,6 @@ def doIntegration(sampleRunsList=None):
     UBFormat = UBFile
     qLow = -10.0; qHigh = 10.0
     dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 4 #Width (in us) in TOF profile bins
     dQPixel = [0.003,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
     dQMax = 0.2
     doIterativeBackgroundFitting = False
@@ -327,7 +314,6 @@ def doIntegration(sampleRunsList=None):
     DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
     qLow = -25.0; qHigh = 25.0
     dtSpread = [0.025,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 4 #Width (in us) in TOF profile bins
     dQPixel = [0.005,0.003] #dQ for each voxel in qBox - recommended to decrease for successive fits
     dQMax = 0.4
     descriptor = 'si_0p015_removeBG' #Does not end with '/'
@@ -374,7 +360,7 @@ def doIntegration(sampleRunsList=None):
 
     #Write the log
     logFile = workDir + descriptor + '/log.log'
-    ICFitLog.writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, fracStop, peaksFormat, UBFormat, DetCalFile, moderatorCoefficientsFile, descriptor,zBG,neigh_length_m, predpplCoefficients, minppl_frac, maxppl_frac)
+    ICFitLog.writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, fracHKL, fracStop, peaksFormat, UBFormat, DetCalFile, moderatorCoefficientsFile, descriptor,zBG,neigh_length_m, predpplCoefficients, minppl_frac, maxppl_frac)
     if sampleRunsList != -1:
         sampleRunsToAnalyze = np.array(sampleRuns).astype(np.int)[sampleRunsList]
     else: sampleRunsToAnalyze = sampleRuns
@@ -393,7 +379,7 @@ def doIntegration(sampleRunsList=None):
         MDdata = ICCFT.getSample(sampleRun, DetCalFile, workDir, fileName, qLow=qLow, qHigh=qHigh, q_frame=q_frame)
         
         #Do the actual integration
-        peaks_ws,paramList,fitDict = ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, UBMatrix, dQ, qMask, padeCoefficients,parameterDict, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, minFracPixels=0.01, fracStop=fracStop, dQPixel=dQPixel, neigh_length_m=neigh_length_m,zBG=zBG, bgPolyOrder=bgPolyOrder, doIterativeBackgroundFitting=doIterativeBackgroundFitting,predCoefficients=predpplCoefficients, q_frame=q_frame, progressFile=workDir+descriptor+'/progress_%i_%s.txt'%(sampleRun, descriptor), mindtBinWidth=mindtBinWidth,minpplfrac=minppl_frac, maxpplfrac=maxppl_frac)
+        peaks_ws,paramList,fitDict = ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, UBMatrix, dQ, qMask, padeCoefficients,parameterDict, figsFormat=figsFormat, dtSpread=dtSpread, fracHKL = fracHKL, minFracPixels=0.01, fracStop=fracStop, dQPixel=dQPixel, neigh_length_m=neigh_length_m,zBG=zBG, bgPolyOrder=bgPolyOrder, doIterativeBackgroundFitting=doIterativeBackgroundFitting,predCoefficients=predpplCoefficients, q_frame=q_frame, progressFile=workDir+descriptor+'/progress_%i_%s.txt'%(sampleRun, descriptor), mindtBinWidth=mindtBinWidth,minpplfrac=minppl_frac, maxpplfrac=maxppl_frac)
         #Save the results and delete the leftovers
         os.system('rm ' + workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))
         SaveIsawPeaks(InputWorkspace='peaks_ws', Filename=workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))

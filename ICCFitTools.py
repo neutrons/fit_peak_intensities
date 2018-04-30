@@ -81,7 +81,7 @@ def getQXQYQZ(box):
     QX, QY, QZ = np.meshgrid(qx, qy, qz,indexing='ij',copy=False)
     return QX, QY, QZ
 
-def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, dtBinWidth=30, qMask=None, pp_lambda=None, minppl_frac=0.8, maxppl_frac=1.5,mindtBinWidth=1, constraintScheme=1):
+def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, qMask=None, pp_lambda=None, minppl_frac=0.8, maxppl_frac=1.5,mindtBinWidth=1, constraintScheme=1):
     tof = peak.getTOF() #in us
     wavelength = peak.getWavelength() #in Angstrom
     flightPath = peak.getL1() + peak.getL2() #in m
@@ -94,7 +94,7 @@ def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, dtBi
     if pp_lambda is None:
         calc_pp_lambda=True
 
-    tofWS,ppl = getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, minFracPixels=0.01, neigh_length_m=3,zBG=1.96,pp_lambda=pp_lambda,calc_pp_lambda=calc_pp_lambda, pplmin_frac=minppl_frac, pplmax_frac=minppl_frac,mindtBinWidth=mindtBinWidth)
+    tofWS,ppl = getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, qMask, dtSpread=dtSpread, minFracPixels=0.01, neigh_length_m=3,zBG=1.96,pp_lambda=pp_lambda,calc_pp_lambda=calc_pp_lambda, pplmin_frac=minppl_frac, pplmax_frac=minppl_frac,mindtBinWidth=mindtBinWidth)
     fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, fitOrder=1,constraintScheme=constraintScheme)
     h = [tofWS.readY(0), tofWS.readX(0)]
     chiSq = fitResults.OutputChi2overDoF
@@ -144,7 +144,7 @@ def getPoissionGoodIDX(n_events, zBG=1.96, neigh_length_m=3):
                 pp_lambda *= 1.05
     return goodIDX, pp_lambda
 
-def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,dtBinWidth=4, qMask=None, peak=None, box=None, pp_lambda=None,peakNumber=-1, minppl_frac=0.8, maxppl_frac=1.5, predCoefficients=None, mindtBinWidth=1, constraintScheme=1):
+def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3, qMask=None, peak=None, box=None, pp_lambda=None,peakNumber=-1, minppl_frac=0.8, maxppl_frac=1.5, predCoefficients=None, mindtBinWidth=1, constraintScheme=1):
     #Set up some things to only consider good pixels
     hasEventsIDX = n_events>0
     N = np.shape(n_events)[0]
@@ -191,7 +191,7 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
             else:
                 oldGoodIDXSum = np.sum(goodIDX)
             try: 
-                chiSq, h, intens, sigma = getQuickTOFWS(box, peak, padeCoefficients, goodIDX=goodIDX,qMask=qMask,pp_lambda=pp_lambda,dtBinWidth=dtBinWidth, minppl_frac=minppl_frac, maxppl_frac=maxppl_frac, mindtBinWidth=mindtBinWidth, constraintScheme=constraintScheme)
+                chiSq, h, intens, sigma = getQuickTOFWS(box, peak, padeCoefficients, goodIDX=goodIDX,qMask=qMask,pp_lambda=pp_lambda,minppl_frac=minppl_frac, maxppl_frac=maxppl_frac, mindtBinWidth=mindtBinWidth, constraintScheme=constraintScheme)
             except:
                 #raise
                 break
@@ -212,13 +212,13 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3,d
     pp_lambda = pp_lambda_toCheck[use_ppl]
     print 'USING PP_LAMBDA', pp_lambda, 'WITH CHISQ:', chiSqList[use_ppl]
     goodIDX, _ = getBGRemovedIndices(n_events, pp_lambda=pp_lambda)
-    chiSq, h, intens, sigma = getQuickTOFWS(box, peak, padeCoefficients, goodIDX=goodIDX,qMask=qMask,pp_lambda=pp_lambda,dtBinWidth=dtBinWidth, minppl_frac=minppl_frac, maxppl_frac=maxppl_frac, mindtBinWidth=mindtBinWidth)
+    chiSq, h, intens, sigma = getQuickTOFWS(box, peak, padeCoefficients, goodIDX=goodIDX,qMask=qMask,pp_lambda=pp_lambda, minppl_frac=minppl_frac, maxppl_frac=maxppl_frac, mindtBinWidth=mindtBinWidth)
     if qMask is not None:
         return goodIDX*qMask, pp_lambda
     return goodIDX, pp_lambda
  
 #Must give this a peak, box, and qMask to do iterative pp_lambda
-def getBGRemovedIndices(n_events,zBG=1.96,calc_pp_lambda=False, neigh_length_m=3,dtBinWidth=4, qMask=None, 
+def getBGRemovedIndices(n_events,zBG=1.96,calc_pp_lambda=False, neigh_length_m=3, qMask=None, 
                         peak=None, box=None, pp_lambda=None,peakNumber=-1, padeCoefficients=None,predCoefficients=None,
                         pplmin_frac=0.8, pplmax_frac = 1.5, mindtBinWidth=1, constraintScheme=1):
 
@@ -251,7 +251,7 @@ def getBGRemovedIndices(n_events,zBG=1.96,calc_pp_lambda=False, neigh_length_m=3
         while pplmin_frac >= 0.0:
             try:
                 return getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=neigh_length_m, minppl_frac=pplmin_frac, maxppl_frac=pplmax_frac,
-                dtBinWidth=dtBinWidth, qMask=qMask, peak=peak, box=box, pp_lambda=pp_lambda,peakNumber=peakNumber,
+                qMask=qMask, peak=peak, box=box, pp_lambda=pp_lambda,peakNumber=peakNumber,
                 predCoefficients=predCoefficients, mindtBinWidth=mindtBinWidth,constraintScheme=constraintScheme)
             except KeyboardInterrupt:
                 sys.exit()
@@ -402,7 +402,6 @@ def get_pp_lambda(n_events, hasEventsIDX ):
 #    flightPath = L1+L2 (units: m)
 #    scatteringHalfAngle: the scattering half angle (units: rad)
 #    tofPeak: the nominal TOF of the peak (units: us)
-#    dtBinWidth: the spacing between points in the resulting TOF histogram (units: us)
 #    zBG: the z score at which we will accept pixels (i.e. 1.96 for 95% CI).  If zBG<0
 #         then we will not remove background and will instead just consider each pixel
 #         individually
@@ -410,7 +409,7 @@ def get_pp_lambda(n_events, hasEventsIDX ):
 #Output:
 #    tofWS: a Workspace2D containing the TOF profile.  X-axis is TOF (units: us) and
 #           Y-axis is the number of events.
-def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, qMask, dtBinWidth=2, zBG=-1.0, dtSpread = 0.02, minFracPixels = 0.005, workspaceNumber=None,neigh_length_m=0, pp_lambda=None, calc_pp_lambda=False, padeCoefficients=None,predCoefficients=None,pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1,constraintScheme=1):  
+def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, qMask, zBG=-1.0, dtSpread = 0.02, minFracPixels = 0.005, workspaceNumber=None,neigh_length_m=0, pp_lambda=None, calc_pp_lambda=False, padeCoefficients=None,predCoefficients=None,pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1,constraintScheme=1):  
     #Find the qVoxels to use
     n_events = box.getNumEventsArray()
     hasEventsIDX = np.logical_and(n_events>0,qMask)
@@ -421,7 +420,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, qMask, dtBinWi
     if zBG >= 0:
         if pp_lambda is None:
             calc_pp_lambda=True
-        goodIDX, pp_lambda= getBGRemovedIndices(n_events,box=box, qMask=qMask, peak=peak, pp_lambda=pp_lambda, dtBinWidth=dtBinWidth, calc_pp_lambda=calc_pp_lambda, padeCoefficients=padeCoefficients,predCoefficients=predCoefficients, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac, mindtBinWidth=mindtBinWidth,constraintScheme=constraintScheme)
+        goodIDX, pp_lambda= getBGRemovedIndices(n_events,box=box, qMask=qMask, peak=peak, pp_lambda=pp_lambda, calc_pp_lambda=calc_pp_lambda, padeCoefficients=padeCoefficients,predCoefficients=predCoefficients, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac, mindtBinWidth=mindtBinWidth,constraintScheme=constraintScheme)
         hasEventsIDX = np.logical_and(goodIDX, qMask) #TODO bad naming, but a lot of the naming in this function assumes it
         boxMean = n_events[hasEventsIDX]
         boxMeanIDX = np.where(hasEventsIDX)
@@ -457,7 +456,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, qMask, dtBinWi
     tofCorners = 3176.507 * flightPath * np.sin(scatteringHalfAngle) / qMagCorn
     tMin = np.min(tofCorners)
     tMax = np.max(tofCorners)
-    #TRIAL: set dtBinWidth as the resolution at the center of the box
+    #this will set dtBinWidth as the resolution at the center of the box
     tC = 3176.507 * flightPath * np.sin(scatteringHalfAngle)/np.linalg.norm([qx[qx.shape[0]//2], qy[qy.shape[0]//2], qz[qz.shape[0]//2]])
     tD = 3176.507 * flightPath * np.sin(scatteringHalfAngle)/np.linalg.norm([qx[qx.shape[0]//2 + 1], qy[qy.shape[0]//2+1], qz[qz.shape[0]//2+1]])
     dtBinWidth = np.abs(tD-tC)
@@ -673,7 +672,7 @@ def doICCFit(tofWS, energy, flightPath, padeCoefficients, constraintScheme=None,
     return fitResults, fICC
 
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
-def integrateSample(run, MDdata, peaks_ws, paramList, UBMatrix, dQ, qMask, padeCoefficients, parameterDict, figsFormat=None, dtBinWidth = 4, dtSpread=0.02, fracHKL = 0.5, minFracPixels=0.0000, fracStop = 0.01, dQPixel=0.005, p=None,neigh_length_m=0,zBG=-1.0,bgPolyOrder=1, doIterativeBackgroundFitting=False,predCoefficients=None, q_frame='sample', progressFile=None, minpplfrac=0.8, maxpplfrac=1.5, mindtBinWidth=1, keepFitDict=False, constraintScheme=1):
+def integrateSample(run, MDdata, peaks_ws, paramList, UBMatrix, dQ, qMask, padeCoefficients, parameterDict, figsFormat=None, dtSpread=0.02, fracHKL = 0.5, minFracPixels=0.0000, fracStop = 0.01, dQPixel=0.005, p=None,neigh_length_m=0,zBG=-1.0,bgPolyOrder=1, doIterativeBackgroundFitting=False,predCoefficients=None, q_frame='sample', progressFile=None, minpplfrac=0.8, maxpplfrac=1.5, mindtBinWidth=1, keepFitDict=False, constraintScheme=1):
 
     if p is None:
         p = range(peaks_ws.getNumberPeaks())
@@ -701,7 +700,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, UBMatrix, dQ, qMask, padeC
                     mtd.remove('MDbox_'+str(run)+'_'+str(i))
                     continue
                 n_events = Box.getNumEventsArray()
-                goodIDX, pp_lambda = getBGRemovedIndices(n_events, peak=peak, box=Box,qMask=qMask[0], calc_pp_lambda=True, padeCoefficients=padeCoefficients, dtBinWidth=dtBinWidth,predCoefficients=predCoefficients,mindtBinWidth=mindtBinWidth, pplmin_frac=minpplfrac, pplmax_frac=maxpplfrac,constraintScheme=constraintScheme)
+                goodIDX, pp_lambda = getBGRemovedIndices(n_events, peak=peak, box=Box,qMask=qMask[0], calc_pp_lambda=True, padeCoefficients=padeCoefficients, predCoefficients=predCoefficients,mindtBinWidth=mindtBinWidth, pplmin_frac=minpplfrac, pplmax_frac=maxpplfrac,constraintScheme=constraintScheme)
                 tofWS = mtd['tofWS'] # --IN PRINCIPLE!!! WE CALCULATE THIS BEFORE GETTING HERE
 
 

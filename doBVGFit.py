@@ -101,7 +101,6 @@ def doBVGFits(sampleRunsList=None):
     DetCalFile = None#'/SNS/users/ntv/integrate/mandi_dna2/mandi_dna.DetCal'
     qLow = -5.0; qHigh = 5.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.005 #dQ for each voxel in qBox - recommended to decrease for successive fits
     descriptor = 'secondDNA_3D' #Does not end with '/'
     doIterativeBackgroundFitting = False
@@ -127,7 +126,6 @@ def doBVGFits(sampleRunsList=None):
     DetCalFile = '/home/ntv/Desktop/runReduction/MaNDi2015.DetCal'
     qLow = -4.0; qHigh = 4.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
     descriptor = 'pth_3d_detcal' #Does not end with '/'
     doIterativeBackgroundFitting = False
@@ -153,7 +151,6 @@ def doBVGFits(sampleRunsList=None):
     DetCalFile = None
     qLow = -5.0; qHigh = 5.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
     descriptor = 'gfp_3d_goodhkl' #Does not end with '/'
     doIterativeBackgroundFitting = False
@@ -179,7 +176,6 @@ def doBVGFits(sampleRunsList=None):
     DetCalFile = None
     qLow = -10.0; qHigh = 10.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
     descriptor = 'beta_lac_3D_lab_mutant' #Does not end with '/'
     doIterativeBackgroundFitting = False
@@ -207,7 +203,6 @@ def doBVGFits(sampleRunsList=None):
     DetCalFile = None
     qLow = -10.0; qHigh = 10.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
     descriptor = 'changeme' #Does not end with '/'
     doIterativeBackgroundFitting = False
@@ -230,7 +225,6 @@ def doBVGFits(sampleRunsList=None):
     DetCalFile = None
     qLow = -5.0; qHigh = 5.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
     descriptor = 'nak_3D_full_lab_2' #Does not end with '/'
     doIterativeBackgroundFitting = False
@@ -304,9 +298,9 @@ def doBVGFits(sampleRunsList=None):
                     if ICCFitParams is not None:
                         iccfp = ICCFitParams[peakNumber]
                     else: iccfp = None
-                    Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False, dtBinWidth=dtBinWidth,zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1,numTimesToInterpolate=numTimesToInterpolate, fICCParams=iccfp, strongPeakParams=strongPeakParams, predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac)
+                    Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1,numTimesToInterpolate=numTimesToInterpolate, fICCParams=iccfp, strongPeakParams=strongPeakParams, predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac)
                     #Does not force weak peaks
-                    #Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False, dtBinWidth=dtBinWidth,zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1,numTimesToInterpolate=numTimesToInterpolate, fICCParams=ICCFitParams[peakNumber], oldICCFit=ICCFitDict[peakNumber],  predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth)
+                    #Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1,numTimesToInterpolate=numTimesToInterpolate, fICCParams=ICCFitParams[peakNumber], oldICCFit=ICCFitDict[peakNumber],  predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth)
 
 
                     # First we get the peak intensity
