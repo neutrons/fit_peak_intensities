@@ -474,8 +474,8 @@ def integrateBVGFit(Y,params):
     sigma = np.sqrt(fitSum + bgSum)
     return intensity, sigma
 
-def integrateBVGPeak(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.005,fracHKL = 0.5, refineCenter=False, fracHKLRefine = 0.2,nTheta=400,nPhi=400, q_frame='sample'):
-    box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel,q_frame=q_frame)
+def integrateBVGPeak(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.005,fracHKL = 0.5,  fracHKLRefine = 0.2,nTheta=400,nPhi=400, q_frame='sample'):
+    box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, dQ, fracHKL = fracHKL, dQPixel=dQPixel,q_frame=q_frame)
     params,h,t,p = doBVGFit(box,nTheta=nTheta,nPhi=nPhi)
     Y = getBVGResult(box, params[0],nTheta=nTheta,nPhi=nPhi)
     intens, sigma = integrateBVGFit(Y,params)

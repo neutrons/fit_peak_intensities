@@ -246,7 +246,7 @@ dQ[dQ>0.4]=0.4
 
 print dQPixel
 print peak.getQSampleFrame()
-Box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakToGet, dQ, fracHKL=fracHKL,dQPixel=dQPixel, refineCenter=False, q_frame=q_frame)
+Box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakToGet, dQ, fracHKL=fracHKL,dQPixel=dQPixel,  q_frame=q_frame)
 box = Box
 Box.setTitle('Box for peak %i'%peakToGet)
 #SaveMD(InputWorkspace=Box, Filename = 'Box.nxs')

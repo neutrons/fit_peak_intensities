@@ -599,48 +599,6 @@ def plotFit(filenameFormat, r,tofWS,fICC,runNumber, peakNumber, energy, chiSq,bg
     plt.legend(loc='best')
     plt.savefig(filenameFormat%(runNumber, peakNumber))
 
-# TODO: redo with qLab and qSample
-def getRefinedCenter(peak, MDdata, UBMatrix, dQPixel,nPtsQ, neigh_length_m = 5, fracHKLSearch = 0.2):
-    from mantid.kernel._kernel import V3D
-    QSample = peak.getQSampleFrame()
-    Qx = QSample[0]
-    Qy = QSample[1]
-    Qz = QSample[2]
-    #dQ = np.abs(getDQFracHKL(UBMatrix,frac=fracHKLSearch))
-    dQ = np.abs(getDQTOF(peak))
-    oldWavelength = peak.getWavelength()
-    Box = BinMD(InputWorkspace = 'MDdata',
-        AlignedDim0='Q_sample_x,'+str(Qx-dQ[0,0])+','+str(Qx+dQ[0,1])+','+str(nPtsQ[0]),
-        AlignedDim1='Q_sample_y,'+str(Qy-dQ[1,0])+','+str(Qy+dQ[1,1])+','+str(nPtsQ[1]),
-        AlignedDim2='Q_sample_z,'+str(Qz-dQ[2,0])+','+str(Qz+dQ[2,1])+','+str(nPtsQ[2]),
-        OutputWorkspace = 'MDbox')
-    n_events = Box.getNumEventsArray()
-    xaxis = Box.getXDimension()
-    qx = np.linspace(xaxis.getMinimum(), xaxis.getMaximum(), xaxis.getNBins())
-    yaxis = Box.getYDimension()
-    qy = np.linspace(yaxis.getMinimum(), yaxis.getMaximum(), yaxis.getNBins())
-    zaxis = Box.getZDimension()
-    qz = np.linspace(zaxis.getMinimum(), zaxis.getMaximum(), zaxis.getNBins())
-    meanList = list()
-    neigh_length_m = 3
-    maxBin = np.shape(n_events)
-    hasEventsIDX = np.array(np.where((n_events>0) & ~np.isnan(n_events))).transpose()
-    for i,idx in enumerate(hasEventsIDX):
-        dataBox = n_events[max(idx[0] - neigh_length_m,0):min(idx[0] + neigh_length_m+1, maxBin[0]),
-               max(idx[1] - neigh_length_m,0):min(idx[1] + neigh_length_m+1, maxBin[1]),
-               max(idx[2] - neigh_length_m,0):min(idx[2] + neigh_length_m+1, maxBin[2])]
-        meanList.append(np.mean(dataBox))
-    peakIDX = hasEventsIDX[np.argmax(meanList)]
-    qS = V3D()
-    qS[0] = qx[peakIDX[0]]
-    qS[1] = qy[peakIDX[1]]
-    qS[2] = qz[peakIDX[2]]
-    peak.setQSampleFrame(qS)
-    newWavelength = 4*np.pi*np.sin(peak.getScattering()/2.0)/np.sqrt(np.sum(np.power(QSample,2)))
-    peak.setWavelength(newWavelength)
-    print 'Wavelength %4.4f --> %4.4f'%(oldWavelength, newWavelength)
-    return np.array([qx[peakIDX[0]], qy[peakIDX[1]], qz[peakIDX[2]]])
-
 
 #getBoxFracHKL returns the binned MDbox ranging from (hkl-0.5)-(hkl+0.5) (i.e. half integers 
 # in hkl space) in q space.  
@@ -654,7 +612,7 @@ def getRefinedCenter(peak, MDdata, UBMatrix, dQPixel,nPtsQ, neigh_length_m = 5, 
 #    peakNumber: integer peak number within a  dataset - basically an index
 #  Returns:
 #  Box, an MDWorkspace with histogrammed events around the peak
-def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.005,fracHKL = 0.5, refineCenter=False, fracHKLRefine = 0.2, q_frame='sample'):
+def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.005,fracHKL = 0.5, fracHKLRefine = 0.2, q_frame='sample'):
     runNumber = peak.getRunNumber()
     if q_frame == 'lab':
         q0 = peak.getQLabFrame()
@@ -668,24 +626,13 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.00
     dQ = np.abs(dQ)
     dQ[dQ>0.5] = 0.5
     nPtsQ = np.round(np.sum(dQ/dQPixel,axis=1)).astype(int)
-    if refineCenter: #Find better center by flattining the cube in each direction and fitting a Gaussian
-
-        #Get the new centers and new Box
-        Qxr,Qyr,Qzr = getRefinedCenter(peak, MDdata, UBMatrix, dQPixel,nPtsQ, neigh_length_m = 5, fracHKLSearch = fracHKLRefine, q_frameFrame=q_frame)
-
-        Box = BinMD(InputWorkspace = 'MDdata',
-            AlignedDim0='Q_%s_x,'%q_frame+str(Qxr-dQ[0,0])+','+str(Qxr+dQ[0,1])+','+str(nPtsQ[0]),
-            AlignedDim1='Q_%s_y,'%q_frame+str(Qyr-dQ[1,0])+','+str(Qyr+dQ[1,1])+','+str(nPtsQ[1]),
-            AlignedDim2='Q_%s_z,'%q_frame+str(Qzr-dQ[2,0])+','+str(Qzr+dQ[2,1])+','+str(nPtsQ[2]),
-            OutputWorkspace = 'MDbox')
-    
-    else: #We'll juse use the given center
-        Box = BinMD(InputWorkspace = 'MDdata',
-            AlignedDim0='Q_%s_x,'%q_frame+str(Qx-dQ[0,0])+','+str(Qx+dQ[0,1])+','+str(nPtsQ[0]),
-            AlignedDim1='Q_%s_y,'%q_frame+str(Qy-dQ[1,0])+','+str(Qy+dQ[1,1])+','+str(nPtsQ[1]),
-            AlignedDim2='Q_%s_z,'%q_frame+str(Qz-dQ[2,0])+','+str(Qz+dQ[2,1])+','+str(nPtsQ[2]),
-            OutputWorkspace = 'MDbox')
-            #OutputWorkspace = 'MDbox_'+str(runNumber)+'_'+str(peakNumber))
+   
+    Box = BinMD(InputWorkspace = 'MDdata',
+        AlignedDim0='Q_%s_x,'%q_frame+str(Qx-dQ[0,0])+','+str(Qx+dQ[0,1])+','+str(nPtsQ[0]),
+        AlignedDim1='Q_%s_y,'%q_frame+str(Qy-dQ[1,0])+','+str(Qy+dQ[1,1])+','+str(nPtsQ[1]),
+        AlignedDim2='Q_%s_z,'%q_frame+str(Qz-dQ[2,0])+','+str(Qz+dQ[2,1])+','+str(nPtsQ[2]),
+        OutputWorkspace = 'MDbox')
+        #OutputWorkspace = 'MDbox_'+str(runNumber)+'_'+str(peakNumber))
     return Box
 
 
@@ -726,7 +673,7 @@ def doICCFit(tofWS, energy, flightPath, padeCoefficients, constraintScheme=None,
     return fitResults, fICC
 
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
-def integrateSample(run, MDdata, peaks_ws, paramList, UBMatrix, dQ, qMask, padeCoefficients, parameterDict, figsFormat=None, dtBinWidth = 4, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, minFracPixels=0.0000, fracStop = 0.01, dQPixel=0.005, p=None,neigh_length_m=0,zBG=-1.0,bgPolyOrder=1, doIterativeBackgroundFitting=False,predCoefficients=None, q_frame='sample', progressFile=None, minpplfrac=0.8, maxpplfrac=1.5, mindtBinWidth=1, keepFitDict=False, constraintScheme=1):
+def integrateSample(run, MDdata, peaks_ws, paramList, UBMatrix, dQ, qMask, padeCoefficients, parameterDict, figsFormat=None, dtBinWidth = 4, dtSpread=0.02, fracHKL = 0.5, minFracPixels=0.0000, fracStop = 0.01, dQPixel=0.005, p=None,neigh_length_m=0,zBG=-1.0,bgPolyOrder=1, doIterativeBackgroundFitting=False,predCoefficients=None, q_frame='sample', progressFile=None, minpplfrac=0.8, maxpplfrac=1.5, mindtBinWidth=1, keepFitDict=False, constraintScheme=1):
 
     if p is None:
         p = range(peaks_ws.getNumberPeaks())
@@ -738,7 +685,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, UBMatrix, dQ, qMask, padeC
         peak = peaks_ws.getPeak(i)
         if peak.getRunNumber() == run:
             try:#for ppppp in [3]:#try:
-                Box = getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel[0], q_frame=q_frame)
+                Box = getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, i, dQ, fracHKL = fracHKL, dQPixel=dQPixel[0], q_frame=q_frame)
                 tof = peak.getTOF() #in us
                 wavelength = peak.getWavelength() #in Angstrom
                 energy = 81.804 / wavelength**2 / 1000.0 #in eV

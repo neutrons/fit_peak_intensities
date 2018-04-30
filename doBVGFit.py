@@ -2,7 +2,6 @@ def doBVGFits(sampleRunsList=None):
     # Some parameters
     workDir = '/SNS/users/ntv/dropbox/' #End with '/'
     dQPixel = 0.005 #dQ for each voxel in qBox - recommended to decrease for successive fits
-    refineCenter = False #True if you want to determine new centers - still not very good
     fracHKL = 0.5 #Fraction of HKL to look on either side
     fracStop = 0.01 #Fraction of max counts to include in peak selection
     neigh_length_m = 3 #Will average over a (neigh_length_m)**3 box
@@ -300,7 +299,7 @@ def doBVGFits(sampleRunsList=None):
             try:
                 if peak.getRunNumber() == sampleRun:
                     print 'Integrating peak %i'%peakNumber
-                    box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel, q_frame=q_frame)
+                    box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, fracHKL = fracHKL,  dQPixel=dQPixel, q_frame=q_frame)
                     #Will force weak peaks to be fit using a neighboring peak profile
                     if ICCFitParams is not None:
                         iccfp = ICCFitParams[peakNumber]
