@@ -87,7 +87,6 @@ def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, dtBi
     flightPath = peak.getL1() + peak.getL2() #in m
     scatteringHalfAngle = 0.5*peak.getScattering()
     energy = 81.804 / wavelength**2 / 1000.0 #in eV
-    detNumber = 0#EdgeTools.getDetectorBank(panelDict, peak.getDetectorID())['bankNumber']
     if qMask is None:
         qMask = np.ones_like(box.getNumEventsArray()).astype(np.bool)
   
@@ -96,7 +95,7 @@ def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, dtBi
         calc_pp_lambda=True
 
     tofWS,ppl = getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, None, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, minFracPixels=0.01, neigh_length_m=3,zBG=1.96,pp_lambda=pp_lambda,calc_pp_lambda=calc_pp_lambda, pplmin_frac=minppl_frac, pplmax_frac=minppl_frac,mindtBinWidth=mindtBinWidth)
-    fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,fitOrder=1,constraintScheme=constraintScheme)
+    fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, None,fitOrder=1,constraintScheme=constraintScheme)
     h = [tofWS.readY(0), tofWS.readX(0)]
     chiSq = fitResults.OutputChi2overDoF
     
@@ -499,35 +498,18 @@ def getModeratorCoefficients(fileName):
 
 def oneOverXSquared(x, A, bg):
     return A/np.sqrt(x) + bg
-
-# d = calibration dictionary
-def getInitialGuessByDetector(tofWS, paramNames, energy, flightPath, detNumber, calibrationDict):
-    x0 = np.zeros(len(paramNames))
-    x = tofWS.readX(0)
-    y = tofWS.readY(0)
-    d = calibrationDict
-    x0[0] = np.polyval(d['det_%i'%detNumber]['A'],energy)
-    x0[1] = np.polyval(d['det_%i'%detNumber]['B'],energy)
-    x0[2] = np.polyval(d['det_%i'%detNumber]['R'],energy)
-    x0[3] = oneOverXSquared(energy, d['det_%i'%detNumber]['T0'][0], d['det_%i'%detNumber]['T0'][1])
-    x0[4] = 1.0*(np.max(y)) 
-    x0[5] = 0.5
-    x0[6] = 200
-    return x0
-
 #Returns intial parameters for fitting based on a few quickly derived TOF
 # profile parameters.  tofWS is a worskapce containng the TOF profile,
 # paramNames is the list of parameter names
 # energy is the energy of the peak (units: eV)
 # flightPath is L = L1 + L2 (units: m)
-def getInitialGuess(tofWS, paramNames, energy, flightPath, padeCoefficients,detNumber, calibDict):
+def getInitialGuess(tofWS, paramNames, energy, flightPath, padeCoefficients,calibDict):
     x0 = np.zeros(len(paramNames))
     x = tofWS.readX(0)
     y = tofWS.readY(0)
     x0[0] = pade(padeCoefficients['A'], energy)
     x0[1] = pade(padeCoefficients['B'], energy)
     x0[2] = pade(padeCoefficients['R'], energy)
-    #x0[3] = oneOverXSquared(energy, calibDict['det_%i'%detNumber]['T0'][0], calibDict['det_%i'%detNumber]['T0'][1])
     x0[3] = pade(padeCoefficients['T0'], energy) + getT0Shift(energy, flightPath) #extra is for ~18m downstream we are
 
     #These are still phenomenological
@@ -707,12 +689,12 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.00
     return Box
 
 
-def doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,constraintScheme=None, outputWSName='fit', fitOrder=1):
+def doICCFit(tofWS, energy, flightPath, padeCoefficients, calibrationDict,constraintScheme=None, outputWSName='fit', fitOrder=1):
     #Set up our inital guess
     fICC = ICC.IkedaCarpenterConvoluted()
     fICC.init()
     paramNames = [fICC.getParamName(x) for x in range(fICC.numParams())]
-    x0 = getInitialGuess(tofWS,paramNames,energy,flightPath,padeCoefficients,detNumber,calibrationDict)
+    x0 = getInitialGuess(tofWS,paramNames,energy,flightPath,padeCoefficients,calibrationDict)
     [fICC.setParameter(iii,v) for iii,v in enumerate(x0[:fICC.numParams()])]
     x = tofWS.readX(0)
     y = tofWS.readY(0)
@@ -762,7 +744,6 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 energy = 81.804 / wavelength**2 / 1000.0 #in eV
                 flightPath = peak.getL1() + peak.getL2() #in m
                 scatteringHalfAngle = 0.5*peak.getScattering()
-                detNumber = 0#EdgeTools.getDetectorBank(panelDict, peak.getDetectorID())['bankNumber']
                 print '---fitting peak ' + str(i) + '  Num events: ' + str(Box.getNEvents()), ' ', peak.getHKL()
                 if Box.getNEvents() < 1 or np.all(np.abs(peak.getHKL())==0):
                     print "Peak %i has 0 events or is HKL=000. Skipping!"%i
@@ -777,7 +758,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, q
                 tofWS = mtd['tofWS'] # --IN PRINCIPLE!!! WE CALCULATE THIS BEFORE GETTING HERE
 
 
-                fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, 0, None,fitOrder=bgPolyOrder,constraintScheme=constraintScheme)
+                fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, None,fitOrder=bgPolyOrder,constraintScheme=constraintScheme)
                 fitStatus = fitResults.OutputStatus
                 chiSq = fitResults.OutputChi2overDoF
 
