@@ -672,7 +672,7 @@ def doICCFit(tofWS, energy, flightPath, padeCoefficients, constraintScheme=None,
     return fitResults, fICC
 
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
-def integrateSample(run, MDdata, peaks_ws, paramList, UBMatrix, dQ, qMask, padeCoefficients, parameterDict, figsFormat=None, dtSpread=0.02, fracHKL = 0.5, minFracPixels=0.0000, fracStop = 0.01, dQPixel=0.005, p=None,neigh_length_m=0,zBG=-1.0,bgPolyOrder=1, doIterativeBackgroundFitting=False,predCoefficients=None, q_frame='sample', progressFile=None, minpplfrac=0.8, maxpplfrac=1.5, mindtBinWidth=1, keepFitDict=False, constraintScheme=1):
+def integrateSample(run, MDdata, peaks_ws, paramList, UBMatrix, dQ, qMask, padeCoefficients, figsFormat=None, dtSpread=0.02, fracHKL = 0.5, minFracPixels=0.0000, fracStop = 0.01, dQPixel=0.005, p=None,neigh_length_m=0,zBG=-1.0,bgPolyOrder=1, doIterativeBackgroundFitting=False,predCoefficients=None, q_frame='sample', progressFile=None, minpplfrac=0.8, maxpplfrac=1.5, mindtBinWidth=1, keepFitDict=False, constraintScheme=1):
 
     if p is None:
         p = range(peaks_ws.getNumberPeaks())
