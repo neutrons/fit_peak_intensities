@@ -270,7 +270,7 @@ def getXTOF(box, peak):
     return tList
 
 
-def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,minFracPixels=0.01,neigh_length_m=3,zBG=1.96,bgPolyOrder=1,panelDict=None,qMask=None,calibrationDict=None, plotResults=False,fracStop=0.01, pp_lambda=None, pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1):
+def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,minFracPixels=0.01,neigh_length_m=3,zBG=1.96,bgPolyOrder=1,qMask=None,calibrationDict=None, plotResults=False,fracStop=0.01, pp_lambda=None, pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1):
     
     #Get info from the peak
     tof = peak.getTOF() #in us
@@ -278,19 +278,18 @@ def fitTOFCoordinate(box,peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,minFr
     flightPath = peak.getL1() + peak.getL2() #in m
     scatteringHalfAngle = 0.5*peak.getScattering()
     energy = 81.804 / wavelength**2 / 1000.0 #in eV
-    detNumber = 0#EdgeTools.getDetectorBank(panelDict, peak.getDetectorID())['bankNumber']
 
     #Set the qMask
     if qMask is None:
         qMask = np.ones_like(box.getNumEventsArray()).astype(np.bool) 
     
     #Calculate the optimal pp_lambda and 
-    tofWS,ppl = ICCFT.getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, minFracPixels=minFracPixels, neigh_length_m=neigh_length_m,zBG=zBG,pp_lambda=pp_lambda, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac, mindtBinWidth=mindtBinWidth)
+    tofWS,ppl = ICCFT.getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, minFracPixels=minFracPixels, neigh_length_m=neigh_length_m,zBG=zBG,pp_lambda=pp_lambda, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac, mindtBinWidth=mindtBinWidth)
 
     try:
-        fitResults,fICC = ICCFT.doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,fitOrder=bgPolyOrder,constraintScheme=1)
+        fitResults,fICC = ICCFT.doICCFit(tofWS, energy, flightPath, padeCoefficients, calibrationDict,fitOrder=bgPolyOrder,constraintScheme=1)
     except:
-        fitResults,fICC = ICCFT.doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,fitOrder=bgPolyOrder)
+        fitResults,fICC = ICCFT.doICCFit(tofWS, energy, flightPath, padeCoefficients, calibrationDict,fitOrder=bgPolyOrder)
     
     for i, param in enumerate(['A','B','R','T0','scale', 'hatWidth', 'k_conv']):
         fICC[param] = mtd['fit_Parameters'].row(i)['Value']
@@ -335,18 +334,17 @@ def getYTOF(fICC, XTOF, xlims):
     YTOF = ftof(XTOF)
     return YTOF
 
-def getTOFParameters(box, peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,minFracPixels=0.01,neigh_length_m=3,zBG=1.96,bgPolyOrder=1,panelDict=None,qMask=None,calibrationDict=None, pplmin_frac=0.8, pplmax_frac=1.5):
+def getTOFParameters(box, peak, padeCoefficients,dtBinWidth=4,dtSpread=0.03,minFracPixels=0.01,neigh_length_m=3,zBG=1.96,bgPolyOrder=1,qMask=None,calibrationDict=None, pplmin_frac=0.8, pplmax_frac=1.5):
     tof = peak.getTOF() #in us
     wavelength = peak.getWavelength() #in Angstrom
     flightPath = peak.getL1() + peak.getL2() #in m
     scatteringHalfAngle = 0.5*peak.getScattering()
     energy = 81.804 / wavelength**2 / 1000.0 #in eV
-    detNumber = 0#EdgeTools.getDetectorBank(panelDict, peak.getDetectorID())['bankNumber']
     if qMask is None:
         qMask = np.ones_like(box.getNumEventsArray()).astype(np.bool)
-    tofWS,ppl = ICCFT.getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, minFracPixels=minFracPixels, neigh_length_m=neigh_length_m,zBG=zBG, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac)
+    tofWS,ppl = ICCFT.getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, minFracPixels=minFracPixels, neigh_length_m=neigh_length_m,zBG=zBG, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac)
 
-    fitResults,fICC = ICCFT.doICCFit(tofWS, energy, flightPath, padeCoefficients, detNumber, calibrationDict,fitOrder=bgPolyOrder)
+    fitResults,fICC = ICCFT.doICCFit(tofWS, energy, flightPath, padeCoefficients, calibrationDict,fitOrder=bgPolyOrder)
     for i, param in enumerate(['A','B','R','T0','scale', 'hatWidth', 'k_conv']):
         fICC[param] = mtd['fit_Parameters'].row(i)['Value']
     return fICC 

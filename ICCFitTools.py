@@ -94,7 +94,7 @@ def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, dtBi
     if pp_lambda is None:
         calc_pp_lambda=True
 
-    tofWS,ppl = getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, None, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, minFracPixels=0.01, neigh_length_m=3,zBG=1.96,pp_lambda=pp_lambda,calc_pp_lambda=calc_pp_lambda, pplmin_frac=minppl_frac, pplmax_frac=minppl_frac,mindtBinWidth=mindtBinWidth)
+    tofWS,ppl = getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, qMask, dtBinWidth=dtBinWidth,dtSpread=dtSpread, minFracPixels=0.01, neigh_length_m=3,zBG=1.96,pp_lambda=pp_lambda,calc_pp_lambda=calc_pp_lambda, pplmin_frac=minppl_frac, pplmax_frac=minppl_frac,mindtBinWidth=mindtBinWidth)
     fitResults,fICC = doICCFit(tofWS, energy, flightPath, padeCoefficients, None,fitOrder=1,constraintScheme=constraintScheme)
     h = [tofWS.readY(0), tofWS.readX(0)]
     chiSq = fitResults.OutputChi2overDoF
@@ -410,7 +410,7 @@ def get_pp_lambda(n_events, hasEventsIDX ):
 #Output:
 #    tofWS: a Workspace2D containing the TOF profile.  X-axis is TOF (units: us) and
 #           Y-axis is the number of events.
-def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, panelDict, qMask, dtBinWidth=2, zBG=-1.0, dtSpread = 0.02, minFracPixels = 0.005, workspaceNumber=None,neigh_length_m=0, pp_lambda=None, calc_pp_lambda=False, padeCoefficients=None,predCoefficients=None,pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1,constraintScheme=1):  
+def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, qMask, dtBinWidth=2, zBG=-1.0, dtSpread = 0.02, minFracPixels = 0.005, workspaceNumber=None,neigh_length_m=0, pp_lambda=None, calc_pp_lambda=False, padeCoefficients=None,predCoefficients=None,pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1,constraintScheme=1):  
     #Find the qVoxels to use
     n_events = box.getNumEventsArray()
     hasEventsIDX = np.logical_and(n_events>0,qMask)
@@ -726,7 +726,7 @@ def doICCFit(tofWS, energy, flightPath, padeCoefficients, calibrationDict,constr
     return fitResults, fICC
 
 #Does the actual integration and modifies the peaks_ws to have correct intensities.
-def integrateSample(run, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients, parameterDict, figsFormat=None, dtBinWidth = 4, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, minFracPixels=0.0000, fracStop = 0.01, calibrationDict=None,dQPixel=0.005, p=None,neigh_length_m=0,zBG=-1.0,bgPolyOrder=1, doIterativeBackgroundFitting=False,predCoefficients=None, q_frame='sample', progressFile=None, minpplfrac=0.8, maxpplfrac=1.5, mindtBinWidth=1, keepFitDict=False, constraintScheme=1):
+def integrateSample(run, MDdata, peaks_ws, paramList, UBMatrix, dQ, qMask, padeCoefficients, parameterDict, figsFormat=None, dtBinWidth = 4, dtSpread=0.02, fracHKL = 0.5, refineCenter=False, minFracPixels=0.0000, fracStop = 0.01, calibrationDict=None,dQPixel=0.005, p=None,neigh_length_m=0,zBG=-1.0,bgPolyOrder=1, doIterativeBackgroundFitting=False,predCoefficients=None, q_frame='sample', progressFile=None, minpplfrac=0.8, maxpplfrac=1.5, mindtBinWidth=1, keepFitDict=False, constraintScheme=1):
 
     if p is None:
         p = range(peaks_ws.getNumberPeaks())

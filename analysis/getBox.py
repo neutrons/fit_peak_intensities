@@ -327,13 +327,12 @@ if True:
     energy = 81.804 / wavelength**2 / 1000.0 #in eV
     flightPath = peak.getL1() + peak.getL2() #in m
     scatteringHalfAngle = 0.5*peak.getScattering()
-    edgesToCheck = []#EdgeTools.needsEdgeRemoval(Box,panelDict,peak)
     for dtS in dtSpreadToPlot:
-        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtS, minFracPixels=0.015,  zBG=-1., calc_pp_lambda=False, mindtBinWidth=mindtBinWidth)
+        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, qMask, dtBinWidth=dtBinWidth,dtSpread=dtS, minFracPixels=0.015,  zBG=-1., calc_pp_lambda=False, mindtBinWidth=mindtBinWidth)
         YDATA1 = tofWS.readY(0).copy()
         plt.subplot(2,1,2)
         plt.plot(tofWS.readX(0), tofWS.readY(0),'o',label='%2.3f'%dtS)
-        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtS, minFracPixels=0.005, zBG=1.96,neigh_length_m=3, padeCoefficients=ICCFT.getModeratorCoefficients('franz_coefficients_2017.dat'), predCoefficients=predpplCoefficients, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac,mindtBinWidth=mindtBinWidth)
+        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, qMask, dtBinWidth=dtBinWidth,dtSpread=dtS, minFracPixels=0.005, zBG=1.96,neigh_length_m=3, padeCoefficients=ICCFT.getModeratorCoefficients('franz_coefficients_2017.dat'), predCoefficients=predpplCoefficients, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac,mindtBinWidth=mindtBinWidth)
         YDATA2 = tofWS.readY(0).copy()
         print pp_lambda
         plt.subplot(2,1,2)

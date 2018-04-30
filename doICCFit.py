@@ -391,13 +391,12 @@ def doIntegration(sampleRunsList=None):
         #If we want to remove edges, we rebuild the panel dictionary every run
         # TODO this can be reformulated in QLab and apply R each box.
         instrumentFile = EdgeTools.getInstrumentFile(peaks_ws, peaksFile)
-        panelDict = EdgeTools.getPanelDictionary(instrumentFile)
 
         #Conver the sample to reciprocal space
         MDdata = ICCFT.getSample(sampleRun, DetCalFile, workDir, fileName, qLow=qLow, qHigh=qHigh, q_frame=q_frame)
         
         #Do the actual integration
-        peaks_ws,paramList,fitDict = ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, panelDict, UBMatrix, dQ, qMask, padeCoefficients,parameterDict, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, minFracPixels=0.01, fracStop=fracStop, calibrationDict=calibrationDict,dQPixel=dQPixel, neigh_length_m=neigh_length_m,zBG=zBG, bgPolyOrder=bgPolyOrder, doIterativeBackgroundFitting=doIterativeBackgroundFitting,predCoefficients=predpplCoefficients, q_frame=q_frame, progressFile=workDir+descriptor+'/progress_%i_%s.txt'%(sampleRun, descriptor), mindtBinWidth=mindtBinWidth,minpplfrac=minppl_frac, maxpplfrac=maxppl_frac)
+        peaks_ws,paramList,fitDict = ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, UBMatrix, dQ, qMask, padeCoefficients,parameterDict, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, minFracPixels=0.01, fracStop=fracStop, calibrationDict=calibrationDict,dQPixel=dQPixel, neigh_length_m=neigh_length_m,zBG=zBG, bgPolyOrder=bgPolyOrder, doIterativeBackgroundFitting=doIterativeBackgroundFitting,predCoefficients=predpplCoefficients, q_frame=q_frame, progressFile=workDir+descriptor+'/progress_%i_%s.txt'%(sampleRun, descriptor), mindtBinWidth=mindtBinWidth,minpplfrac=minppl_frac, maxpplfrac=maxppl_frac)
         #Save the results and delete the leftovers
         os.system('rm ' + workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))
         SaveIsawPeaks(InputWorkspace='peaks_ws', Filename=workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))
