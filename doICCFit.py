@@ -8,7 +8,6 @@ def doIntegration(sampleRunsList=None):
     fracStop = 0.01 #Fraction of max counts to include in peak selection
     moderatorCoefficientsFile = 'franz_coefficients_2017.dat'
     #moderatorCoefficientsFile = 'franz_coefficients_2010.dat'
-    calibrationDictFile = 'det_calibration/calibration_dictionary.pkl'
     neigh_length_m = 3 #Will average over a (neigh_length_m)**3 box
     zBG = 1.96 #z score to keep this with
 
@@ -373,11 +372,10 @@ def doIntegration(sampleRunsList=None):
                 qMask.append(ICCFT.getHKLMask(UBMatrix, frac=fracHKL, dQPixel=dQP,dQ=dQ))
 
     padeCoefficients = ICCFT.getModeratorCoefficients(moderatorCoefficientsFile)
-    calibrationDict = pickle.load(open(calibrationDictFile, 'rb'))
 
     #Write the log
     logFile = workDir + descriptor + '/log.log'
-    ICFitLog.writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, fracStop, refineCenter, peaksFormat, UBFormat, DetCalFile, moderatorCoefficientsFile, calibrationDictFile, descriptor,zBG,neigh_length_m, predpplCoefficients, minppl_frac, maxppl_frac)
+    ICFitLog.writeLog(logFile, workDir, loadDir, nxsTemplate, figsFormat, sampleRuns, dtSpread, dtBinWidth, fracHKL, fracStop, refineCenter, peaksFormat, UBFormat, DetCalFile, moderatorCoefficientsFile, descriptor,zBG,neigh_length_m, predpplCoefficients, minppl_frac, maxppl_frac)
     if sampleRunsList != -1:
         sampleRunsToAnalyze = np.array(sampleRuns).astype(np.int)[sampleRunsList]
     else: sampleRunsToAnalyze = sampleRuns
@@ -396,7 +394,7 @@ def doIntegration(sampleRunsList=None):
         MDdata = ICCFT.getSample(sampleRun, DetCalFile, workDir, fileName, qLow=qLow, qHigh=qHigh, q_frame=q_frame)
         
         #Do the actual integration
-        peaks_ws,paramList,fitDict = ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, UBMatrix, dQ, qMask, padeCoefficients,parameterDict, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, minFracPixels=0.01, fracStop=fracStop, calibrationDict=calibrationDict,dQPixel=dQPixel, neigh_length_m=neigh_length_m,zBG=zBG, bgPolyOrder=bgPolyOrder, doIterativeBackgroundFitting=doIterativeBackgroundFitting,predCoefficients=predpplCoefficients, q_frame=q_frame, progressFile=workDir+descriptor+'/progress_%i_%s.txt'%(sampleRun, descriptor), mindtBinWidth=mindtBinWidth,minpplfrac=minppl_frac, maxpplfrac=maxppl_frac)
+        peaks_ws,paramList,fitDict = ICCFT.integrateSample(sampleRun, MDdata, peaks_ws, paramList, UBMatrix, dQ, qMask, padeCoefficients,parameterDict, figsFormat=figsFormat,dtBinWidth = dtBinWidth, dtSpread=dtSpread, fracHKL = fracHKL, refineCenter=refineCenter, minFracPixels=0.01, fracStop=fracStop, dQPixel=dQPixel, neigh_length_m=neigh_length_m,zBG=zBG, bgPolyOrder=bgPolyOrder, doIterativeBackgroundFitting=doIterativeBackgroundFitting,predCoefficients=predpplCoefficients, q_frame=q_frame, progressFile=workDir+descriptor+'/progress_%i_%s.txt'%(sampleRun, descriptor), mindtBinWidth=mindtBinWidth,minpplfrac=minppl_frac, maxpplfrac=maxppl_frac)
         #Save the results and delete the leftovers
         os.system('rm ' + workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))
         SaveIsawPeaks(InputWorkspace='peaks_ws', Filename=workDir+descriptor+'/peaks_%i_%s.integrate'%(sampleRun,descriptor))
