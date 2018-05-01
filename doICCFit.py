@@ -122,8 +122,8 @@ def doIntegration(sampleRunsList=None):
     UBFormat = UBFile
     DetCalFile = None#'/SNS/users/ntv/integrate/mandi_dna2/mandi_dna.DetCal'
     qLow = -5.0; qHigh = 5.0
-    dtSpread = [0.03,0.03] #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dQPixel = [0.005,0.005] #dQ for each voxel in qBox - recommended to decrease for successive fits
+    dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+    dQPixel = 0.005 #dQ for each voxel in qBox - recommended to decrease for successive fits
     dQMax = 0.15 #tune this
     descriptor = 'secondDNA_tof' #Does not end with '/'
     doIterativeBackgroundFitting = False
@@ -334,13 +334,11 @@ def doIntegration(sampleRunsList=None):
         UBMatrix = peaks_ws.sample().getOrientedLattice().getUB()
         dQ = np.abs(ICCFT.getDQFracHKL(UBMatrix, frac=fracHKL))
         dQ[dQ>dQMax] = dQMax
-        qMask = list()
-        for dQP in dQPixel:
-            print 'Getting qMask for dQPixel=%f'%dQP
-            try:
-                qMask.append(ICCFT.getHKLMask(UBMatrix, frac=fracHKLQMask, dQPixel=dQP,dQ=dQ))
-            except:
-                qMask.append(ICCFT.getHKLMask(UBMatrix, frac=fracHKL, dQPixel=dQP,dQ=dQ))
+        print 'Getting qMask for dQPixel=%f'%dQPixel
+        try:
+            qMask = ICCFT.getHKLMask(UBMatrix, frac=fracHKLQMask, dQPixel=dQPixel,dQ=dQ)
+        except:
+            qMask = ICCFT.getHKLMask(UBMatrix, frac=fracHKL, dQPixel=dQPixel,dQ=dQ)
 
     padeCoefficients = ICCFT.getModeratorCoefficients(moderatorCoefficientsFile)
 

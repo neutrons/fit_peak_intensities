@@ -7,7 +7,7 @@ from scipy.interpolate import interp1d
 from scipy.misc import factorial
 from scipy.optimize import curve_fit
 from scipy.ndimage.filters import convolve
-from scipy.stats import multivariate_normal
+from matplotlib.mlab import bivariate_normal
 import ICConvoluted as ICC
 FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 
@@ -15,7 +15,36 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 # run getBox.py (or get the box object from ICCFT)
 # params,h,th,ph = BVGFT.doBVGFit(box)
 # BVGFT.compareBVGFitData(box,params[0])
+class mvn():
+    '''
+    This class is a wrapper for the matplotlib.mlab.bivariate_normal
+    implementation of a bivariate Gaussian.  It is designed to be transparent
+    with scipy.stats.multivariate_normal, but can be used when older versions
+    of scipy are available (e.g. on the analysis machine).
+    '''
+    def __init__(self, mu, sigma):
+        self.mux = mu[0]
+        self.muy = mu[1]
+        self.sigx = np.sqrt(sigma[0][0])
+        self.sigy = np.sqrt(sigma[1][1])
+        self.sigxy = sigma[0][1]
+        self.p = 1.0*self.sigxy/self.sigx/self.sigy
+    
+    def __str__(self):
+        return 'bivariate guassian with mu=[%4.4f, %4.4f] and sigma = [%4.4f %4.4f; %4.4f %4.4f]'%(mux, muy, sigx, sigxy, sigxy, sigy)
+        
+    def __repr__(self):
+        return 'bivariate guassian with mu=[%4.4f, %4.4f] and sigma = [%4.4f %4.4f; %4.4f %4.4f]'%(mux, muy, sigx, sigxy, sigxy, sigy)
+    def pdf(self, pos):
+        X = pos[...,0]
+        Y = pos[...,1]
+        return bivariate_normal(X,Y, sigmax=self.sigx, sigmay=self.sigy,
+                            mux=self.mux,muy=self.muy,sigmaxy=self.sigxy)
 
+try:
+    from scipy.stats import multivariate_normal
+except:
+    multivariate_normal = mvn
 
 def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxToHistogram=1.0,numTimesToInterpolate=1, plotResults=False, zBG=1.96,bgPolyOrder=1, fICCParams = None, oldICCFit=None, strongPeakParams=None, forceCutoff=250, edgeCutoff=15, predCoefficients=None, neigh_length_m=3, q_frame = 'sample', dtSpread=0.03, pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1):
     n_events = box.getNumEventsArray()
@@ -64,7 +93,9 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
         th = np.arctan2(q0[1],q0[0])
         ph = np.arctan2(q0[2],np.hypot(q0[0],q0[1]))
         thphPeak = np.array([th,ph])
-        nnIDX = np.argmin(np.linalg.norm(strongPeakParams[:,:2] - thphPeak,axis=1))
+        tmp = strongPeakParams[:,:2] - thphPeak
+        dist = np.sqrt(tmp[:,0]**2 + tmp[:,1]**2)
+        nnIDX = np.argmin(dist)
         print 'Using ', strongPeakParams[nnIDX,:2], 'for ', thphPeak
         params,h,t,p = doBVGFit(box,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram, goodIDX=goodIDX, forceParams=strongPeakParams[nnIDX])
     else:
