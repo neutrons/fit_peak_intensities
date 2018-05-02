@@ -264,8 +264,7 @@ def fitScaling(n_events,box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
     p0 = np.array([np.max(n_events), np.mean(n_events)])
     weights = np.sqrt(n_events).copy()
     weights[weights<1] = 1.
-    bounds = ([0,0],[np.inf,np.inf])
-    p, cov = curve_fit(fitScalingFunction,convYJOINT[goodIDX],conv_n_events[goodIDX],p0=p0, bounds=bounds)#, sigma=np.sqrt(weights[goodIDX]))
+    p, cov = curve_fit(fitScalingFunction,convYJOINT[goodIDX],conv_n_events[goodIDX],p0=p0)#, sigma=np.sqrt(weights[goodIDX]))
    
     #highIDX = YJOINT > 0.7
     #p[0] = np.mean(n_events[highIDX] / YJOINT[highIDX])
@@ -593,6 +592,20 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
             print p0 
             bounds = ([0.0, thBins[thBins.size//2 - 2], phBins[phBins.size//2 - 2], 0.7*sigX0, 0.000, -0.4, 0], 
                     [np.inf, thBins[thBins.size//2 + 2], phBins[phBins.size//2 + 2], 1.3*sigX0, 0.007, 0.4, np.inf])
+
+
+            boundsDict = {}
+            boundsDict['A'] = (bounds[0][0], bounds[1][0])
+            boundsDict['mu0'] = (bounds[0][1], bounds[1][1])
+            boundsDict['mu1'] = (bounds[0][2], bounds[1][2])
+            boundsDict['sigX'] = (bounds[0][3], bounds[1][3])
+            boundsDict['sigY'] = (bounds[0][4], bounds[1][4])
+            boundsDict['p'] = (bounds[0][5], bounds[1][5])
+            boundsDict['bg'] = (bounds[0][6], bounds[1][6])
+            fitFun = lambda xArg,AArg,mu0Arg,mu1Arg,sigXArg,sigYArg,pArg,bgArg: bvgFitFunConstrained(xArg,AArg,mu0Arg,mu1Arg,sigXArg,sigYArg,pArg,bgArg,boundsDict)
+
+            print(boundsDict)
+            #params= curve_fit(fitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(),p0=p0,  sigma=np.sqrt(weights[fitIDX]))
             params= curve_fit(bvgFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(),p0=p0, bounds=bounds, sigma=np.sqrt(weights[fitIDX]))
             #params= curve_fit(bvgFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(),p0=p0, sigma=np.sqrt(weights[fitIDX]))
             #params= curve_fit(bvgFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(),p0=p0)
@@ -610,13 +623,41 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         bounds[0][2] = min(phBins[phBins.size//2 - dph], phBins[phBins.size//2 + dph]);
         bounds[1][2] = max(phBins[phBins.size//2 - dph], phBins[phBins.size//2 + dph]);
         bounds[1][-1] = np.inf
+
+        boundsDict = {}
+        boundsDict['A'] = (bounds[0][0], bounds[1][0])
+        boundsDict['mu0'] = (bounds[0][1], bounds[1][1])
+        boundsDict['mu1'] = (bounds[0][2], bounds[1][2])
+        boundsDict['sigX'] = (bounds[0][3], bounds[1][3])
+        boundsDict['sigY'] = (bounds[0][4], bounds[1][4])
+        boundsDict['p'] = (bounds[0][5], bounds[1][5])
+        boundsDict['bg'] = (bounds[0][6], bounds[1][6])
+        fitFun = lambda xArg,AArg,mu0Arg,mu1Arg,sigXArg,sigYArg,pArg,bgArg: bvgFitFunConstrained(xArg,AArg,mu0Arg,mu1Arg,sigXArg,sigYArg,pArg,bgArg,boundsDict)
+
+
         print 'forcing: ', forceParams
         print '~~~ p0:',p0
+        #params = curve_fit(fitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX],p0=p0)
         params = curve_fit(bvgFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX],p0=p0, bounds=bounds)
         print '~~ params:', params[0]
     return params, h, thBins, phBins
 
+def bvgFitFunConstrained(x, A, mu0, mu1,sigX,sigY,p,bg, boundsDict):
+    
+    sigma = np.array([[sigX**2,p*sigX*sigY], [p*sigX*sigY,sigY**2]])
+    mu = np.array([mu0,mu1])
+
+    Y = bvg(A, mu,sigma,x[0],x[1],bg).ravel() 
+    for paramName in boundsDict.keys():
+        exec('outOfBounds = %s < boundsDict[\'%s\'][0] or %s > boundsDict[\'%s\'][1]'%(paramName, paramName, paramName, paramName))
+        if outOfBounds:
+            return 1.0e2*np.ones_like(Y)
+
+    return Y
+
+
 def bvgFitFun(x, A, mu0, mu1,sigX,sigY,p,bg):
+    
     sigma = np.array([[sigX**2,p*sigX*sigY], [p*sigX*sigY,sigY**2]])
     mu = np.array([mu0,mu1])
     return bvg(A, mu,sigma,x[0],x[1],bg).ravel() 

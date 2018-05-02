@@ -151,6 +151,18 @@ predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go w
 q_frame='lab'
 pplmin_frac=0.8; pplmax_frac=5.0; mindtBinWidth=25
 '''
+#cryo
+peaksFile = '/SNS/users/ntv/integrate/mandi_cryo/cryo_combined.integrate'
+UBFile =  '/SNS/users/ntv/integrate/mandi_cryo/cryo_combined.mat'
+DetCalFile = None#'/SNS/users/ntv/integrate/mandi_dna2/mandi_dna.DetCal'
+workDir = '/SNS/users/ntv/dropbox/' #End with '/'
+loadDir = '/SNS/MANDI/IPTS-19172/nexus/'
+nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
+dQPixel=0.003#np.array([0.003, 0.003, 0.003])
+#predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
+q_frame='lab'
+pplmin_frac=0.; pplmax_frac=8.5; mindtBinWidth=25
 
 '''
 #secondDNA
@@ -167,6 +179,7 @@ q_frame='lab'
 pplmin_frac=0.6; pplmax_frac=1.5; mindtBinWidth=25
 '''
 
+'''
 #Beta Lac
 #peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
 #UBFile =  '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
@@ -187,6 +200,7 @@ pplmin_frac=0.8; pplmax_frac=2.0; mindtBinWidth=15
 #peaksFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.integrate'
 #UBFile =  '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.mat'
 #nxsTemplate = '/SNS/MANDI/IPTS-8776/data/MANDI_%i_event.nxs'
+'''
 
 
 

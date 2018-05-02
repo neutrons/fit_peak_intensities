@@ -41,6 +41,10 @@ class IndexTracker(object):
             self.ind = (self.ind - 1) % self.slices
         self.update()
 
+    def onclose(self, event):
+        print('Closed figure!')
+        self.isClosed = True
+
     def update(self):
         self.im.set_data(self.X[:, :, self.ind])
         self.im.set_clim([0,np.max(self.X)])
@@ -111,6 +115,7 @@ class SimpleTracker(IndexTracker):
         self.Y = Y
        
         self.sliceRatio = int(shapeRatio[2])
+        self.isClosed = False
         
         rows, cols, self.slices = X.shape
         self.ind = self.slices//2
@@ -160,9 +165,10 @@ def simpleSlices(X,Y):
         return
     fig, ax = plt.subplots(1,2)
     tracker = SimpleTracker(ax, X,Y, shapeRatio)
-    while True:
+    while not tracker.isClosed:
         try:
             fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
+            fig.canvas.mpl_connect('close_event', tracker.onclose)
             plt.pause(0.01)
         except:
             return 
