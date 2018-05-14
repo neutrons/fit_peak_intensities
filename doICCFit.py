@@ -112,6 +112,29 @@ def doIntegration(sampleRunsList=None):
     minppl_frac=0.7; maxppl_frac=1.5
     mindtBinWidth=25
     '''
+    # cryo
+    loadDir = '/SNS/MANDI/IPTS-19172/nexus/'
+    nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
+    sampleRuns = range(8785,8791+1)
+    peaksFile = '/SNS/users/ntv/integrate/mandi_cryo/cryo_combined.integrate'
+    UBFile = '/SNS/users/ntv/integrate/mandi_cryo/cryo_combined.mat'
+    peaksFormat = peaksFile
+    UBFormat = UBFile
+    DetCalFile = None#'/SNS/users/ntv/integrate/mandi_dna2/mandi_dna.DetCal'
+    qLow = -5.0; qHigh = 5.0
+    dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+    dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
+    dQMax = 0.15 #tune this
+    descriptor = 'cryo_tof' #Does not end with '/'
+    doIterativeBackgroundFitting = False
+    #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+    predpplCoefficients = np.array([28.73949834,  13.04192586,   0.41210929]) #Go with ICCFT.oldScatFun
+    q_frame='lab'
+    fracHKLQMask = 0.5
+    minppl_frac=0.7; maxppl_frac=1.50
+    mindtBinWidth=25
+
+    '''
     # secondDNA - 2015? - MANDI
     loadDir = '/SNS/MANDI/IPTS-15151/data/'
     nxsTemplate = loadDir+'MANDI_%i_event.nxs'
@@ -133,6 +156,7 @@ def doIntegration(sampleRunsList=None):
     fracHKLQMask = 0.5
     minppl_frac=0.6; maxppl_frac=1.5
     mindtBinWidth=25
+    '''
  
 
     '''

@@ -264,7 +264,9 @@ def fitScaling(n_events,box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
     p0 = np.array([np.max(n_events), np.mean(n_events)])
     weights = np.sqrt(n_events).copy()
     weights[weights<1] = 1.
-    p, cov = curve_fit(fitScalingFunction,convYJOINT[goodIDX],conv_n_events[goodIDX],p0=p0)#, sigma=np.sqrt(weights[goodIDX]))
+    bounds = ([0,0],[np.inf,np.inf])
+    p, cov = curve_fit(fitScalingFunction,convYJOINT[goodIDX],conv_n_events[goodIDX],p0=p0, bounds=bounds)#, sigma=np.sqrt(weights[goodIDX]))
+    #p, cov = curve_fit(fitScalingFunction,convYJOINT[goodIDX],conv_n_events[goodIDX],p0=p0)#, sigma=np.sqrt(weights[goodIDX]))
    
     #highIDX = YJOINT > 0.7
     #p[0] = np.mean(n_events[highIDX] / YJOINT[highIDX])
@@ -585,13 +587,15 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
             meanTH = TH.mean()
             meanPH = PH.mean()
             #sigX0 = np.polyval([ 0.00173264,  0.0002208 ,  0.00185031, -0.00012078,  0.00189967], meanPH)
-            sigX0 = ICCFT.oldScatFun(meanPH, 1.71151521e-02,   6.37218400e+00,   3.39439675e-03)
-            sigY0 = 0.002#np.polyval([ 0.00045678, -0.0017618 ,  0.0045013 , -0.00480677,  0.00376619], meanTH)
+            sigX0 = 0.0018#ICCFT.oldScatFun(meanPH, 1.71151521e-02,   6.37218400e+00,   3.39439675e-03)
+            sigY0 = 0.0018#np.polyval([ 0.00045678, -0.0017618 ,  0.0045013 , -0.00480677,  0.00376619], meanTH)
             sigP0 = fSigP(meanTH,  0.1460775 ,  1.85816592,  0.26850086, -0.00725352) 
             p0=[np.max(h), meanTH, meanPH, sigX0, sigY0, sigP0,0.0]
             print p0 
-            bounds = ([0.0, thBins[thBins.size//2 - 2], phBins[phBins.size//2 - 2], 0.7*sigX0, 0.000, -0.4, 0], 
-                    [np.inf, thBins[thBins.size//2 + 2], phBins[phBins.size//2 + 2], 1.3*sigX0, 0.007, 0.4, np.inf])
+            #bounds = ([0.0, thBins[thBins.size//2 - 2], phBins[phBins.size//2 - 2], 0.7*sigX0, 0.000, -0.4, 0], 
+            #        [np.inf, thBins[thBins.size//2 + 2], phBins[phBins.size//2 + 2], 1.3*sigX0, 0.007, 0.4, np.inf])
+            bounds = ([0.0, thBins[thBins.size//2 - 2], phBins[phBins.size//2 - 2], 0.0, 0.000, -0.4, 0], 
+                    [np.inf, thBins[thBins.size//2 + 2], phBins[phBins.size//2 + 2], 0.02, 0.02, 0.4, np.inf])
 
 
             boundsDict = {}
