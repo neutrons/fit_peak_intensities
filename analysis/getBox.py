@@ -162,7 +162,7 @@ dQPixel=0.003#np.array([0.003, 0.003, 0.003])
 #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 predpplCoefficients =  np.array([28.73949834,  13.04192586,   0.41210929]) #Go with ICCFT.oldScatFun
 q_frame='lab'
-pplmin_frac=0.7; pplmax_frac=1.5; mindtBinWidth=25
+pplmin_frac=0.4; pplmax_frac=1.5; mindtBinWidth=15
 
 '''
 #secondDNA

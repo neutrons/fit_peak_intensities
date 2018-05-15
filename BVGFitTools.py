@@ -587,18 +587,21 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
             meanTH = TH.mean()
             meanPH = PH.mean()
             #sigX0 = np.polyval([ 0.00173264,  0.0002208 ,  0.00185031, -0.00012078,  0.00189967], meanPH)
-            sigX0 = 0.0018#ICCFT.oldScatFun(meanPH, 1.71151521e-02,   6.37218400e+00,   3.39439675e-03)
-            sigY0 = 0.0018#np.polyval([ 0.00045678, -0.0017618 ,  0.0045013 , -0.00480677,  0.00376619], meanTH)
+            sigX0 = 0.005#ICCFT.oldScatFun(meanPH, 1.71151521e-02,   6.37218400e+00,   3.39439675e-03)
+            sigY0 = 0.005#np.polyval([ 0.00045678, -0.0017618 ,  0.0045013 , -0.00480677,  0.00376619], meanTH)
             sigP0 = fSigP(meanTH,  0.1460775 ,  1.85816592,  0.26850086, -0.00725352) 
             p0=[np.max(h), meanTH, meanPH, sigX0, sigY0, sigP0,0.0]
-            print p0 
+            print 'p0', p0 
+
             #bounds = ([0.0, thBins[thBins.size//2 - 2], phBins[phBins.size//2 - 2], 0.7*sigX0, 0.000, -0.4, 0], 
             #        [np.inf, thBins[thBins.size//2 + 2], phBins[phBins.size//2 + 2], 1.3*sigX0, 0.007, 0.4, np.inf])
             bounds = ([0.0, thBins[thBins.size//2 - 2], phBins[phBins.size//2 - 2], 0.0, 0.000, -0.4, 0], 
                     [np.inf, thBins[thBins.size//2 + 2], phBins[phBins.size//2 + 2], 0.02, 0.02, 0.4, np.inf])
 
 
+            print 'bounds', bounds
             boundsDict = {}
+            print 'bounds', bounds
             boundsDict['A'] = (bounds[0][0], bounds[1][0])
             boundsDict['mu0'] = (bounds[0][1], bounds[1][1])
             boundsDict['mu1'] = (bounds[0][2], bounds[1][2])
@@ -608,7 +611,7 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
             boundsDict['bg'] = (bounds[0][6], bounds[1][6])
             fitFun = lambda xArg,AArg,mu0Arg,mu1Arg,sigXArg,sigYArg,pArg,bgArg: bvgFitFunConstrained(xArg,AArg,mu0Arg,mu1Arg,sigXArg,sigYArg,pArg,bgArg,boundsDict)
 
-            print(boundsDict)
+            #print(boundsDict)
             #params= curve_fit(fitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(),p0=p0,  sigma=np.sqrt(weights[fitIDX]))
             params= curve_fit(bvgFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(),p0=p0, bounds=bounds, sigma=np.sqrt(weights[fitIDX]))
             #params= curve_fit(bvgFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(),p0=p0, sigma=np.sqrt(weights[fitIDX]))
