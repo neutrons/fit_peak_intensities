@@ -374,26 +374,62 @@ def getTOFParameters(box, peak, padeCoefficients,dtSpread=0.03,minFracPixels=0.0
     energy = 81.804 / wavelength**2 / 1000.0 #in eV
     if qMask is None:
         qMask = np.ones_like(box.getNumEventsArray()).astype(np.bool)
-    tofWS,ppl = ICCFT.getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, qMask, dtSpread=dtSpread, minFracPixels=minFracPixels, neigh_length_m=neigh_length_m,zBG=zBG, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac)
+    tofWS,ppl = ICCFT.getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, qMask, dtSpread=dtSpread, minFracPixels=minFracPixels, neigh_length_m=neigh_length_m,zBG=zBG, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac, padeCoefficients=ICCFT.getModeratorCoefficients('franz_coefficients_2017.dat'))
 
     fitResults,fICC = ICCFT.doICCFit(tofWS, energy, flightPath, padeCoefficients, fitOrder=bgPolyOrder)
     for i, param in enumerate(['A','B','R','T0','scale', 'hatWidth', 'k_conv']):
         fICC[param] = mtd['fit_Parameters'].row(i)['Value']
     return fICC 
 
-#This is not a very recent version of this
-def fitPeak3D(box, X, n_events, peak,goodIDX,padeCoefficients):
+#Does full 3D fit
+def fitPeak3D(box, n_events, peak,goodIDX,padeCoefficients,qMask=None):
 
-    fICC = getTOFParameters(box, peak, padeCoefficients)
+    QX, QY, QZ = ICCFT.getQXQYQZ(box)
+    XSPH = np.array(ICCFT.cart2sph(QX,QY,QZ))
+    X = XSPH.swapaxes(0,1).swapaxes(1,2).swapaxes(2,3)
+    X[:,:,:,0] = 3176.507*(peak.getL1()+peak.getL2())*np.sin(0.5*peak.getScattering())/X[:,:,:,0]
+
+    predCoefficients=np.array([28.73949834,  13.04192586,   0.41210929])
+    neigh_length_m=3
+    pplmin_frac=0.4
+    pplmax_frac=1.5
+    mindtBinWidth=15
+    dtSpread=0.015
+    bgPolyOrder=1
+    zBG=1.96
+    plotResults=True
+
+    goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events, peak=peak, box=box,qMask=qMask, calc_pp_lambda=True, padeCoefficients=padeCoefficients, predCoefficients=predCoefficients,neigh_length_m=neigh_length_m, pp_lambda=None, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac, mindtBinWidth=mindtBinWidth)
+
+    YTOF, fICC, x_lims = fitTOFCoordinate(box,peak,padeCoefficients,dtSpread=dtSpread,qMask=qMask,zBG=1.96,plotResults=False, pp_lambda=pp_lambda, neigh_length_m=3, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac, mindtBinWidth=mindtBinWidth)
+
     alpha = fICC['A']; beta = fICC['B']; R = fICC['R']; T0 = fICC['T0']; k_conv = fICC['k_conv']; ATOF = fICC['scale']
     x0 = [alpha, beta, R, T0, ATOF, 0.5, k_conv]
-    params,h,t,p = doBVGFit(box,nTheta=400,nPhi=400)
+    params,h,t,p = doBVGFit(box,nTheta=70,nPhi=70,goodIDX=goodIDX)
     params, cov = params
   
     p0 = [np.max(n_events), ATOF, params[0], params[1], params[2], params[3], params[4], params[5], alpha, beta, R, T0, k_conv, 0.0 ]
-    bounds = ([0,0,0, -np.inf,-np.inf,0.,0.,-np.inf] + [0.9*v for v in x0[:4]] + [10, 0],
-                [np.inf for i in range(8)] + [1.1*v for v in x0[:4]] + [500, np.inf]  )
-    params= curve_fit(peak3DFitFunction, X[goodIDX], n_events[goodIDX],  p0,maxfev=1000, sigma=np.sqrt(n_events[goodIDX]),bounds=bounds)
+    bounds = ([0,0,0, -np.inf,-np.inf,0.,0.,-np.inf] + [0.5*v for v in x0[:4]] + [100, 0],
+                [np.inf for i in range(8)] + [2.*v for v in x0[:4]] + [140, np.inf]  )
+    bounds = np.array(bounds)
+    swapMe = bounds[0] > bounds[1]
+    swapIDX = np.where(swapMe)[0]
+    for idx in swapIDX:
+        tmp = bounds[1,idx]
+        bounds[1,idx] = bounds[0,idx]
+        bounds[0,idx] = tmp
+
+    #goodIDX = np.zeros_like(n_events,dtype=np.bool)
+    #cIDX = np.array(np.shape(goodIDX))//2
+    #dX = 8
+    #goodIDX[cIDX[0]-dX:cIDX[0]+dX,cIDX[1]-dX:cIDX[1]+dX,cIDX[2]-dX:cIDX[2]+dX] = True
+    try:
+        params= curve_fit(peak3DFitFunction, X[goodIDX], n_events[goodIDX],  p0,maxfev=1000, sigma=np.sqrt(n_events[goodIDX]),bounds=bounds)
+    except ValueError as e:
+        print '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+        print e
+        print 'Returning initial guess (p0, p0)'
+        params = (p0,p0)
     return params
 
 def peak3DFitFunction(X, A, ATOF, ABVG, mu0, mu1, sigmaX, sigmaY, p12, alpha, beta, R, T0, k_conv, bg):
@@ -407,7 +443,6 @@ def peak3DFromParams(X,params):
 def peak3D(X, A, ATOF, ABVG, mu0, mu1, sigX, sigY, p, alpha, beta, R, T0, k_conv, bg):
     #Axis 0 = TOF, axis1 = theta, axis2 = phi
     #First we calculate the TOF distribution to estimate sigma_TOF
-
     if X.ndim == 4:
         XTOF = X[:,:,:,0]
         XTHETA = X[:,:,:,1]
@@ -433,12 +468,13 @@ def peak3D(X, A, ATOF, ABVG, mu0, mu1, sigX, sigY, p, alpha, beta, R, T0, k_conv
     fICC['k_conv'] = k_conv
     tofMin = np.min(XTOF)
     tofMax = np.max(XTOF)
-    tofxx = np.linspace(tofMin, tofMax, 100000)
+    tofxx = np.linspace(tofMin, tofMax, 500)
     tofyy = fICC.function1D(tofxx.ravel())
     ftof = interp1d(tofxx, tofyy)
 
     YTOF = ftof(XTOF)
-    YTOF /= np.max(YTOF)
+    YTOF -= YTOF.min()
+    YTOF /= YTOF.max()
 
 
     #Do the bivariate normal for the angles
