@@ -89,22 +89,22 @@ def doBVGFits(sampleRunsList=None):
     loadDir = '/SNS/MANDI/IPTS-19172/nexus/'
     nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
     sampleRuns = range(8785,8791+1)
-    peaksFile = '/SNS/users/ntv/integrate/mandi_cryo/cryo_combined.integrate'
-    UBFile = '/SNS/users/ntv/integrate/mandi_cryo/cryo_combined.mat'
+    peaksFile = '/SNS/users/ntv/integrate/mandi_cryo/cryo_combined_2.integrate'
+    UBFile = '/SNS/users/ntv/integrate/mandi_cryo/cryo_combined_2.mat'
     DetCalFile = None#'/SNS/users/ntv/integrate/mandi_dna2/mandi_dna.DetCal'
     qLow = -5.0; qHigh = 5.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
     dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
-    descriptor = 'cryo_3d' #Does not end with '/'
+    descriptor = 'cryo_3d_2' #Does not end with '/'
     doIterativeBackgroundFitting = False
     numTimesToInterpolate=0
     workDir = '/SNS/users/ntv/dropbox/'
-    descriptorRead = 'cryo_tof' 
+    descriptorRead = None 
     predpplCoefficients = np.array([28.73949834,  13.04192586,   0.41210929]) #Go with ICCFT.oldScatFun
     q_frame='lab'
-    mindtBinWidth = 25
+    mindtBinWidth = 15
     fracHKLQMask = 0.5
-    pplmin_frac = 0.7; pplmax_frac = 1.5
+    pplmin_frac = 0.4; pplmax_frac = 1.5
 
     '''
     #secondDNA
