@@ -95,11 +95,11 @@ def doBVGFits(sampleRunsList=None):
     qLow = -5.0; qHigh = 5.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
     dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
-    descriptor = 'cryo_3d_2' #Does not end with '/'
+    descriptor = 'cryo_3d_3' #Does not end with '/'
     doIterativeBackgroundFitting = False
     numTimesToInterpolate=0
     workDir = '/SNS/users/ntv/dropbox/'
-    descriptorRead = None 
+    descriptorRead = 'cryo_tof_2' 
     predpplCoefficients = np.array([28.73949834,  13.04192586,   0.41210929]) #Go with ICCFT.oldScatFun
     q_frame='lab'
     mindtBinWidth = 15
@@ -259,6 +259,7 @@ def doBVGFits(sampleRunsList=None):
     try:
         ICCFitParams = ICAT.getFitParameters(workDir, descriptorRead, sampleRuns[0], sampleRuns[-1], sampleRuns=sampleRuns)
     except:
+        raise
         print 'Cannot read ICCFitParams - will set to None and fit as we go!'
         ICCFitParams = None
     try:
@@ -266,7 +267,7 @@ def doBVGFits(sampleRunsList=None):
     except:
         print 'Cannot read ICCFitDict.  Will set to None...'
         ICCFitDict = None
-    strongPeakParams = pickle.load(open('strongPeakParams_betalac_lab.pkl', 'rb'))
+    strongPeakParams = pickle.load(open('strongPeakParams_cryo.pkl', 'rb'))
     #strongPeakParams = pickle.load(open('strongPeakParams_dna.pkl', 'rb'))
 
     from timeit import default_timer as timer
@@ -301,6 +302,9 @@ def doBVGFits(sampleRunsList=None):
             print peakNumber, peak.getIntensity()
             try:
                 if peak.getRunNumber() == sampleRun:
+                    if peak.getH() == 0 and peak.getK() == 0 and peak.getL() == 0:
+                        print 'Peak number %i has hkl=000.  Skipping.'
+                        continue
                     print 'Integrating peak %i'%peakNumber
                     box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, fracHKL = fracHKL,  dQPixel=dQPixel, q_frame=q_frame)
                     #Will force weak peaks to be fit using a neighboring peak profile

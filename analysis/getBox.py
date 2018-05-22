@@ -152,8 +152,8 @@ q_frame='lab'
 pplmin_frac=0.8; pplmax_frac=5.0; mindtBinWidth=25
 '''
 #cryo
-peaksFile = '/SNS/users/ntv/integrate/mandi_cryo/cryo_combined.integrate'
-UBFile =  '/SNS/users/ntv/integrate/mandi_cryo/cryo_combined.mat'
+peaksFile = '/SNS/users/ntv/integrate/mandi_cryo/cryo_combined_2.integrate'
+UBFile =  '/SNS/users/ntv/integrate/mandi_cryo/cryo_combined_2.mat'
 DetCalFile = None#'/SNS/users/ntv/integrate/mandi_dna2/mandi_dna.DetCal'
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/MANDI/IPTS-19172/nexus/'
@@ -197,9 +197,9 @@ predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with 
 q_frame='lab'
 pplmin_frac=0.8; pplmax_frac=2.0; mindtBinWidth=15
    #---mutant
-#peaksFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.integrate'
-#UBFile =  '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.mat'
-#nxsTemplate = '/SNS/MANDI/IPTS-8776/data/MANDI_%i_event.nxs'
+peaksFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.integrate'
+UBFile =  '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.mat'
+nxsTemplate = '/SNS/MANDI/IPTS-8776/data/MANDI_%i_event.nxs'
 '''
 
 
@@ -270,7 +270,7 @@ else:
 
 n_events = Box.getNumEventsArray()
 
-qMask = ICCFT.getHKLMask(UBMatrix, frac=0.35, dQPixel=dQPixel, dQ=dQ)
+qMask = ICCFT.getHKLMask(UBMatrix, frac=0.5, dQPixel=dQPixel, dQ=dQ)
 if not removeEdges:
     mask = np.ones_like(n_events)
 else:

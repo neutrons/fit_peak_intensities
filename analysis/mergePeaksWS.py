@@ -9,7 +9,7 @@ import ICCAnalysisTools as ICAT
 
 sampleRuns = range(8785,8791+1)
 workDir = '/SNS/users/ntv/dropbox/'
-descriptor = 'cryo_tof'
+descriptor = 'cryo_tof_2'
 loadDir = '/SNS/MANDI/IPTS-19172/nexus/'
 eventWS = Load(loadDir+'MANDI_8785.nxs.h5')
 '''

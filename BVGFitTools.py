@@ -90,13 +90,13 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
     dEdge = edgeCutoff
     useForceParams = peak.getIntensity() < forceCutoff or peak.getRow() <= dEdge or peak.getRow() >= 255-dEdge or peak.getCol() <= dEdge or peak.getCol() >= 255-dEdge
     if strongPeakParams is not None and useForceParams:
-        th = np.arctan2(q0[1],q0[0])
-        ph = np.arctan2(q0[2],np.hypot(q0[0],q0[1]))
-        thphPeak = np.array([th,ph])
+        ph = np.arctan2(q0[1],q0[0])
+        th = np.arctan2(q0[2],np.hypot(q0[0],q0[1])) 
+        thphPeak = np.array([ph,th])
         tmp = strongPeakParams[:,:2] - thphPeak
         dist = np.sqrt(tmp[:,0]**2 + tmp[:,1]**2)
         nnIDX = np.argmin(dist)
-        print 'Using ', strongPeakParams[nnIDX,:2], 'for ', thphPeak
+        print 'Using [ph, th] =', strongPeakParams[nnIDX,:2], 'for ', thphPeak
         params,h,t,p = doBVGFit(box,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram, goodIDX=goodIDX, forceParams=strongPeakParams[nnIDX])
     else:
         params,h,t,p = doBVGFit(box,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram, goodIDX=goodIDX)
@@ -623,16 +623,16 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
             meanTH = TH.mean()
             meanPH = PH.mean()
             #sigX0 = np.polyval([ 0.00173264,  0.0002208 ,  0.00185031, -0.00012078,  0.00189967], meanPH)
-            sigX0 = 0.005#ICCFT.oldScatFun(meanPH, 1.71151521e-02,   6.37218400e+00,   3.39439675e-03)
-            sigY0 = 0.005#np.polyval([ 0.00045678, -0.0017618 ,  0.0045013 , -0.00480677,  0.00376619], meanTH)
-            sigP0 = fSigP(meanTH,  0.1460775 ,  1.85816592,  0.26850086, -0.00725352) 
+            sigX0 = 0.018#ICCFT.oldScatFun(meanPH, 1.71151521e-02,   6.37218400e+00,   3.39439675e-03)
+            sigY0 = 0.018#np.polyval([ 0.00045678, -0.0017618 ,  0.0045013 , -0.00480677,  0.00376619], meanTH)
+            sigP0 = 0.0#fSigP(meanTH,  0.1460775 ,  1.85816592,  0.26850086, -0.00725352) 
             p0=[np.max(h), meanTH, meanPH, sigX0, sigY0, sigP0,0.0]
             print 'p0', p0 
 
             #bounds = ([0.0, thBins[thBins.size//2 - 2], phBins[phBins.size//2 - 2], 0.7*sigX0, 0.000, -0.4, 0], 
             #        [np.inf, thBins[thBins.size//2 + 2], phBins[phBins.size//2 + 2], 1.3*sigX0, 0.007, 0.4, np.inf])
-            bounds = ([0.0, thBins[thBins.size//2 - 2], phBins[phBins.size//2 - 2], 0.0, 0.000, -0.4, 0], 
-                    [np.inf, thBins[thBins.size//2 + 2], phBins[phBins.size//2 + 2], 0.02, 0.02, 0.4, np.inf])
+            bounds = ([0.0, thBins[thBins.size//2 - 4], phBins[phBins.size//2 - 4], 0.0, 0.000, -0.4, 0], 
+                    [np.inf, thBins[thBins.size//2 + 4], phBins[phBins.size//2 + 4], 0.02, 0.02, 0.4, np.inf])
 
 
             print 'bounds', bounds
