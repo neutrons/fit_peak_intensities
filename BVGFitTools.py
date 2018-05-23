@@ -43,7 +43,7 @@ class mvn():
 
 multivariate_normal = mvn
 
-def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxToHistogram=1.0,numTimesToInterpolate=1, plotResults=False, zBG=1.96,bgPolyOrder=1, fICCParams = None, oldICCFit=None, strongPeakParams=None, forceCutoff=250, edgeCutoff=15, predCoefficients=None, neigh_length_m=3, q_frame = 'sample', dtSpread=0.03, pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1):
+def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxToHistogram=1.0, plotResults=False, zBG=1.96,bgPolyOrder=1, fICCParams = None, oldICCFit=None, strongPeakParams=None, forceCutoff=250, edgeCutoff=15, predCoefficients=None, neigh_length_m=3, q_frame = 'sample', dtSpread=0.03, pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1):
     n_events = box.getNumEventsArray()
 
     if q_frame == 'lab':
@@ -135,8 +135,6 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
     retParams['scale3d'] = scaleFactor
     retParams['chiSq3d'] = redChiSq
 
-    for i in range(numTimesToInterpolate):
-        X = interpolateXGrid(X)
     
     XTOF = X[:,:,:,0]
     XTHETA = X[:,:,:,1]
@@ -148,7 +146,7 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
     Y2 = scaleFactor*Y2/Y2.max() 
     
     QX, QY, QZ = ICCFT.getQXQYQZ(box)
-    fitMaxIDX = tuple(np.array(np.unravel_index(Y2.argmax(), Y2.shape)) // (numTimesToInterpolate+1))
+    fitMaxIDX = tuple(np.array(np.unravel_index(Y2.argmax(), Y2.shape)))
     newCenter = np.array([QX[fitMaxIDX], QY[fitMaxIDX], QZ[fitMaxIDX]])
 
     retParams['dQ'] =  np.linalg.norm(newCenter - q0)
@@ -164,64 +162,6 @@ def integrateJointPDF(Y, pp_lambda, scale, YCutoff=0.05):
     sigma = np.sqrt(intensity + 2.0*bg) # = sqrt(OBS + BG)
     return intensity, sigma
 
-#Linear interpolation - only works for doubling samples in the range
-def interpolateXGrid(X):
-    XT = np.zeros(tuple(2*np.array(X.shape[:-1]))+(3,))
-    XT[::2,::2,::2,:] = X
-    #Now we need to interpolate - linear will be fast
-
-    # -- single +1
-    XT[1:-2:2,::2,::2,:] = (XT[:-2:2,::2,::2,:] + XT[2::2,::2,::2,:])*0.5
-    XT[::2,1:-2:2,::2,:] = (XT[::2,:-2:2,::2,:] + XT[::2,2::2,::2,:])*0.5
-    XT[::2,::2,1:-2:2,:] = (XT[::2,::2,:-2:2,:] + XT[::2,::2,2::2,:])*0.5
-
-    # -- double +1
-    XT[1:-2:2,1:-2:2,::2,:] = (XT[:-2:2,:-2:2,::2,:] + XT[2::2,2::2,::2,:])*0.5
-    XT[1:-2:2,::2,1:-2:2] = (XT[:-2:2,::2,:-2:2,:] + XT[2::2,::2,2::2,:])*0.5
-    XT[::2,1:-2:2,1:-2:2,:] = (XT[::2,:-2:2,:-2:2,:] + XT[::2,2::2,2::2,:])*0.5
-
-    # -- triple +1
-    XT[1:-1:2,1:-1:2,1:-1:2,:] = (XT[:-2:2,:-2:2,:-2:2,:] + XT[2::2,2::2,2::2,:])*0.5
-
-    # --the last plane in each dimension - not interpolated, just a copy
-    # TODO: real interpolation, but note that if you're integrating your last
-    # column, you probably want to draw a bigger box
-    XT[-1,:,:,:] = XT[-2,:,:,:]  
-    XT[:,-1,:,:] = XT[:,-2,:,:]  
-    XT[:,:,-1,:] = XT[:,:,-2,:]  
-    return XT
-
-
-def calcTOFPerPixel(box, peak, refitIDX = None):
-    xaxis = box.getXDimension()
-    qx = np.linspace(xaxis.getMinimum(), xaxis.getMaximum(), xaxis.getNBins())
-    yaxis = box.getYDimension()
-    qy = np.linspace(yaxis.getMinimum(), yaxis.getMaximum(), yaxis.getNBins())
-    zaxis = box.getZDimension()
-    qz = np.linspace(zaxis.getMinimum(), zaxis.getMaximum(), zaxis.getNBins())
-    QX, QY, QZ = ICCFT.getQXQYQZ(box)
-
-    if refitIDX  is None:
-        refitIDX = np.ones_like(QX).astype(np.bool)
-
-    from mantid.kernel import V3D 
-    qS0 = peak.getQSampleFrame()
-    PIXELFACTOR = np.ones_like(QX)*(peak.getL1() + peak.getL2())*np.sin(0.5*peak.getScattering())
-    for i, x in enumerate(qx):
-        print i
-        for j, y in enumerate(qy):
-            for k, z in enumerate(qz):
-                if refitIDX[i,j,k]:
-                    qNew = V3D(x,y,z)
-                    peak.setQSampleFrame(qNew)
-                    L = peak.getL1() + peak.getL2()
-                    HALFSCAT = 0.5*peak.getScattering()
-                    PIXELFACTOR[i,j,k] = L*np.sin(HALFSCAT)
-    peak.setQSampleFrame(qS0)
-
-
-    tofBox = 3176.507 * PIXELFACTOR * 1.0/np.sqrt(QX**2 + QY**2 + QZ**2)
-    return tofBox
 
 def boxToTOFThetaPhi(box,peak):
     QX, QY, QZ = ICCFT.getQXQYQZ(box)
@@ -267,23 +207,7 @@ def fitScaling(n_events,box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
     A1 = fitResultsScaling[3].row(1)['Value']
     YRET = A1*YJOINT + A0
     chiSqRed = fitResultsScaling[1]
-    '''
-    #This is the old way
-    p0 = np.array([np.max(n_events), np.mean(n_events)])
-    weights = np.sqrt(n_events).copy()
-    weights[weights<1] = 1.
-    bounds = ([0,0],[np.inf,np.inf])
-    p, cov = curve_fit(fitScalingFunction,convYJOINT[goodIDX],conv_n_events[goodIDX],p0=p0, bounds=bounds)#, sigma=np.sqrt(weights[goodIDX]))
-    #p, cov = curve_fit(fitScalingFunction,convYJOINT[goodIDX],conv_n_events[goodIDX],p0=p0)#, sigma=np.sqrt(weights[goodIDX]))
-    #highIDX = YJOINT > 0.7
-    #p[0] = np.mean(n_events[highIDX] / YJOINT[highIDX])
-    YRET = p[0]*YJOINT + p[1] 
-    
-    chiSq = np.sum((YRET[goodIDX]-n_events[goodIDX])**2 / weights[goodIDX]**2)
-    chiSqRed = chiSq / (np.sum(goodIDX) - 2)
-    print chiSqRed, 'is chiSqRed'
-    return YRET, chiSqRed, p[0]
-    '''
+
     print chiSqRed, 'is chiSqRed'
     return YRET, chiSqRed, A1
    
@@ -721,19 +645,6 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
     params = [[m['A'], m['muX'], m['muY'], m['sigX'], m['sigY'], m['sigP'], mtd['bvgfit_Parameters'].row(6)['Value']], chiSq]
 
     return params, h, thBins, phBins
-
-def bvgFitFunConstrained(x, A, mu0, mu1,sigX,sigY,p,bg, boundsDict):
-    
-    sigma = np.array([[sigX**2,p*sigX*sigY], [p*sigX*sigY,sigY**2]])
-    mu = np.array([mu0,mu1])
-
-    Y = bvg(A, mu,sigma,x[0],x[1],bg).ravel() 
-    for paramName in boundsDict.keys():
-        exec('outOfBounds = %s < boundsDict[\'%s\'][0] or %s > boundsDict[\'%s\'][1]'%(paramName, paramName, paramName, paramName))
-        if outOfBounds:
-            return 1.0e2*np.ones_like(Y)
-
-    return Y
 
 
 def bvgFitFun(x, A, mu0, mu1,sigX,sigY,p,bg):
