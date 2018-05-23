@@ -47,8 +47,8 @@ class MBVG(IFunction1D): #MantidBVG
         self.declareParameter("sigX") #sigma along the x direction
         self.declareParameter("sigY") #sigma along the y direction
         self.declareParameter("sigP") #interaction term rho
-        self.declareParameter("nX") #used for reconstructing 2d profile
-        self.declareParameter("nY") #used for reconstruction 2d profile
+        self.declareAttribute("nX", 50) #used for reconstructing 2d profile
+        self.declareAttribute("nY", 50) #used for reconstruction 2d profile
         self.addConstraints("0 < A") #Require amplitude to be positive
         self.addConstraints("0 < sigX") #standard deviations must be positive
         self.addConstraints("0 < sigY") #standard deviations must be positive
@@ -66,8 +66,8 @@ class MBVG(IFunction1D): #MantidBVG
             pos.ravel() is returned.
         '''
         if t.ndim == 1:
-            nX = int(self.getParamValue(6))
-            nY = int(self.getParamValue(7))
+            nX = int(self.getAttributeValue('nX'))
+            nY = int(self.getAttributeValue('nY'))
             pos = t.reshape(nX, nY, 2)
         elif t.ndim == 3:
             pos = t
@@ -93,6 +93,40 @@ class MBVG(IFunction1D): #MantidBVG
             zRet = Z
         return zRet.ravel()
 
+    def getMu(self):
+        muX = self.getParamValue(1)
+        muY = self.getParamValue(2)
+        return np.array([muX, muY])
+
+    def getSigma(self):
+        sigX = self.getParamValue(3)
+        sigY = self.getParamValue(4)
+        sigP = self.getParamValue(5)
+        return np.array([[sigX**2,sigX*sigY*sigP],[sigX*sigY*sigP, sigY**2]])
+
+    def getMuSigma(self):
+        return self.getMu(), self.getSigma()
+
+    def setConstraints(self, boundsDict):
+        '''
+        setConstraints sets fitting constraints for the mbvg function.
+        Intput:
+            boundsDict: a dictionary object where each key is a parameter as a string 
+                        ('A', 'muX', 'muY', 'sigX', 'sigY', 'sigP') and the value is 
+                        an array with the lower bound and upper bound
+
+        '''
+        for param in boundsDict.keys():
+            try:
+                if boundsDict[param][0] < boundsDict[param][1]:
+                    constraintString = "{:4.4e} < {:s} < {:4.4e}".format(boundsDict[param][0], param, boundsDict[param][1])
+                    self.addConstraints(constraintString)
+                else:
+                    print 'Setting constraints on mbvg; reversing bounds'
+                    self.addConstraints("{:4.4e} < A < {:4.4e}".format(boundsDict[param][1], boundsDict[param][0]))
+            except ValueError:
+                print 'Cannot set parameter {:s} for mbvg.  Valid choices are (\'A\', \'muX\', \'muY\', \'sigX\', \'sigY\', \'sigP\')'.format(param)
+
     def function2D(self, t):
         '''
         function2D returns the 2D version of the BVG.
@@ -104,10 +138,10 @@ class MBVG(IFunction1D): #MantidBVG
             a 2D array either size nX*nY (intput type 1) or A*B (input type 2) with intensities
             of the BVG.
         '''
-        print t.ndim
+        print(self)
         if t.ndim == 1:
-            nX = int(self.getParamValue(6))
-            nY = int(self.getParamValue(7))
+            nX = int(self.getAttributeValue('nX'))
+            nY = int(self.getAttributeValue('nY'))
             pos = t.reshape(nX, nY, 2)
         elif t.ndim == 3:
             pos = t
@@ -125,4 +159,22 @@ class MBVG(IFunction1D): #MantidBVG
                             mux=muX,muy=muY,sigmaxy=sigXY)
 
         return Z        
- 
+
+    def function3D(self, t):
+        if t.ndim == 4:
+            pos = t[:,:,:,1:]
+        X = pos[...,0]
+        Y = pos[...,1]
+        A = self.getParamValue(0)
+        muX = self.getParamValue(1)
+        muY = self.getParamValue(2)
+        sigX = self.getParamValue(3)
+        sigY = self.getParamValue(4)
+        sigP = self.getParamValue(5)
+
+        sigXY = sigX*sigY*sigP
+        Z = A*bivariate_normal(X,Y, sigmax=sigX, sigmay=sigY,
+                            mux=muX,muy=muY,sigmaxy=sigXY)
+
+        return Z
+

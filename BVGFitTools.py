@@ -9,12 +9,12 @@ from scipy.optimize import curve_fit
 from scipy.ndimage.filters import convolve
 from matplotlib.mlab import bivariate_normal
 import ICConvoluted as ICC
+import mbvg
+reload(mbvg)
+FunctionFactory.subscribe(mbvg.MBVG)
 FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 
-#Example usage for bvg
-# run getBox.py (or get the box object from ICCFT)
-# params,h,th,ph = BVGFT.doBVGFit(box)
-# BVGFT.compareBVGFitData(box,params[0])
+
 class mvn():
     '''
     This class is a wrapper for the matplotlib.mlab.bivariate_normal
@@ -41,10 +41,7 @@ class mvn():
         return bivariate_normal(X,Y, sigmax=self.sigx, sigmay=self.sigy,
                             mux=self.mux,muy=self.muy,sigmaxy=self.sigxy)
 
-try:
-    from scipy.stats import multivariate_normal
-except:
-    multivariate_normal = mvn
+multivariate_normal = mvn
 
 def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxToHistogram=1.0,numTimesToInterpolate=1, plotResults=False, zBG=1.96,bgPolyOrder=1, fICCParams = None, oldICCFit=None, strongPeakParams=None, forceCutoff=250, edgeCutoff=15, predCoefficients=None, neigh_length_m=3, q_frame = 'sample', dtSpread=0.03, pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1):
     n_events = box.getNumEventsArray()
@@ -258,16 +255,26 @@ def fitScaling(n_events,box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
                 max(fitMaxIDX[1]-dP,0):min(fitMaxIDX[1]+dP,goodIDX.shape[1]),
                 max(fitMaxIDX[2]-dP,0):min(fitMaxIDX[2]+dP,goodIDX.shape[2])] = True
         goodIDX = np.logical_and(goodIDX, conv_n_events>0)
-        #goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events)
-        #goodIDX = np.logical_and(goodIDX, n_events>0)
 
+
+    scaleLinear = Polynomial(n=1)
+    scaleX = YJOINT[goodIDX]
+    scaleY = n_events[goodIDX]
+    scaleWS = CreateWorkspace(OutputWorkspace='scaleWS', dataX=scaleX, dataY=scaleY)   
+    fitResultsScaling = Fit(Function=scaleLinear, InputWorkspace='scaleWS', Output='scalefit')
+    scaleFitWorkspace = mtd['scaleFit_Workspace']
+    A0 = fitResultsScaling[3].row(0)['Value']
+    A1 = fitResultsScaling[3].row(1)['Value']
+    YRET = A1*YJOINT + A0
+    chiSqRed = fitResultsScaling[1]
+    '''
+    #This is the old way
     p0 = np.array([np.max(n_events), np.mean(n_events)])
     weights = np.sqrt(n_events).copy()
     weights[weights<1] = 1.
     bounds = ([0,0],[np.inf,np.inf])
     p, cov = curve_fit(fitScalingFunction,convYJOINT[goodIDX],conv_n_events[goodIDX],p0=p0, bounds=bounds)#, sigma=np.sqrt(weights[goodIDX]))
     #p, cov = curve_fit(fitScalingFunction,convYJOINT[goodIDX],conv_n_events[goodIDX],p0=p0)#, sigma=np.sqrt(weights[goodIDX]))
-   
     #highIDX = YJOINT > 0.7
     #p[0] = np.mean(n_events[highIDX] / YJOINT[highIDX])
     YRET = p[0]*YJOINT + p[1] 
@@ -276,6 +283,9 @@ def fitScaling(n_events,box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
     chiSqRed = chiSq / (np.sum(goodIDX) - 2)
     print chiSqRed, 'is chiSqRed'
     return YRET, chiSqRed, p[0]
+    '''
+    print chiSqRed, 'is chiSqRed'
+    return YRET, chiSqRed, A1
    
 def fitScalingFunction(x,a,bg):
     return a*x + bg
@@ -290,7 +300,7 @@ def getXTOF(box, peak):
     origQS = peak.getQSampleFrame()
     tList = np.zeros_like(QX)
     for i in xrange(QX.shape[0]):
-        print i
+        #print i
         for j in xrange(QX.shape[1]):
             for k in xrange(QX.shape[2]):
                 newQ = V3D(QX[i,j,k],QY[i,j,k],QZ[i,j,k])
@@ -611,53 +621,56 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
     weights = np.sqrt(h)
     weights[weights<1] = 1
 
-    def fSigX(x,a,k,x0,b):
-        return a*np.exp(-k*(x-x0)) + b
-        #return a/(x-x0) + b
+    pos = np.empty(TH.shape + (2,))
+    pos[:,:,0] = TH
+    pos[:,:,1] = PH
 
-    def fSigP(x,a,k,phi,b):
-        return a*np.sin(k*x-phi) + b*x 
+    H = np.empty(h.shape + (2,))
+    H[:,:,0] = h
+    H[:,:,1] = h
 
 
     if forceParams is None:
-            meanTH = TH.mean()
-            meanPH = PH.mean()
-            #sigX0 = np.polyval([ 0.00173264,  0.0002208 ,  0.00185031, -0.00012078,  0.00189967], meanPH)
-            sigX0 = 0.018#ICCFT.oldScatFun(meanPH, 1.71151521e-02,   6.37218400e+00,   3.39439675e-03)
-            sigY0 = 0.018#np.polyval([ 0.00045678, -0.0017618 ,  0.0045013 , -0.00480677,  0.00376619], meanTH)
-            sigP0 = 0.0#fSigP(meanTH,  0.1460775 ,  1.85816592,  0.26850086, -0.00725352) 
-            p0=[np.max(h), meanTH, meanPH, sigX0, sigY0, sigP0,0.0]
-            print 'p0', p0 
+        meanTH = TH.mean()
+        meanPH = PH.mean()
+        sigX0 = 0.0018#ICCFT.oldScatFun(meanPH, 1.71151521e-02,   6.37218400e+00,   3.39439675e-03)
+        sigY0 = 0.0018#np.polyval([ 0.00045678, -0.0017618 ,  0.0045013 , -0.00480677,  0.00376619], meanTH)
+        sigP0 = 0.0#fSigP(meanTH,  0.1460775 ,  1.85816592,  0.26850086, -0.00725352) 
 
-            #bounds = ([0.0, thBins[thBins.size//2 - 2], phBins[phBins.size//2 - 2], 0.7*sigX0, 0.000, -0.4, 0], 
-            #        [np.inf, thBins[thBins.size//2 + 2], phBins[phBins.size//2 + 2], 1.3*sigX0, 0.007, 0.4, np.inf])
-            bounds = ([0.0, thBins[thBins.size//2 - 4], phBins[phBins.size//2 - 4], 0.0, 0.000, -0.4, 0], 
-                    [np.inf, thBins[thBins.size//2 + 4], phBins[phBins.size//2 + 4], 0.02, 0.02, 0.4, np.inf])
+        #Set some constraints
+        boundsDict = {}
+        boundsDict['A'] = [0.0, np.inf]
+        boundsDict['muX'] = [thBins[thBins.size//2 - 4], thBins[thBins.size//2 + 4]]
+        boundsDict['muY'] = [phBins[phBins.size//2 - 4], phBins[phBins.size//2 + 4]]
+        boundsDict['sigX'] = [0., 0.02]
+        boundsDict['sigY'] = [0., 0.02]
+        boundsDict['sigP'] = [-1.0, 1.0]
 
+        # Set our initial guess
+        m = mbvg.MBVG() 
+        m.init()
+        m['A'] = np.max(h)
+        m['muX'] = meanTH
+        m['muY'] = meanPH
+        m['sigX'] = sigX0
+        m['sigY'] = sigY0
+        m['sigP'] = sigP0
+        m.setAttributeValue('nX',h.shape[0])
+        m.setAttributeValue('nY',h.shape[1])
+        m.setConstraints(boundsDict)
+        print(m)
 
-            print 'bounds', bounds
-            boundsDict = {}
-            print 'bounds', bounds
-            boundsDict['A'] = (bounds[0][0], bounds[1][0])
-            boundsDict['mu0'] = (bounds[0][1], bounds[1][1])
-            boundsDict['mu1'] = (bounds[0][2], bounds[1][2])
-            boundsDict['sigX'] = (bounds[0][3], bounds[1][3])
-            boundsDict['sigY'] = (bounds[0][4], bounds[1][4])
-            boundsDict['p'] = (bounds[0][5], bounds[1][5])
-            boundsDict['bg'] = (bounds[0][6], bounds[1][6])
-            fitFun = lambda xArg,AArg,mu0Arg,mu1Arg,sigXArg,sigYArg,pArg,bgArg: bvgFitFunConstrained(xArg,AArg,mu0Arg,mu1Arg,sigXArg,sigYArg,pArg,bgArg,boundsDict)
-
-            #print(boundsDict)
-            #params= curve_fit(fitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(),p0=p0,  sigma=np.sqrt(weights[fitIDX]))
-            params= curve_fit(bvgFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(),p0=p0, bounds=bounds, sigma=np.sqrt(weights[fitIDX]))
-            #params= curve_fit(bvgFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(),p0=p0, sigma=np.sqrt(weights[fitIDX]))
-            #params= curve_fit(bvgFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX].ravel(),p0=p0)
-            print '!!!', params[0]
+        # Do the fit
+        bvgWS = CreateWorkspace(OutputWorkspace='bvgWS',DataX=pos.ravel(),DataY=H.ravel(),dataE=np.sqrt(H.ravel()))
+        fitFun = FunctionWrapper(m) + Polynomial(n=0)
+        fitResults = Fit(Function=fitFun, InputWorkspace='bvgWS', Output='bvgfit')
 
     elif forceParams is not None:
         p0 = np.zeros(7)
         p0[0] = np.max(h); p0[1] = TH.mean(); p0[2] = PH.mean()
         p0[3] = forceParams[5]; p0[4] = forceParams[6]; p0[5] = forceParams[7];
+
+        #Set some constraints
         isPos = np.sign(p0)
         bounds = ((1.0-isPos*forceTolerance)*p0, (1.0+isPos*forceTolerance)*p0)
         bounds[0][0] = 0.0;  bounds[1][0] = np.inf; #Amplitude
@@ -668,21 +681,45 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         bounds[1][-1] = np.inf
 
         boundsDict = {}
-        boundsDict['A'] = (bounds[0][0], bounds[1][0])
-        boundsDict['mu0'] = (bounds[0][1], bounds[1][1])
-        boundsDict['mu1'] = (bounds[0][2], bounds[1][2])
-        boundsDict['sigX'] = (bounds[0][3], bounds[1][3])
-        boundsDict['sigY'] = (bounds[0][4], bounds[1][4])
-        boundsDict['p'] = (bounds[0][5], bounds[1][5])
-        boundsDict['bg'] = (bounds[0][6], bounds[1][6])
-        fitFun = lambda xArg,AArg,mu0Arg,mu1Arg,sigXArg,sigYArg,pArg,bgArg: bvgFitFunConstrained(xArg,AArg,mu0Arg,mu1Arg,sigXArg,sigYArg,pArg,bgArg,boundsDict)
+        boundsDict['A'] = [0.0, np.inf]
+        boundsDict['muX'] = [bounds[0][1], bounds[1][1]]
+        boundsDict['muY'] = [bounds[0][2], bounds[1][2]]
+        boundsDict['sigX'] = [bounds[0][3], bounds[1][3]]
+        boundsDict['sigY'] = [bounds[0][4], bounds[1][4]]
+        boundsDict['sigP'] = [bounds[0][5], bounds[1][5]]
 
+        # Set our initial guess
+        m = mbvg.MBVG()
+        m.init()
+        m['A'] = np.max(h)
+        m['muX'] = TH.mean()
+        m['muY'] = PH.mean()
+        m['sigX'] = forceParams[5]
+        m['sigY'] = forceParams[6]
+        m['sigP'] = forceParams[7]
+        m.setAttributeValue('nX',h.shape[0])
+        m.setAttributeValue('nY',h.shape[1])
+        m.setConstraints(boundsDict)
 
-        print 'forcing: ', forceParams
-        print '~~~ p0:',p0
-        #params = curve_fit(fitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX],p0=p0)
-        params = curve_fit(bvgFitFun, [TH[fitIDX], PH[fitIDX]], h[fitIDX],p0=p0, bounds=bounds)
-        print '~~ params:', params[0]
+        # Do the fit
+        bvgWS = CreateWorkspace(OutputWorkspace='bvgWS',DataX=pos.ravel(),DataY=H.ravel(),dataE=np.sqrt(H.ravel()))
+        fitFun = FunctionWrapper(m) + Polynomial(n=0)
+        fitResults = Fit(Function=fitFun, InputWorkspace='bvgWS', Output='bvgfit')
+
+    # Recover the result
+    m = mbvg.MBVG()
+    m.init()
+    m['A'] = mtd['bvgfit_Parameters'].row(0)['Value']
+    m['muX'] = mtd['bvgfit_Parameters'].row(1)['Value']
+    m['muY'] = mtd['bvgfit_Parameters'].row(2)['Value']
+    m['sigX'] = mtd['bvgfit_Parameters'].row(3)['Value']
+    m['sigY'] = mtd['bvgfit_Parameters'].row(4)['Value']
+    m['sigP'] = mtd['bvgfit_Parameters'].row(5)['Value']
+    m.setAttributeValue('nX',h.shape[0])
+    m.setAttributeValue('nY',h.shape[1])
+    chiSq = fitResults[1]
+    params = [[m['A'], m['muX'], m['muY'], m['sigX'], m['sigY'], m['sigP'], mtd['bvgfit_Parameters'].row(6)['Value']], chiSq]
+
     return params, h, thBins, phBins
 
 def bvgFitFunConstrained(x, A, mu0, mu1,sigX,sigY,p,bg, boundsDict):
