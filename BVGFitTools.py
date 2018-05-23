@@ -489,8 +489,25 @@ def getBVGResult(box, params,nTheta=200,nPhi=200,fracBoxToHistogram=1.0):
     thCenters = 0.5*(thBins[1:] + thBins[:-1])
     phCenters = 0.5*(phBins[1:] + phBins[:-1])
     TH, PH = np.meshgrid(thCenters, phCenters,indexing='ij',copy=False)
-    Y = bvgFitFun([TH,PH],params[0],params[1],params[2],params[3],params[4],params[5],params[6])
-    Y = Y.reshape([nTheta-1,nPhi-1])
+
+
+    # Set our initial guess
+    m = mbvg.MBVG()
+    m.init()
+    m['A'] = params[0]
+    m['muX'] = params[1]
+    m['muY'] = params[2]
+    m['sigX'] = params[3]
+    m['sigY'] = params[4]
+    m['sigP'] = params[5]
+    m.setAttributeValue('nX',h.shape[0])
+    m.setAttributeValue('nY',h.shape[1])
+
+    pos = np.empty(TH.shape + (2,))
+    pos[:,:,0] = TH
+    pos[:,:,1] = PH
+
+    Y = m.function2D(pos)
     return Y
 
 def compareBVGFitData(box,params,nTheta=200,nPhi=200,figNumber=2,fracBoxToHistogram=1.0, useIDX=None):
@@ -533,7 +550,7 @@ def compareBVGFitData(box,params,nTheta=200,nPhi=200,figNumber=2,fracBoxToHistog
 
 
 
-def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX=None, forceParams=None, forceTolerance = 0.1, dph=10, dth=10):
+def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX=None, forceParams=None, forceTolerance=0.1, dth=8, dph=8):
     h, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi,zBG=zBG,fracBoxToHistogram=fracBoxToHistogram,useIDX=goodIDX)
     dtH = np.mean(np.diff(thBins))
     dpH = np.mean(np.diff(phBins))
@@ -564,8 +581,8 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         #Set some constraints
         boundsDict = {}
         boundsDict['A'] = [0.0, np.inf]
-        boundsDict['muX'] = [thBins[thBins.size//2 - 4], thBins[thBins.size//2 + 4]]
-        boundsDict['muY'] = [phBins[phBins.size//2 - 4], phBins[phBins.size//2 + 4]]
+        boundsDict['muX'] = [thBins[thBins.size//2 - dth], thBins[thBins.size//2 + dth]]
+        boundsDict['muY'] = [phBins[phBins.size//2 - dph], phBins[phBins.size//2 + dph]]
         boundsDict['sigX'] = [0., 0.02]
         boundsDict['sigY'] = [0., 0.02]
         boundsDict['sigP'] = [-1.0, 1.0]
@@ -646,17 +663,25 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
 
     return params, h, thBins, phBins
 
-
-def bvgFitFun(x, A, mu0, mu1,sigX,sigY,p,bg):
-    
-    sigma = np.array([[sigX**2,p*sigX*sigY], [p*sigX*sigY,sigY**2]])
-    mu = np.array([mu0,mu1])
-    return bvg(A, mu,sigma,x[0],x[1],bg).ravel() 
-
-def is_pos_def(x):
+def is_pos_def(x): #Checks if matrix x is positive definite
     return np.all(np.linalg.eigvals(x) > 0)
  
 def bvg(A, mu,sigma,x,y,bg):
+    '''
+    bvg is the bivariate gaussian.  This function is a convenient wrapper for 
+    multivariate_normal.  
+    Intput:
+        A: amplitude
+        mu: 2 element array containing [muX, muY]
+        sigma: SIGMA matrix [[sigX**2, sigX*sigY*sigP],[sigX*sigY*sigP,sigY**2]]
+        x: numy array containing the x coordinates (e.g. theta for detector space)
+        y: numy array containing the y coordinates (e.g. phi_az for detector space)
+        bg: constant for the background
+    Output:
+        a numpy array with the same shape as x.  If sigma is not positive-definite,
+        this array will contain all zeros.  Otherwise, the BVG will be evaluated
+        at each point at the value is returned.
+    '''
     pos = np.empty(x.shape+(2,))
     if pos.ndim == 4:
         pos[:,:,:,0] = x; pos[:,:,:,1] = y
