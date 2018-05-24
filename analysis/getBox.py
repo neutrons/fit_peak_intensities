@@ -137,7 +137,6 @@ q_frame='lab'
 pplmin_frac=0.; pplmax_frac=4.5; mindtBinWidth=10
 '''
 
-'''
 #DNA
 peaksFile = '/SNS/users/ntv/integrate/mandi_dna2/combined_1p5A.integrate'
 UBFile =  '/SNS/users/ntv/integrate/mandi_dna2/combined_1p5A.mat'
@@ -149,7 +148,8 @@ dQPixel=0.008#np.array([0.003, 0.003, 0.003])
 #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
 q_frame='lab'
-pplmin_frac=0.8; pplmax_frac=5.0; mindtBinWidth=25
+pplmin_frac=0.8; pplmax_frac=5; mindtBinWidth=25
+
 '''
 #cryo
 peaksFile = '/SNS/users/ntv/integrate/mandi_cryo/cryo_combined_2.integrate'
@@ -163,6 +163,7 @@ dQPixel=0.003#np.array([0.003, 0.003, 0.003])
 predpplCoefficients =  np.array([28.73949834,  13.04192586,   0.41210929]) #Go with ICCFT.oldScatFun
 q_frame='lab'
 pplmin_frac=0.4; pplmax_frac=1.5; mindtBinWidth=15
+'''
 
 '''
 #secondDNA
@@ -270,7 +271,7 @@ else:
 
 n_events = Box.getNumEventsArray()
 
-qMask = ICCFT.getHKLMask(UBMatrix, frac=0.5, dQPixel=dQPixel, dQ=dQ)
+qMask = ICCFT.getHKLMask(UBMatrix, frac=0.35, dQPixel=dQPixel, dQ=dQ)
 if not removeEdges:
     mask = np.ones_like(n_events)
 else:

@@ -100,18 +100,16 @@ sg = SpaceGroupFactory.createSpaceGroup("P 32 2 1")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
 '''
 
-'''
 #DNA
 sampleRuns = range(8758,8769+1)
 workDir = '/SNS/users/ntv/dropbox/'
-descriptorBVG = 'dna_3D_highres'
+descriptorBVG = 'dna_3D_highres_mbvg'
 descriptorTOF = 'dna_tof_highres'
 #peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
 peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
 ellipseFile = '/SNS/users/ntv/integrate/mandi_dna2/combined_1p5A.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 21 21 21")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
-'''
 
 '''
 #secondDNA
@@ -139,16 +137,18 @@ peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1],
 sg = SpaceGroupFactory.createSpaceGroup("I 4") 
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
 '''
+'''
 #cryo
 sampleRuns = range(8785,8791+1)
 workDir = '/SNS/users/ntv/dropbox/'
-descriptorBVG = 'cryo_3d_3'
+descriptorBVG = 'cryo_3d_mbvg'
 descriptorTOF = 'cryo_tof_2'
 peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
 #peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
 ellipseFile = '/SNS/users/ntv/integrate/mandi_cryo/cryo_combined_2.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 21 21 21")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
+'''
 
 
 #--------------------------------Load everything

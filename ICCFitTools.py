@@ -537,7 +537,6 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, qMask, zBG=-1.
     #Find the qVoxels to use
     n_events = box.getNumEventsArray()
     hasEventsIDX = np.logical_and(n_events>0,qMask)
-
     #Set up some things to only consider good pixels
     N = np.shape(n_events)[0]
     maxBin = np.shape(n_events)
@@ -585,7 +584,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, qMask, zBG=-1.
     tD = 3176.507 * flightPath * np.sin(scatteringHalfAngle)/np.linalg.norm([qx[qx.shape[0]//2 + 1], qy[qy.shape[0]//2+1], qz[qz.shape[0]//2+1]])
     dtBinWidth = np.abs(tD-tC)
     dtBinWidth = max(mindtBinWidth, dtBinWidth)
-    dtBinWidth = min(30, dtBinWidth)
+    dtBinWidth = min(50, dtBinWidth)
     tBins = np.arange(tMin, tMax, dtBinWidth)
     weightList = n_events[hasEventsIDX] #- pp_lambda
     h = np.histogram(tList,tBins,weights=weightList);
@@ -790,7 +789,8 @@ def doICCFit(tofWS, energy, flightPath, padeCoefficients, constraintScheme=None,
     [fICC.setParameter(iii,v) for iii,v in enumerate(x0[:fICC.numParams()])]
     x = tofWS.readX(0)
     y = tofWS.readY(0)
-    bgx0 = np.polyfit(x[np.r_[0:5,-5:0]], y[np.r_[0:5,-5:0]], fitOrder)
+    bgx0 = np.polyfit(x[np.r_[0:15,-15:0]], y[np.r_[0:15,-15:0]], fitOrder)
+
     nPts = x.size                
     scaleFactor = np.max((y-np.polyval(bgx0,x))[nPts//3:2*nPts//3])/np.max(fICC.function1D(x)[nPts//3:2*nPts//3])
     x0[4] = x0[4]*scaleFactor

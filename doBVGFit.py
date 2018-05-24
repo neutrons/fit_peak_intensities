@@ -62,7 +62,6 @@ def doBVGFits(sampleRunsList=None):
     mindtBinWidth = 15
     '''
 
-    '''
     #DNA
     loadDir = '/data/dna/IPTS-18552/'
     nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
@@ -73,17 +72,18 @@ def doBVGFits(sampleRunsList=None):
     qLow = -5.0; qHigh = 5.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
     dQPixel = 0.007 #dQ for each voxel in qBox - recommended to decrease for successive fits
-    descriptor = 'dna_3D_highres' #Does not end with '/'
+    descriptor = 'dna_3D_highres_mbvg' #Does not end with '/'
     doIterativeBackgroundFitting = False
     numTimesToInterpolate=0
     workDir = '/SNS/users/ntv/dropbox/'
-    descriptorRead = None#'dna_tof_2' 
+    descriptorRead = 'dna_tof_highres' 
     #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
     q_frame='lab'
     mindtBinWidth = 25
     fracHKLQMask = 0.5
     pplmin_frac = 0.7; pplmax_frac = 1.5
+
     '''
     #cryo
     loadDir = '/SNS/MANDI/IPTS-19172/nexus/'
@@ -95,7 +95,7 @@ def doBVGFits(sampleRunsList=None):
     qLow = -5.0; qHigh = 5.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
     dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
-    descriptor = 'cryo_3d_3' #Does not end with '/'
+    descriptor = 'cryo_3d_mbvg' #Does not end with '/'
     doIterativeBackgroundFitting = False
     numTimesToInterpolate=0
     workDir = '/SNS/users/ntv/dropbox/'
@@ -105,6 +105,7 @@ def doBVGFits(sampleRunsList=None):
     mindtBinWidth = 15
     fracHKLQMask = 0.5
     pplmin_frac = 0.4; pplmax_frac = 1.5
+    '''
 
     '''
     #secondDNA
@@ -259,7 +260,7 @@ def doBVGFits(sampleRunsList=None):
     try:
         ICCFitParams = ICAT.getFitParameters(workDir, descriptorRead, sampleRuns[0], sampleRuns[-1], sampleRuns=sampleRuns)
     except:
-        raise
+        #raise
         print 'Cannot read ICCFitParams - will set to None and fit as we go!'
         ICCFitParams = None
     try:
@@ -267,9 +268,9 @@ def doBVGFits(sampleRunsList=None):
     except:
         print 'Cannot read ICCFitDict.  Will set to None...'
         ICCFitDict = None
-    strongPeakParams = pickle.load(open('strongPeakParams_cryo.pkl', 'rb'))
+    #strongPeakParams = pickle.load(open('strongPeakParams_cryo.pkl', 'rb'))
     #strongPeakParams = pickle.load(open('strongPeakParams_dna.pkl', 'rb'))
-
+    strongPeakParams = None
     from timeit import default_timer as timer
 
     badFits = []
@@ -311,7 +312,7 @@ def doBVGFits(sampleRunsList=None):
                     if ICCFitParams is not None:
                         iccfp = ICCFitParams[peakNumber]
                     else: iccfp = None
-                    Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1, fICCParams=iccfp, strongPeakParams=strongPeakParams, predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac)
+                    Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1, fICCParams=iccfp, strongPeakParams=strongPeakParams, predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac, edgeCutoff=3)
                     #Does not force weak peaks
                     #Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1, fICCParams=ICCFitParams[peakNumber], oldICCFit=ICCFitDict[peakNumber],  predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth)
 

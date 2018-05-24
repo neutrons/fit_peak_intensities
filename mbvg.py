@@ -47,11 +47,13 @@ class MBVG(IFunction1D): #MantidBVG
         self.declareParameter("sigX") #sigma along the x direction
         self.declareParameter("sigY") #sigma along the y direction
         self.declareParameter("sigP") #interaction term rho
+        self.declareParameter("bg") #constant BG terms
         self.declareAttribute("nX", 50) #used for reconstructing 2d profile
         self.declareAttribute("nY", 50) #used for reconstruction 2d profile
         self.addConstraints("0 < A") #Require amplitude to be positive
         self.addConstraints("0 < sigX") #standard deviations must be positive
         self.addConstraints("0 < sigY") #standard deviations must be positive
+        self.addConstraints("0 < bg") #standard deviations must be positive
  
     def function1D(self, t):
         '''
@@ -80,7 +82,7 @@ class MBVG(IFunction1D): #MantidBVG
         sigX = self.getParamValue(3)
         sigY = self.getParamValue(4)
         sigP = self.getParamValue(5)
-
+        bg = self.getParamValue(6)
 
         sigXY = sigX*sigY*sigP
         Z = A*bivariate_normal(X,Y, sigmax=sigX, sigmay=sigY,
@@ -91,6 +93,7 @@ class MBVG(IFunction1D): #MantidBVG
             zRet[:,:,1] = Z
         elif t.ndim == 3:
             zRet = Z
+        zRet += bg
         return zRet.ravel()
 
     def getMu(self):
@@ -112,7 +115,7 @@ class MBVG(IFunction1D): #MantidBVG
         setConstraints sets fitting constraints for the mbvg function.
         Intput:
             boundsDict: a dictionary object where each key is a parameter as a string 
-                        ('A', 'muX', 'muY', 'sigX', 'sigY', 'sigP') and the value is 
+                        ('A', 'muX', 'muY', 'sigX', 'sigY', 'sigP', 'bg') and the value is 
                         an array with the lower bound and upper bound
 
         '''
@@ -125,7 +128,7 @@ class MBVG(IFunction1D): #MantidBVG
                     print 'Setting constraints on mbvg; reversing bounds'
                     self.addConstraints("{:4.4e} < A < {:4.4e}".format(boundsDict[param][1], boundsDict[param][0]))
             except ValueError:
-                print 'Cannot set parameter {:s} for mbvg.  Valid choices are (\'A\', \'muX\', \'muY\', \'sigX\', \'sigY\', \'sigP\')'.format(param)
+                print 'Cannot set parameter {:s} for mbvg.  Valid choices are (\'A\', \'muX\', \'muY\', \'sigX\', \'sigY\', \'sigP\', \'bg\')'.format(param)
 
     def function2D(self, t):
         '''
@@ -153,11 +156,12 @@ class MBVG(IFunction1D): #MantidBVG
         sigX = self.getParamValue(3)
         sigY = self.getParamValue(4)
         sigP = self.getParamValue(5)
+        bg = self.getParamValue(6)
 
         sigXY = sigX*sigY*sigP
         Z = A*bivariate_normal(X,Y, sigmax=sigX, sigmay=sigY,
                             mux=muX,muy=muY,sigmaxy=sigXY)
-
+        Z += bg
         return Z        
 
     def function3D(self, t):
@@ -171,10 +175,11 @@ class MBVG(IFunction1D): #MantidBVG
         sigX = self.getParamValue(3)
         sigY = self.getParamValue(4)
         sigP = self.getParamValue(5)
+        bg = self.getParamValue(6)
 
         sigXY = sigX*sigY*sigP
         Z = A*bivariate_normal(X,Y, sigmax=sigX, sigmay=sigY,
                             mux=muX,muy=muY,sigmaxy=sigXY)
-
+        Z += bg
         return Z
 

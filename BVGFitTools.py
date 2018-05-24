@@ -187,7 +187,7 @@ def fitScaling(n_events,box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
 
     #goodIDX = n_events > -1.0
     QX, QY, QZ = ICCFT.getQXQYQZ(box)
-    dP = 8
+    dP = 4
     fitMaxIDX = tuple(np.array(np.unravel_index(YJOINT.argmax(), YJOINT.shape)))
     if goodIDX is None:
         goodIDX = np.zeros_like(YJOINT).astype(np.bool)
@@ -198,15 +198,17 @@ def fitScaling(n_events,box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
 
 
     scaleLinear = Polynomial(n=1)
+    scaleLinear.constrain("A1>0")
     scaleX = YJOINT[goodIDX]
     scaleY = n_events[goodIDX]
-    scaleWS = CreateWorkspace(OutputWorkspace='scaleWS', dataX=scaleX, dataY=scaleY)   
+    scaleWS = CreateWorkspace(OutputWorkspace='scaleWS', dataX=scaleX, dataY=scaleY, dataE=np.sqrt(scaleY))   
     fitResultsScaling = Fit(Function=scaleLinear, InputWorkspace='scaleWS', Output='scalefit')
     scaleFitWorkspace = mtd['scaleFit_Workspace']
     A0 = fitResultsScaling[3].row(0)['Value']
     A1 = fitResultsScaling[3].row(1)['Value']
     YRET = A1*YJOINT + A0
     chiSqRed = fitResultsScaling[1]
+
 
     print chiSqRed, 'is chiSqRed'
     return YRET, chiSqRed, A1
@@ -315,7 +317,6 @@ def getTOFParameters(box, peak, padeCoefficients,dtSpread=0.03,minFracPixels=0.0
         fICC[param] = mtd['fit_Parameters'].row(i)['Value']
     return fICC 
 
-#Does full 3D fit
 def fitPeak3D(box, n_events, peak,goodIDX,padeCoefficients,qMask=None):
 
     QX, QY, QZ = ICCFT.getQXQYQZ(box)
@@ -500,6 +501,7 @@ def getBVGResult(box, params,nTheta=200,nPhi=200,fracBoxToHistogram=1.0):
     m['sigX'] = params[3]
     m['sigY'] = params[4]
     m['sigP'] = params[5]
+    m['bg'] = params[6]
     m.setAttributeValue('nX',h.shape[0])
     m.setAttributeValue('nY',h.shape[1])
 
@@ -511,6 +513,9 @@ def getBVGResult(box, params,nTheta=200,nPhi=200,fracBoxToHistogram=1.0):
     return Y
 
 def compareBVGFitData(box,params,nTheta=200,nPhi=200,figNumber=2,fracBoxToHistogram=1.0, useIDX=None):
+    '''
+    compareBVGFitData is used for comparing a fit and the histogram.  Useful for debugging.
+    '''
     h, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram, useIDX=useIDX)
     Y = getBVGResult(box,params,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram)
     pLow = 0.0; pHigh = 1.0
@@ -550,7 +555,25 @@ def compareBVGFitData(box,params,nTheta=200,nPhi=200,figNumber=2,fracBoxToHistog
 
 
 
-def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX=None, forceParams=None, forceTolerance=0.1, dth=8, dph=8):
+def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX=None, forceParams=None, forceTolerance=0.1, dth=10, dph=10):
+    '''
+    doBVGFit takes a binned MDbox and returns the fit of the peak shape along the non-TOF direction.  This is done in one of two ways:
+        1) Standard least squares fit of the 2D histogram.
+        2) Forcing a set of parameters.  Under this, parameters are tightly constrained.  The peak center may move by (dth, dph) from
+        predicted position (in units of histogram pixels) and sigma parameters can change by a factor of forceTolerance.
+    Input:
+        box: a binned 'MDbox'.
+        nTheta, nPhi: integer, number of bins to use when creating 2D BVG histogram
+        zBG: Z score at which we consider events to be above BG #TODO: I think this can be removed since we pass in goodIDX?
+        fracBoxToHistrogram: Leave at 1.0 to histogram whole box.  Any values lower will remove the edges of box before 
+                histogramming.
+        goodIDX: a numpy array of shape box.getNumEventsArray().shape.  True for voxels we will histogram (i.e. False if the
+                events in this voxel are background.)
+        forceParams: set of parameters to force.  These are the same format as a row in strongPeaksParams
+        forceTolerance: the factor we allow sigX, sigY, sigP to change when forcing peaks.  Not used if forceParams is None.
+        dth, dph: The peak center may move by (dth, dph) from predicted position (in units of histogram pixels).
+        
+    '''
     h, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi,zBG=zBG,fracBoxToHistogram=fracBoxToHistogram,useIDX=goodIDX)
     dtH = np.mean(np.diff(thBins))
     dpH = np.mean(np.diff(phBins))
@@ -571,28 +594,35 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
     H[:,:,1] = h
 
 
+    def fSigP(x,a,k,phi,b):
+        return a*np.sin(k*x-phi) + b*x
+
     if forceParams is None:
         meanTH = TH.mean()
         meanPH = PH.mean()
-        sigX0 = 0.0018#ICCFT.oldScatFun(meanPH, 1.71151521e-02,   6.37218400e+00,   3.39439675e-03)
-        sigY0 = 0.0018#np.polyval([ 0.00045678, -0.0017618 ,  0.0045013 , -0.00480677,  0.00376619], meanTH)
-        sigP0 = 0.0#fSigP(meanTH,  0.1460775 ,  1.85816592,  0.26850086, -0.00725352) 
+        #sigX0 = 0.0018
+        sigX0 = ICCFT.oldScatFun(meanPH, 1.71151521e-02,   6.37218400e+00,   3.39439675e-03)
+        sigY0 = 0.002#np.polyval([ 0.00045678, -0.0017618 ,  0.0045013 , -0.00480677,  0.00376619], meanTH)
+        #sigP0 = 0.0#fSigP(meanTH,  0.1460775 ,  1.85816592,  0.26850086, -0.00725352) 
+        sigP0 = fSigP(meanTH,  0.1460775 ,  1.85816592,  0.26850086, -0.00725352) 
 
         #Set some constraints
         boundsDict = {}
         boundsDict['A'] = [0.0, np.inf]
         boundsDict['muX'] = [thBins[thBins.size//2 - dth], thBins[thBins.size//2 + dth]]
         boundsDict['muY'] = [phBins[phBins.size//2 - dph], phBins[phBins.size//2 + dph]]
-        boundsDict['sigX'] = [0., 0.02]
-        boundsDict['sigY'] = [0., 0.02]
-        boundsDict['sigP'] = [-1.0, 1.0]
+        boundsDict['sigX'] = [0.5*sigX0, 3.5*sigX0]
+        boundsDict['sigY'] = [0., 0.007]
+        boundsDict['sigP'] = [-0.4, 0.4]
 
         # Set our initial guess
         m = mbvg.MBVG() 
         m.init()
         m['A'] = np.max(h)
-        m['muX'] = meanTH
-        m['muY'] = meanPH
+        #m['muX'] = meanTH
+        #m['muY'] = meanPH
+        m['muX'] = TH[np.unravel_index(h.argmax(), h.shape)]
+        m['muY'] = PH[np.unravel_index(h.argmax(), h.shape)]
         m['sigX'] = sigX0
         m['sigY'] = sigY0
         m['sigP'] = sigP0
@@ -600,12 +630,10 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         m.setAttributeValue('nY',h.shape[1])
         m.setConstraints(boundsDict)
         print(m)
-
         # Do the fit
-        bvgWS = CreateWorkspace(OutputWorkspace='bvgWS',DataX=pos.ravel(),DataY=H.ravel(),dataE=np.sqrt(H.ravel()))
-        fitFun = FunctionWrapper(m) + Polynomial(n=0)
+        bvgWS = CreateWorkspace(OutputWorkspace='bvgWS',DataX=pos.ravel(),DataY=H.ravel())#, DataE=np.sqrt(H.ravel()))
+        fitFun = m
         fitResults = Fit(Function=fitFun, InputWorkspace='bvgWS', Output='bvgfit')
-
     elif forceParams is not None:
         p0 = np.zeros(7)
         p0[0] = np.max(h); p0[1] = TH.mean(); p0[2] = PH.mean()
@@ -622,13 +650,15 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         bounds[1][-1] = np.inf
 
         boundsDict = {}
+        #boundsDict['A'] = [0.0, np.inf]
+        #boundsDict['muX'] = [bounds[0][1], bounds[1][1]]
+        #boundsDict['muY'] = [bounds[0][2], bounds[1][2]]
         boundsDict['A'] = [0.0, np.inf]
-        boundsDict['muX'] = [bounds[0][1], bounds[1][1]]
-        boundsDict['muY'] = [bounds[0][2], bounds[1][2]]
+        boundsDict['muX'] = [thBins[thBins.size//2 - dth], thBins[thBins.size//2 + dth]]
+        boundsDict['muY'] = [phBins[phBins.size//2 - dph], phBins[phBins.size//2 + dph]]
         boundsDict['sigX'] = [bounds[0][3], bounds[1][3]]
         boundsDict['sigY'] = [bounds[0][4], bounds[1][4]]
         boundsDict['sigP'] = [bounds[0][5], bounds[1][5]]
-
         # Set our initial guess
         m = mbvg.MBVG()
         m.init()
@@ -641,10 +671,12 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         m.setAttributeValue('nX',h.shape[0])
         m.setAttributeValue('nY',h.shape[1])
         m.setConstraints(boundsDict)
+        print m
+
 
         # Do the fit
-        bvgWS = CreateWorkspace(OutputWorkspace='bvgWS',DataX=pos.ravel(),DataY=H.ravel(),dataE=np.sqrt(H.ravel()))
-        fitFun = FunctionWrapper(m) + Polynomial(n=0)
+        bvgWS = CreateWorkspace(OutputWorkspace='bvgWS',DataX=pos.ravel(),DataY=H.ravel())#, DataE=np.sqrt(H.ravel()))
+        fitFun = m
         fitResults = Fit(Function=fitFun, InputWorkspace='bvgWS', Output='bvgfit')
 
     # Recover the result
@@ -656,11 +688,13 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
     m['sigX'] = mtd['bvgfit_Parameters'].row(3)['Value']
     m['sigY'] = mtd['bvgfit_Parameters'].row(4)['Value']
     m['sigP'] = mtd['bvgfit_Parameters'].row(5)['Value']
+    m['bg'] = mtd['bvgfit_Parameters'].row(6)['Value']
+
     m.setAttributeValue('nX',h.shape[0])
     m.setAttributeValue('nY',h.shape[1])
     chiSq = fitResults[1]
-    params = [[m['A'], m['muX'], m['muY'], m['sigX'], m['sigY'], m['sigP'], mtd['bvgfit_Parameters'].row(6)['Value']], chiSq]
-
+    params = [[m['A'], m['muX'], m['muY'], m['sigX'], m['sigY'], m['sigP'], m['bg']], chiSq]
+    print params
     return params, h, thBins, phBins
 
 def is_pos_def(x): #Checks if matrix x is positive definite
