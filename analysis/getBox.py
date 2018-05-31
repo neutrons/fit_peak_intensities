@@ -137,6 +137,7 @@ q_frame='lab'
 pplmin_frac=0.; pplmax_frac=4.5; mindtBinWidth=10
 '''
 
+'''
 #DNA
 peaksFile = '/SNS/users/ntv/integrate/mandi_dna2/combined_1p5A.integrate'
 UBFile =  '/SNS/users/ntv/integrate/mandi_dna2/combined_1p5A.mat'
@@ -149,6 +150,7 @@ dQPixel=0.008#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
 q_frame='lab'
 pplmin_frac=0.8; pplmax_frac=5; mindtBinWidth=25
+'''
 
 '''
 #cryo
@@ -180,7 +182,6 @@ q_frame='lab'
 pplmin_frac=0.6; pplmax_frac=1.5; mindtBinWidth=25
 '''
 
-'''
 #Beta Lac
 #peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
 #UBFile =  '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
@@ -201,9 +202,24 @@ pplmin_frac=0.8; pplmax_frac=2.0; mindtBinWidth=15
 peaksFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.integrate'
 UBFile =  '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.mat'
 nxsTemplate = '/SNS/MANDI/IPTS-8776/data/MANDI_%i_event.nxs'
+predpplCoefficients = np.array([ 3.56405187,  8.34071842,  0.14134522])
+pplmin_frac=0.4; pplmax_frac=2.0; mindtBinWidth=15
+
+
 '''
-
-
+#beta_lac_cryo
+peaksFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase_cryo/combined.integrate'
+UBFile =  '/SNS/users/ntv/integrate/mandi_beta_lactamase_cryo/8799.mat'
+DetCalFile = None#'/SNS/users/ntv/integrate/mandi_dna2/mandi_dna.DetCal'
+workDir = '/SNS/users/ntv/dropbox/' #End with '/'
+loadDir = '/SNS/MANDI/IPTS-8776/nexus/'
+nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
+dQPixel=0.005#np.array([0.003, 0.003, 0.003])
+#predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+predpplCoefficients =  np.array([28.73949834,  13.04192586,   0.41210929]) #Go with ICCFT.oldScatFun
+q_frame='lab'
+pplmin_frac=0.0; pplmax_frac=1.0; mindtBinWidth=15
+'''
 
 # Some parameters
 removeEdges = False 
@@ -271,7 +287,7 @@ else:
 
 n_events = Box.getNumEventsArray()
 
-qMask = ICCFT.getHKLMask(UBMatrix, frac=0.35, dQPixel=dQPixel, dQ=dQ)
+qMask = ICCFT.getHKLMask(UBMatrix, frac=0.5, dQPixel=dQPixel, dQ=dQ)
 if not removeEdges:
     mask = np.ones_like(n_events)
 else:

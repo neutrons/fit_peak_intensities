@@ -42,11 +42,10 @@ peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1],
 ellipseFile = '/SNS/users/ntv/integrate/corelli_beryl/combined_hexagonal_indexedonly.integrate'
 pg = PointGroupFactory.createPointGroup("6/mmm")
 '''
-'''
 #Beta lactamase mutant
 sampleRuns = range(5921,5931+1)
 workDir = '/SNS/users/ntv/dropbox/'
-descriptorBVG = 'beta_lac_3D_lab_mutant'
+descriptorBVG = 'beta_lac_3D_mbvg_mutant'
 descriptorTOF = 'beta_lac_lab_highres_mut2'
 peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
 #peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
@@ -55,7 +54,6 @@ peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
 ellipseFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 32 2 1")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
-'''
 
 '''
 #pth
@@ -100,6 +98,7 @@ sg = SpaceGroupFactory.createSpaceGroup("P 32 2 1")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
 '''
 
+'''
 #DNA
 sampleRuns = range(8758,8769+1)
 workDir = '/SNS/users/ntv/dropbox/'
@@ -110,6 +109,7 @@ peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1],
 ellipseFile = '/SNS/users/ntv/integrate/mandi_dna2/combined_1p5A.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 21 21 21")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
+'''
 
 '''
 #secondDNA

@@ -141,7 +141,6 @@ class MBVG(IFunction1D): #MantidBVG
             a 2D array either size nX*nY (intput type 1) or A*B (input type 2) with intensities
             of the BVG.
         '''
-        print(self)
         if t.ndim == 1:
             nX = int(self.getAttributeValue('nX'))
             nY = int(self.getAttributeValue('nY'))

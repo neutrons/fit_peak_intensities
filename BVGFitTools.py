@@ -89,11 +89,11 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
     if strongPeakParams is not None and useForceParams:
         ph = np.arctan2(q0[1],q0[0])
         th = np.arctan2(q0[2],np.hypot(q0[0],q0[1])) 
-        thphPeak = np.array([ph,th])
-        tmp = strongPeakParams[:,:2] - thphPeak
-        dist = np.sqrt(tmp[:,0]**2 + tmp[:,1]**2)
-        nnIDX = np.argmin(dist)
-        print 'Using [ph, th] =', strongPeakParams[nnIDX,:2], 'for ', thphPeak
+        phthPeak = np.array([ph,th])
+        tmp = strongPeakParams[:,:2] - phthPeak
+        distSq = tmp[:,0]**2 + tmp[:,1]**2
+        nnIDX = np.argmin(distSq)
+        print 'Using [ph, th] =', strongPeakParams[nnIDX,:2], 'for ', phthPeak, '; nnIDX = ', nnIDX
         params,h,t,p = doBVGFit(box,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram, goodIDX=goodIDX, forceParams=strongPeakParams[nnIDX])
     else:
         params,h,t,p = doBVGFit(box,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram, goodIDX=goodIDX)
@@ -187,8 +187,9 @@ def fitScaling(n_events,box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
 
     #goodIDX = n_events > -1.0
     QX, QY, QZ = ICCFT.getQXQYQZ(box)
-    dP = 4
+    dP = 3
     fitMaxIDX = tuple(np.array(np.unravel_index(YJOINT.argmax(), YJOINT.shape)))
+    print fitMaxIDX, '*************************'
     if goodIDX is None:
         goodIDX = np.zeros_like(YJOINT).astype(np.bool)
         goodIDX[max(fitMaxIDX[0]-dP,0):min(fitMaxIDX[0]+dP,goodIDX.shape[0]), 
@@ -201,7 +202,8 @@ def fitScaling(n_events,box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
     scaleLinear.constrain("A1>0")
     scaleX = YJOINT[goodIDX]
     scaleY = n_events[goodIDX]
-    scaleWS = CreateWorkspace(OutputWorkspace='scaleWS', dataX=scaleX, dataY=scaleY, dataE=np.sqrt(scaleY))   
+    print scaleX.shape, scaleY.shape, n_events.shape
+    scaleWS = CreateWorkspace(OutputWorkspace='scaleWS', dataX=scaleX, dataY=scaleY)#, dataE=np.sqrt(scaleY))   
     fitResultsScaling = Fit(Function=scaleLinear, InputWorkspace='scaleWS', Output='scalefit')
     scaleFitWorkspace = mtd['scaleFit_Workspace']
     A0 = fitResultsScaling[3].row(0)['Value']
@@ -601,7 +603,7 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         meanTH = TH.mean()
         meanPH = PH.mean()
         #sigX0 = 0.0018
-        sigX0 = ICCFT.oldScatFun(meanPH, 1.71151521e-02,   6.37218400e+00,   3.39439675e-03)
+        sigX0 = 0.002#ICCFT.oldScatFun(meanPH, 1.71151521e-02,   6.37218400e+00,   3.39439675e-03)
         sigY0 = 0.002#np.polyval([ 0.00045678, -0.0017618 ,  0.0045013 , -0.00480677,  0.00376619], meanTH)
         #sigP0 = 0.0#fSigP(meanTH,  0.1460775 ,  1.85816592,  0.26850086, -0.00725352) 
         sigP0 = fSigP(meanTH,  0.1460775 ,  1.85816592,  0.26850086, -0.00725352) 
@@ -611,9 +613,11 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         boundsDict['A'] = [0.0, np.inf]
         boundsDict['muX'] = [thBins[thBins.size//2 - dth], thBins[thBins.size//2 + dth]]
         boundsDict['muY'] = [phBins[phBins.size//2 - dph], phBins[phBins.size//2 + dph]]
-        boundsDict['sigX'] = [0.5*sigX0, 3.5*sigX0]
-        boundsDict['sigY'] = [0., 0.007]
+        #boundsDict['sigX'] = [0.7*sigX0, 1.3*sigX0]
+        boundsDict['sigX'] = [0., 0.02]
+        boundsDict['sigY'] = [0., 0.02]
         boundsDict['sigP'] = [-0.4, 0.4]
+        boundsDict['bg'] = [0, np.inf]
 
         # Set our initial guess
         m = mbvg.MBVG() 
@@ -629,11 +633,13 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         m.setAttributeValue('nX',h.shape[0])
         m.setAttributeValue('nY',h.shape[1])
         m.setConstraints(boundsDict)
+        print 'before: '
         print(m)
         # Do the fit
-        bvgWS = CreateWorkspace(OutputWorkspace='bvgWS',DataX=pos.ravel(),DataY=H.ravel())#, DataE=np.sqrt(H.ravel()))
-        fitFun = m
-        fitResults = Fit(Function=fitFun, InputWorkspace='bvgWS', Output='bvgfit')
+        bvgWS = CreateWorkspace(OutputWorkspace='bvgWS',DataX=pos.ravel(),DataY=H.ravel(), DataE=np.sqrt(H.ravel()))
+        fitResults = Fit(Function=m, InputWorkspace='bvgWS', Output='bvgfit',Minimizer='Levenberg-MarquardtMD')
+        print 'after'
+        print m
     elif forceParams is not None:
         p0 = np.zeros(7)
         p0[0] = np.max(h); p0[1] = TH.mean(); p0[2] = PH.mean()
@@ -663,21 +669,23 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         m = mbvg.MBVG()
         m.init()
         m['A'] = np.max(h)
-        m['muX'] = TH.mean()
-        m['muY'] = PH.mean()
+        #m['muX'] = TH.mean()
+        #m['muY'] = PH.mean()
+        m['muX'] = TH[np.unravel_index(h.argmax(), h.shape)]
+        m['muY'] = PH[np.unravel_index(h.argmax(), h.shape)]
         m['sigX'] = forceParams[5]
         m['sigY'] = forceParams[6]
         m['sigP'] = forceParams[7]
         m.setAttributeValue('nX',h.shape[0])
         m.setAttributeValue('nY',h.shape[1])
         m.setConstraints(boundsDict)
+        print 'before:'
         print m
-
-
+        
         # Do the fit
-        bvgWS = CreateWorkspace(OutputWorkspace='bvgWS',DataX=pos.ravel(),DataY=H.ravel())#, DataE=np.sqrt(H.ravel()))
+        bvgWS = CreateWorkspace(OutputWorkspace='bvgWS',DataX=pos.ravel(),DataY=H.ravel(), DataE=np.sqrt(H.ravel()))
         fitFun = m
-        fitResults = Fit(Function=fitFun, InputWorkspace='bvgWS', Output='bvgfit')
+        fitResults = Fit(Function=fitFun, InputWorkspace='bvgWS', Output='bvgfit', Minimizer='Levenberg-MarquardtMD')
 
     # Recover the result
     m = mbvg.MBVG()

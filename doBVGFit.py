@@ -62,6 +62,7 @@ def doBVGFits(sampleRunsList=None):
     mindtBinWidth = 15
     '''
 
+    '''
     #DNA
     loadDir = '/data/dna/IPTS-18552/'
     nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
@@ -82,7 +83,8 @@ def doBVGFits(sampleRunsList=None):
     q_frame='lab'
     mindtBinWidth = 25
     fracHKLQMask = 0.5
-    pplmin_frac = 0.7; pplmax_frac = 1.5
+    pplmin_frac = 0.7; pplmax_frac = 5
+    '''
 
     '''
     #cryo
@@ -179,7 +181,6 @@ def doBVGFits(sampleRunsList=None):
     pplmin_frac = 0.7; pplmax_frac = 1.5
     '''
 
-    '''
     #Beta Lac Mutant
     loadDir = '/SNS/MANDI/IPTS-8776/data/'
     peaksFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.integrate'
@@ -190,16 +191,16 @@ def doBVGFits(sampleRunsList=None):
     qLow = -10.0; qHigh = 10.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
     dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
-    descriptor = 'beta_lac_3D_lab_mutant' #Does not end with '/'
+    descriptor = 'beta_lac_3D_mbvg_mutant' #Does not end with '/'
     doIterativeBackgroundFitting = False
     numTimesToInterpolate=0
     workDir = '/SNS/users/ntv/dropbox/'
-    descriptorRead = 'beta_lac_lab_highres2'
+    #descriptorRead = 'beta_lac_lab_highres2'
+    descriptorRead = 'beta_lac_lab_highres_mut2'
     predpplCoefficients = np.array([ 3.56405187,  8.34071842,  0.14134522]) #Go with ICCFT.oldScatFun
     q_frame='lab'
     mindtBinWidth = 15
     pplmin_frac = 0.4; pplmax_frac = 1.5
-    '''
 
     '''
     #Beta Lac
@@ -270,7 +271,9 @@ def doBVGFits(sampleRunsList=None):
         ICCFitDict = None
     #strongPeakParams = pickle.load(open('strongPeakParams_cryo.pkl', 'rb'))
     #strongPeakParams = pickle.load(open('strongPeakParams_dna.pkl', 'rb'))
-    strongPeakParams = None
+    #strongPeakParams = pickle.load(open('strongPeakParams_betalac_lab.pkl', 'rb'))
+    strongPeakParams = pickle.load(open('strongPeakParams_beta_lac_mut_mbvg.pkl', 'rb'))
+    #strongPeakParams = None
     from timeit import default_timer as timer
 
     badFits = []
@@ -311,6 +314,7 @@ def doBVGFits(sampleRunsList=None):
                     #Will force weak peaks to be fit using a neighboring peak profile
                     if ICCFitParams is not None:
                         iccfp = ICCFitParams[peakNumber]
+                        iccfp = None#ICCFitParams[peakNumber]
                     else: iccfp = None
                     Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1, fICCParams=iccfp, strongPeakParams=strongPeakParams, predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac, edgeCutoff=3)
                     #Does not force weak peaks

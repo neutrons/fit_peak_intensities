@@ -227,6 +227,23 @@ def doIntegration(sampleRunsList=None):
     q_frame='lab'
     minppl_frac=0.4; maxppl_frac=1.5; mindtBinWidth=15
     '''
+    #Beta lactamase cryo
+    sampleRuns = range(8799,8803+1)
+    loadDir = '/SNS/MANDI/IPTS-8776/nexus/'
+    peaksFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase_cryo/combined.integrate'
+    UBFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase_cryo/8799.mat'
+    nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
+    peaksFormat = peaksFile
+    UBFormat = UBFile
+    DetCalFile = None
+    qLow = -5.0; qHigh = 5.0
+    dtSpread = 0.015 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+    dQPixel = 0.005  #dQ for each voxel in qBox - recommended to decrease for successive fits
+    dQMax = 0.15 #tune this
+    descriptor = 'beta_lac_cryo_tof' #Does not end with '/'
+    predpplCoefficients = np.array([28.73949834,  13.04192586,   0.41210929]) #Go with ICCFT.oldScatFun
+    q_frame='lab'
+    minppl_frac=0.0; maxppl_frac=1.0; mindtBinWidth=15
 
     ''' 
     #Beta lactamase - 2016 - MANDI
