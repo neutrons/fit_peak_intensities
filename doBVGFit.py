@@ -197,7 +197,8 @@ def doBVGFits(sampleRunsList=None):
     workDir = '/SNS/users/ntv/dropbox/'
     #descriptorRead = 'beta_lac_lab_highres2'
     descriptorRead = 'beta_lac_lab_highres_mut2'
-    predpplCoefficients = np.array([ 3.56405187,  8.34071842,  0.14134522]) #Go with ICCFT.oldScatFun
+    #predpplCoefficients = np.array([ 3.56405187,  8.34071842,  0.14134522]) #Go with ICCFT.oldScatFun
+    predpplCoefficients = np.array([  4.88049788,  9.29823399,  0.14255074]) #Go with ICCFT.oldScatFun
     q_frame='lab'
     mindtBinWidth = 15
     pplmin_frac = 0.4; pplmax_frac = 1.5

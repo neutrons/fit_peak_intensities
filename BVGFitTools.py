@@ -616,7 +616,7 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         #boundsDict['sigX'] = [0.7*sigX0, 1.3*sigX0]
         boundsDict['sigX'] = [0., 0.02]
         boundsDict['sigY'] = [0., 0.02]
-        boundsDict['sigP'] = [-0.4, 0.4]
+        boundsDict['sigP'] = [-1., 1.]
         boundsDict['bg'] = [0, np.inf]
 
         # Set our initial guess
@@ -635,6 +635,7 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         m.setConstraints(boundsDict)
         print 'before: '
         print(m)
+        #plt.figure(18); plt.clf(); plt.imshow(m.function2D(pos)); plt.title('BVG Initial guess')
         # Do the fit
         bvgWS = CreateWorkspace(OutputWorkspace='bvgWS',DataX=pos.ravel(),DataY=H.ravel(), DataE=np.sqrt(H.ravel()))
         fitResults = Fit(Function=m, InputWorkspace='bvgWS', Output='bvgfit',Minimizer='Levenberg-MarquardtMD')
@@ -683,6 +684,7 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         print m
         
         # Do the fit
+        #plt.figure(18); plt.clf(); plt.imshow(m.function2D(pos)); plt.title('BVG Initial guess')
         bvgWS = CreateWorkspace(OutputWorkspace='bvgWS',DataX=pos.ravel(),DataY=H.ravel(), DataE=np.sqrt(H.ravel()))
         fitFun = m
         fitResults = Fit(Function=fitFun, InputWorkspace='bvgWS', Output='bvgfit', Minimizer='Levenberg-MarquardtMD')
