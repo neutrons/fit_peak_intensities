@@ -34,7 +34,7 @@ class IndexTracker(object):
         self.update()
 
     def onscroll(self, event):
-        print("%s %s" % (event.button, event.step))
+        #print("%s %s" % (event.button, event.step))
         if event.button == 'up':
             self.ind = (self.ind + 1) % self.slices
         else:

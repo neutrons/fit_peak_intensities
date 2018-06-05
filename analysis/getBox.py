@@ -25,9 +25,11 @@ import getEdgePixels as EdgeTools
 from timeit import default_timer as timer
 reload(EdgeTools)
 reload(ICCFT)
-
+reload(BVGFT)
 
 print "Which peak?"
+try: print 'Current peak is %i'%peakToGet
+except: pass
 peakToGet = int(input())
 '''
 #Scolecite
@@ -203,7 +205,7 @@ peaksFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.integrate'
 UBFile =  '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.mat'
 nxsTemplate = '/SNS/MANDI/IPTS-8776/data/MANDI_%i_event.nxs'
 predpplCoefficients = np.array([ 3.56405187,  8.34071842,  0.14134522])
-predpplCoefficients = np.array([  4.88049788,  9.29823399,  0.14255074]) #Go with ICCFT.oldScatFun
+#predpplCoefficients = np.array([  4.88049788,  9.29823399,  0.14255074]) #Go with ICCFT.oldScatFun
 pplmin_frac=0.4; pplmax_frac=1.5; mindtBinWidth=15
 
 
@@ -387,3 +389,8 @@ if True:
     yP = np.polyval(gP,t)
     #plt.plot(t,yP,'m--')
     '''
+padeCoefficients = ICCFT.getModeratorCoefficients('/home/ntv/integrate/franz_coefficients_2017.dat')
+strongPeakParams = pickle.load(open('/home/ntv/integrate/strongPeakParams_beta_lac_mut_mbvg.pkl', 'rb'))
+Y3D, gIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=True, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1, strongPeakParams=strongPeakParams, predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac,forceCutoff=250,edgeCutoff=3)
+peakIDX = Y3D/Y3D.max()>0.05
+print 'ell: %4.4f; new: %4.4f'%(peak.getIntensity(), np.sum(Y3D[peakIDX]))

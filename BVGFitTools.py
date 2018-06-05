@@ -176,7 +176,7 @@ def boxToTOFThetaPhi(box,peak):
     return X
 
 def fitScaling(n_events,box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
-
+    print '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
     YJOINT = 1.0*YTOF * YBVG
     YJOINT /= 1.0*YJOINT.max() #Joint PDF - max is 1, integral is unknown
 
@@ -187,7 +187,7 @@ def fitScaling(n_events,box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
 
     #goodIDX = n_events > -1.0
     QX, QY, QZ = ICCFT.getQXQYQZ(box)
-    dP = 3
+    dP = 8
     fitMaxIDX = tuple(np.array(np.unravel_index(YJOINT.argmax(), YJOINT.shape)))
     print fitMaxIDX, '*************************'
     if goodIDX is None:
@@ -199,15 +199,17 @@ def fitScaling(n_events,box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
 
 
     scaleLinear = Polynomial(n=1)
+    #A1 = slope, A0 = offset
     scaleLinear.constrain("A1>0")
+    print scaleLinear
     scaleX = YJOINT[goodIDX]
     scaleY = n_events[goodIDX]
-    print scaleX.shape, scaleY.shape, n_events.shape
     scaleWS = CreateWorkspace(OutputWorkspace='scaleWS', dataX=scaleX, dataY=scaleY)#, dataE=np.sqrt(scaleY))   
-    fitResultsScaling = Fit(Function=scaleLinear, InputWorkspace='scaleWS', Output='scalefit')
+    fitResultsScaling = Fit(Function=scaleLinear, InputWorkspace='scaleWS', Output='scalefit', CostFunction='Unweighted least squares')
     scaleFitWorkspace = mtd['scaleFit_Workspace']
     A0 = fitResultsScaling[3].row(0)['Value']
     A1 = fitResultsScaling[3].row(1)['Value']
+    print A1, A0
     YRET = A1*YJOINT + A0
     chiSqRed = fitResultsScaling[1]
 
@@ -603,8 +605,9 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         meanTH = TH.mean()
         meanPH = PH.mean()
         #sigX0 = 0.0018
-        sigX0 = 0.002#ICCFT.oldScatFun(meanPH, 1.71151521e-02,   6.37218400e+00,   3.39439675e-03)
-        sigY0 = 0.002#np.polyval([ 0.00045678, -0.0017618 ,  0.0045013 , -0.00480677,  0.00376619], meanTH)
+        #sigX0 = 0.002#ICCFT.oldScatFun(meanPH, 1.71151521e-02,   6.37218400e+00,   3.39439675e-03)
+        sigX0 = ICCFT.oldScatFun(meanPH, 1.71151521e-02,   6.37218400e+00,   3.39439675e-03)
+        sigY0 = 0.0025#np.polyval([ 0.00045678, -0.0017618 ,  0.0045013 , -0.00480677,  0.00376619], meanTH)
         #sigP0 = 0.0#fSigP(meanTH,  0.1460775 ,  1.85816592,  0.26850086, -0.00725352) 
         sigP0 = fSigP(meanTH,  0.1460775 ,  1.85816592,  0.26850086, -0.00725352) 
 
@@ -622,7 +625,7 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         # Set our initial guess
         m = mbvg.MBVG() 
         m.init()
-        m['A'] = np.max(h)
+        m['A'] = np.max(h)/np.max(h)
         #m['muX'] = meanTH
         #m['muY'] = meanPH
         m['muX'] = TH[np.unravel_index(h.argmax(), h.shape)]
@@ -635,10 +638,12 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         m.setConstraints(boundsDict)
         print 'before: '
         print(m)
-        #plt.figure(18); plt.clf(); plt.imshow(m.function2D(pos)); plt.title('BVG Initial guess')
         # Do the fit
         bvgWS = CreateWorkspace(OutputWorkspace='bvgWS',DataX=pos.ravel(),DataY=H.ravel(), DataE=np.sqrt(H.ravel()))
-        fitResults = Fit(Function=m, InputWorkspace='bvgWS', Output='bvgfit',Minimizer='Levenberg-MarquardtMD')
+        #fitResults = Fit(Function=m, InputWorkspace='bvgWS', Output='bvgfit',Minimizer='Levenberg-MarquardtMD')
+        mins = ['FABADA', 'Levenberg-Marquardt', 'Levenberg-MarquardtMD']
+        #mins = ['BFGS', 'Conjugate gradient (Fletcher-Reeves imp.)', 'Conjugate gradient (Polak-Ribiere imp.)', 'Damped GaussNewton', 'FABADA', 'Levenberg-Marquardt', 'Levenberg-MarquardtMD', 'Simplex', 'SteepestDescent', 'Trust Region']
+        fitResults = Fit(Function=m, InputWorkspace='bvgWS', Output='bvgfit',Minimizer=mins[2],MaxIterations=6000)
         print 'after'
         print m
     elif forceParams is not None:
@@ -709,7 +714,7 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
 
 def is_pos_def(x): #Checks if matrix x is positive definite
     return np.all(np.linalg.eigvals(x) > 0)
- 
+
 def bvg(A, mu,sigma,x,y,bg):
     '''
     bvg is the bivariate gaussian.  This function is a convenient wrapper for 

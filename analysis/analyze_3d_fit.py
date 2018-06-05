@@ -275,8 +275,8 @@ tooFarIDX = (np.abs(df['Intens3d'] > 100)) & ((np.abs(df['Intens3d']-df['IntensE
 tooFarIDX2 = (np.abs(df['Intens3d'] < 100)) & (np.abs(df['Intens3d']-df['IntensEll']) >150)
 
 
-goodIDX = goodIDX #& ~tooFarIDX & ~tooFarIDX2
-goodIDX = goodIDX & (df['IntensEll'] != 0.0)
+#goodIDX = goodIDX & ~tooFarIDX #& ~tooFarIDX2
+#goodIDX = goodIDX & (df['IntensEll'] != 0.0)
 #goodIDX = goodIDX & ~((df['IntensEll']>100)&(df['Intens3d']<50))
 
 dEdge = 1

@@ -182,3 +182,41 @@ class MBVG(IFunction1D): #MantidBVG
         Z += bg
         return Z
 
+
+
+    #Evaluate the function for a differnt set of paremeters (trialc)
+    def function1DDiffParams(self, xvals, trialc):
+        #First, grab the original parameters and set to trialc
+        c = np.zeros(self.numParams())
+        for i in range(self.numParams()):
+            c[i] = self.getParamValue(i)
+            self.setParameter(i, trialc[i])
+
+        #Get the trial values
+        f_trial = self.function1D(xvals)
+
+        #Now return to the orignial
+        for i in range(self.numParams()):
+            self.setParameter(i, c[i])
+        return f_trial
+
+
+    #Construction the Jacobian (df) for the function    
+    def functionDeriv1D(self, xvals, jacobian, eps=1.e-3):
+        f_int = self.function1D(xvals)
+        #Fetch parameters into array c
+        c = np.zeros(self.numParams())
+        for i in range(self.numParams()):
+            c[i] = self.getParamValue(i)
+        c_shape = c.shape
+        nc = np.prod(np.shape(c))
+        f_shape = f_int.shape
+        nf = np.prod(f_shape)
+        for k in range(nc):
+            dc = np.zeros(nc)
+            dc[k] = max(eps,eps*c[k])
+            f_new = self.function1DDiffParams(xvals,c+dc)
+            for i,dF in enumerate(f_new-f_int):
+                jacobian.set(i,k,dF/dc[k])
+
+
