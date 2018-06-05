@@ -23,11 +23,14 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150, fracBoxT
     elif q_frame == 'sample':
         q0 = peak.getQSampleFrame()
     else:
-        raise ValueError('BVGFT:get3DPeak - q_frame must be either \'lab\' or \'sample\'; %s was provided' % q_frame)
+        raise ValueError(
+            'BVGFT:get3DPeak - q_frame must be either \'lab\' or \'sample\'; %s was provided' % q_frame)
 
     if fICCParams is None:
-        goodIDX, pp_lambda = ICCFT.getBGRemovedIndices(n_events, peak=peak, box=box, qMask=qMask, calc_pp_lambda=True, padeCoefficients=padeCoefficients, predCoefficients=predCoefficients, neigh_length_m=neigh_length_m, pp_lambda=None, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac, mindtBinWidth=mindtBinWidth)
-        YTOF, fICC, x_lims = fitTOFCoordinate(box, peak, padeCoefficients, dtSpread=dtSpread, qMask=qMask, bgPolyOrder=bgPolyOrder, zBG=zBG, plotResults=plotResults, pp_lambda=pp_lambda, neigh_length_m=neigh_length_m, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac, mindtBinWidth=mindtBinWidth)
+        goodIDX, pp_lambda = ICCFT.getBGRemovedIndices(n_events, peak=peak, box=box, qMask=qMask, calc_pp_lambda=True, padeCoefficients=padeCoefficients,
+                                                       predCoefficients=predCoefficients, neigh_length_m=neigh_length_m, pp_lambda=None, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac, mindtBinWidth=mindtBinWidth)
+        YTOF, fICC, x_lims = fitTOFCoordinate(box, peak, padeCoefficients, dtSpread=dtSpread, qMask=qMask, bgPolyOrder=bgPolyOrder, zBG=zBG, plotResults=plotResults,
+                                              pp_lambda=pp_lambda, neigh_length_m=neigh_length_m, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac, mindtBinWidth=mindtBinWidth)
 
     else:  # we already did I-C profile, so we'll just read the parameters
         pp_lambda = fICCParams[-1]
@@ -40,7 +43,8 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150, fracBoxT
         fICC['scale'] = fICCParams[9]
         fICC['hatWidth'] = fICCParams[10]
         fICC['k_conv'] = fICCParams[11]
-        goodIDX, _ = ICCFT.getBGRemovedIndices(n_events, pp_lambda=pp_lambda, qMask=qMask)
+        goodIDX, _ = ICCFT.getBGRemovedIndices(
+            n_events, pp_lambda=pp_lambda, qMask=qMask)
 
         # Get the 3D TOF component, YTOF
         if oldICCFit is not None:
@@ -49,7 +53,8 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150, fracBoxT
             tofyy = oldICCFit[2]
         else:
             dtSpread = 0.03
-            x_lims = [(1 - dtSpread) * peak.getTOF(), (1 + dtSpread) * peak.getTOF()]
+            x_lims = [(1 - dtSpread) * peak.getTOF(),
+                      (1 + dtSpread) * peak.getTOF()]
             tofxx = np.arange(x_lims[0], x_lims[1], 5)
             tofyy = fICC.function1D(tofxx)
         ftof = interp1d(tofxx, tofyy, bounds_error=False, fill_value=0.0)
@@ -61,7 +66,8 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150, fracBoxT
         goodIDX *= qMask
     X = boxToTOFThetaPhi(box, peak)
     dEdge = edgeCutoff
-    useForceParams = peak.getIntensity() < forceCutoff or peak.getRow() <= dEdge or peak.getRow() >= 255 - dEdge or peak.getCol() <= dEdge or peak.getCol() >= 255 - dEdge
+    useForceParams = peak.getIntensity() < forceCutoff or peak.getRow() <= dEdge or peak.getRow(
+    ) >= 255 - dEdge or peak.getCol() <= dEdge or peak.getCol() >= 255 - dEdge
     if strongPeakParams is not None and useForceParams:  # We will force parameters on this fit
         ph = np.arctan2(q0[1], q0[0])
         th = np.arctan2(q0[2], np.hypot(q0[0], q0[1]))
@@ -69,13 +75,17 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150, fracBoxT
         tmp = strongPeakParams[:, :2] - phthPeak
         distSq = tmp[:, 0]**2 + tmp[:, 1]**2
         nnIDX = np.argmin(distSq)
-        print 'Using [ph, th] =', strongPeakParams[nnIDX, :2], 'for ', phthPeak, '; nnIDX = ', nnIDX
-        params, h, t, p = doBVGFit(box, nTheta=nTheta, nPhi=nPhi, fracBoxToHistogram=fracBoxToHistogram, goodIDX=goodIDX, forceParams=strongPeakParams[nnIDX])
+        print 'Using [ph, th] =', strongPeakParams[nnIDX,
+                                                   :2], 'for ', phthPeak, '; nnIDX = ', nnIDX
+        params, h, t, p = doBVGFit(box, nTheta=nTheta, nPhi=nPhi, fracBoxToHistogram=fracBoxToHistogram,
+                                   goodIDX=goodIDX, forceParams=strongPeakParams[nnIDX])
     else:  # Just do the fit - no nearest neighbor assumptions
-        params, h, t, p = doBVGFit(box, nTheta=nTheta, nPhi=nPhi, fracBoxToHistogram=fracBoxToHistogram, goodIDX=goodIDX)
+        params, h, t, p = doBVGFit(
+            box, nTheta=nTheta, nPhi=nPhi, fracBoxToHistogram=fracBoxToHistogram, goodIDX=goodIDX)
 
     if plotResults:
-        compareBVGFitData(box, params[0], nTheta, nPhi, fracBoxToHistogram=fracBoxToHistogram, useIDX=goodIDX)
+        compareBVGFitData(
+            box, params[0], nTheta, nPhi, fracBoxToHistogram=fracBoxToHistogram, useIDX=goodIDX)
 
     # set up the BVG
     # A = params[0][0]  # never used
@@ -144,12 +154,15 @@ def fitScaling(n_events, box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
     YJOINT = 1.0 * YTOF * YBVG
     YJOINT /= 1.0 * YJOINT.max()
 
-    convBox = 1.0 * np.ones([neigh_length_m, neigh_length_m, neigh_length_m]) / neigh_length_m**3
+    convBox = 1.0 * \
+        np.ones([neigh_length_m, neigh_length_m, neigh_length_m]) / \
+        neigh_length_m**3
     conv_n_events = convolve(n_events, convBox)
 
     QX, QY, QZ = ICCFT.getQXQYQZ(box)
     dP = 8
-    fitMaxIDX = tuple(np.array(np.unravel_index(YJOINT.argmax(), YJOINT.shape)))
+    fitMaxIDX = tuple(
+        np.array(np.unravel_index(YJOINT.argmax(), YJOINT.shape)))
     if goodIDX is None:
         goodIDX = np.zeros_like(YJOINT).astype(np.bool)
         goodIDX[max(fitMaxIDX[0] - dP, 0):min(fitMaxIDX[0] + dP, goodIDX.shape[0]),
@@ -162,8 +175,11 @@ def fitScaling(n_events, box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
     scaleLinear.constrain("A1>0")
     scaleX = YJOINT[goodIDX]
     scaleY = n_events[goodIDX]
-    scaleWS = CreateWorkspace(OutputWorkspace='scaleWS', dataX=scaleX, dataY=scaleY)  # , dataE=np.sqrt(scaleY))
-    fitResultsScaling = Fit(Function=scaleLinear, InputWorkspace=scaleWS, Output='scalefit', CostFunction='Unweighted least squares')
+    # , dataE=np.sqrt(scaleY))
+    scaleWS = CreateWorkspace(
+        OutputWorkspace='scaleWS', dataX=scaleX, dataY=scaleY)
+    fitResultsScaling = Fit(Function=scaleLinear, InputWorkspace=scaleWS,
+                            Output='scalefit', CostFunction='Unweighted least squares')
     A0 = fitResultsScaling[3].row(0)['Value']
     A1 = fitResultsScaling[3].row(1)['Value']
     YRET = A1 * YJOINT + A0
@@ -185,127 +201,130 @@ def getXTOF(box, peak):
                 peak.setQSampleFrame(newQ)
                 flightPath = peak.getL1() + peak.getL2()
                 scatteringHalfAngle = 0.5 * peak.getScattering()
-                tList[i,j,k] = 3176.507 * flightPath * np.sin(scatteringHalfAngle) / np.linalg.norm(newQ)  # convert to microseconds)
+                # convert to microseconds)
+                tList[i, j, k] = 3176.507 * flightPath * \
+                    np.sin(scatteringHalfAngle) / np.linalg.norm(newQ)
     peak.setQSampleFrame(origQS)
     return tList
 
 
-def fitTOFCoordinate(box,peak, padeCoefficients,dtSpread=0.03,minFracPixels=0.01,neigh_length_m=3,zBG=1.96,bgPolyOrder=1,qMask=None, plotResults=False,fracStop=0.01, pp_lambda=None, pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1):
-    
-    #Get info from the peak
-    tof = peak.getTOF() #in us
-    wavelength = peak.getWavelength() #in Angstrom
-    flightPath = peak.getL1() + peak.getL2() #in m
-    scatteringHalfAngle = 0.5*peak.getScattering()
-    energy = 81.804 / wavelength**2 / 1000.0 #in eV
+def fitTOFCoordinate(box, peak, padeCoefficients, dtSpread=0.03, minFracPixels=0.01, neigh_length_m=3, zBG=1.96, bgPolyOrder=1, qMask=None, plotResults=False, fracStop=0.01, pp_lambda=None, pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1):
 
-    #Set the qMask
+    # Get info from the peak
+    tof = peak.getTOF()  # in us
+    wavelength = peak.getWavelength()  # in Angstrom
+    flightPath = peak.getL1() + peak.getL2()  # in m
+    scatteringHalfAngle = 0.5 * peak.getScattering()
+    energy = 81.804 / wavelength**2 / 1000.0  # in eV
+
+    # Set the qMask
     if qMask is None:
-        qMask = np.ones_like(box.getNumEventsArray()).astype(np.bool) 
-    
-    #Calculate the optimal pp_lambda and 
-    tofWS,ppl = ICCFT.getTOFWS(box,flightPath, scatteringHalfAngle, tof, peak, qMask, dtSpread=dtSpread, minFracPixels=minFracPixels, neigh_length_m=neigh_length_m,zBG=zBG,pp_lambda=pp_lambda, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac, mindtBinWidth=mindtBinWidth)
+        qMask = np.ones_like(box.getNumEventsArray()).astype(np.bool)
+
+    # Calculate the optimal pp_lambda and
+    tofWS, ppl = ICCFT.getTOFWS(box, flightPath, scatteringHalfAngle, tof, peak, qMask, dtSpread=dtSpread, minFracPixels=minFracPixels,
+                                neigh_length_m=neigh_length_m, zBG=zBG, pp_lambda=pp_lambda, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac, mindtBinWidth=mindtBinWidth)
 
     try:
-        fitResults,fICC = ICCFT.doICCFit(tofWS, energy, flightPath, padeCoefficients, fitOrder=bgPolyOrder,constraintScheme=1)
+        fitResults, fICC = ICCFT.doICCFit(tofWS,
+            energy, flightPath, padeCoefficients, fitOrder=bgPolyOrder, constraintScheme=1)
     except:
-        fitResults,fICC = ICCFT.doICCFit(tofWS, energy, flightPath, padeCoefficients, fitOrder=bgPolyOrder)
-    
-    for i, param in enumerate(['A','B','R','T0','scale', 'hatWidth', 'k_conv']):
+        fitResults, fICC = ICCFT.doICCFit(tofWS,
+            energy, flightPath, padeCoefficients, fitOrder=bgPolyOrder)
+
+    for i, param in enumerate(['A', 'B', 'R', 'T0', 'scale', 'hatWidth', 'k_conv']):
         fICC[param] = mtd['fit_Parameters'].row(i)['Value']
     bgParamsRows = [7 + i for i in range(bgPolyOrder+1)]
     bgCoeffs = []
-    for bgRow in bgParamsRows[::-1]:#reverse for numpy order 
+    for bgRow in bgParamsRows[::-1]:  # reverse for numpy order
         bgCoeffs.append(mtd['fit_Parameters'].row(bgRow)['Value'])
     x = tofWS.readX(0)
     bg = np.polyval(bgCoeffs, x)
     yFit = mtd['fit_Workspace'].readY(1)
     yData = tofWS.readY(0)
-    
+
     yScaled = (yFit-bg) / np.max(yFit-bg)
     goodIDX = yScaled > fracStop
     if np.sum(goodIDX) > 0:
         iStart = np.min(np.where(goodIDX))
         iStop = np.max(np.where(goodIDX))
 
-   
     interpF = interp1d(x, yFit, kind='cubic')
-    tofxx = np.linspace(tofWS.readX(0).min(), tofWS.readX(0).max(),1000)
+    tofxx = np.linspace(tofWS.readX(0).min(), tofWS.readX(0).max(), 1000)
     tofyy = interpF(tofxx)
     if plotResults:
-        plt.figure(1); plt.clf(); 
-        plt.plot(tofxx,tofyy,label='Interpolated')
-        plt.plot(tofWS.readX(0), tofWS.readY(0),'o',label='Data')
+        plt.figure(1)
+        plt.clf()
+        plt.plot(tofxx, tofyy, label='Interpolated')
+        plt.plot(tofWS.readX(0), tofWS.readY(0), 'o', label='Data')
         print 'sum:', np.sum(fICC.function1D(tofWS.readX(0)))
         print 'bg: ', np.sum(bg[iStart:iStop])
-        plt.plot(mtd['fit_Workspace'].readX(1), mtd['fit_Workspace'].readY(1),label='Fit')
+        plt.plot(mtd['fit_Workspace'].readX(1),
+                 mtd['fit_Workspace'].readY(1), label='Fit')
         plt.title(fitResults.OutputChi2overDoF)
         plt.legend(loc='best')
-    ftof = interp1d(tofxx, tofyy,bounds_error=False,fill_value=0.0)
-    XTOF = boxToTOFThetaPhi(box,peak)[:,:,:,0]
+    ftof = interp1d(tofxx, tofyy, bounds_error=False, fill_value=0.0)
+    XTOF = boxToTOFThetaPhi(box, peak)[:, :, :, 0]
     YTOF = ftof(XTOF)
     return YTOF, fICC, [tofWS.readX(0).min(), tofWS.readX(0).max()]
 
 
 def getYTOF(fICC, XTOF, xlims):
-    tofxx = np.linspace(xlims[0], xlims[1],1000)
+    tofxx = np.linspace(xlims[0], xlims[1], 1000)
     tofyy = fICC.function1D(tofxx)
-    ftof = interp1d(tofxx, tofyy,bounds_error=False,fill_value=0.0)
+    ftof = interp1d(tofxx, tofyy, bounds_error=False, fill_value=0.0)
     YTOF = ftof(XTOF)
     return YTOF
 
 
-def getAngularHistogram(box, useIDX=None, nTheta=200, nPhi=200,zBG=1.96,neigh_length_m=3,fracBoxToHistogram=1.0):
+def getAngularHistogram(box, useIDX=None, nTheta=200, nPhi=200, zBG=1.96, neigh_length_m=3, fracBoxToHistogram=1.0):
     n_events = box.getNumEventsArray()
-    hasEventsIDX = n_events>0
+    hasEventsIDX = n_events > 0
     if useIDX is None:
-        if zBG >=0:
-            goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events)
+        if zBG >= 0:
+            goodIDX, pp_lambda = ICCFT.getBGRemovedIndices(n_events)
             #goodIDX,pp_lambda = ICCFT.getBGRemovedIndices(n_events, peak=peak, box=box,qMask=qMask, calc_pp_lambda=True, padeCoefficients=padeCoefficients )
-        else: 
+        else:
             goodIDX = hasEventsIDX
 
         useIDX = goodIDX
-    
 
-    #Setup our coordinates
+    # Setup our coordinates
     QX, QY, QZ = ICCFT.getQXQYQZ(box)
-    R, THETA, PHI = ICCFT.cart2sph(QX,QY,QZ)
+    R, THETA, PHI = ICCFT.cart2sph(QX, QY, QZ)
 
-
-    thetaMin = np.min(THETA); 
+    thetaMin = np.min(THETA)
     thetaMax = np.max(THETA)
     dTheta = thetaMax - thetaMin
     thetaMid = 0.5*(thetaMin + thetaMax)
     thetaMin = max(thetaMin, thetaMid-dTheta*fracBoxToHistogram/2.0)
     thetaMax = min(thetaMax, thetaMid+dTheta*fracBoxToHistogram/2.0)
-    
-    phiMin = np.min(PHI); 
-    phiMax = np.max(PHI) 
+
+    phiMin = np.min(PHI)
+    phiMax = np.max(PHI)
     dPhi = phiMax - phiMin
     phiMid = 0.5*(phiMin + phiMax)
     phiMin = max(phiMin, phiMid-dPhi*fracBoxToHistogram/2.0)
     phiMax = min(phiMax, phiMid+dPhi*fracBoxToHistogram/2.0)
-
-
 
     thetaBins = np.linspace(thetaMin, thetaMax, nTheta)
     phiBins = np.linspace(phiMin, phiMax, nPhi)
     thetaVect = THETA[useIDX]
     phiVect = PHI[useIDX]
     nVect = n_events[useIDX]
-   
-    #Do the histogram 
-    h, thBins, phBins = np.histogram2d(thetaVect, phiVect, weights=nVect, bins=[thetaBins,phiBins])
-    return h,thBins, phBins 
+
+    # Do the histogram
+    h, thBins, phBins = np.histogram2d(
+        thetaVect, phiVect, weights=nVect, bins=[thetaBins, phiBins])
+    return h, thBins, phBins
 
 
-def getBVGResult(box, params,nTheta=200,nPhi=200,fracBoxToHistogram=1.0):
-    h, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram)
+def getBVGResult(box, params, nTheta=200, nPhi=200, fracBoxToHistogram=1.0):
+    h, thBins, phBins = getAngularHistogram(
+        box, nTheta=nTheta, nPhi=nPhi, fracBoxToHistogram=fracBoxToHistogram)
     thCenters = 0.5*(thBins[1:] + thBins[:-1])
     phCenters = 0.5*(phBins[1:] + phBins[:-1])
-    TH, PH = np.meshgrid(thCenters, phCenters,indexing='ij',copy=False)
-
+    TH, PH = np.meshgrid(thCenters, phCenters, indexing='ij', copy=False)
 
     # Set our initial guess
     m = mbvg.MBVG()
@@ -317,58 +336,65 @@ def getBVGResult(box, params,nTheta=200,nPhi=200,fracBoxToHistogram=1.0):
     m['sigY'] = params[4]
     m['sigP'] = params[5]
     m['bg'] = params[6]
-    m.setAttributeValue('nX',h.shape[0])
-    m.setAttributeValue('nY',h.shape[1])
+    m.setAttributeValue('nX', h.shape[0])
+    m.setAttributeValue('nY', h.shape[1])
 
     pos = np.empty(TH.shape + (2,))
-    pos[:,:,0] = TH
-    pos[:,:,1] = PH
+    pos[:, :, 0] = TH
+    pos[:, :, 1] = PH
 
     Y = m.function2D(pos)
     return Y
 
 
-def compareBVGFitData(box,params,nTheta=200,nPhi=200,figNumber=2,fracBoxToHistogram=1.0, useIDX=None):
+def compareBVGFitData(box, params, nTheta=200, nPhi=200, figNumber=2, fracBoxToHistogram=1.0, useIDX=None):
     '''
     compareBVGFitData is used for comparing a fit and the histogram.  Useful for debugging.
     '''
-    h, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram, useIDX=useIDX)
-    Y = getBVGResult(box,params,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram)
-    pLow = 0.0; pHigh = 1.0
+    h, thBins, phBins = getAngularHistogram(
+        box, nTheta=nTheta, nPhi=nPhi, fracBoxToHistogram=fracBoxToHistogram, useIDX=useIDX)
+    Y = getBVGResult(box, params, nTheta=nTheta, nPhi=nPhi,
+                     fracBoxToHistogram=fracBoxToHistogram)
+    pLow = 0.0
+    pHigh = 1.0
     nX, nY = Y.shape
-    plt.figure(figNumber); plt.clf()
-    plt.subplot(2,2,1);
-    plt.imshow(h,vmin=0,vmax=0.7*np.max(h),interpolation='None')
+    plt.figure(figNumber)
+    plt.clf()
+    plt.subplot(2, 2, 1)
+    plt.imshow(h, vmin=0, vmax=0.7*np.max(h), interpolation='None')
     plt.xlim([pLow*nX, pHigh*nX])
     plt.ylim([pLow*nY, pHigh*nY])
-    if useIDX is None: plt.title('Measured Peak')
-    else: plt.title('BG Removed Measured Peak')
-    plt.colorbar() 
-    plt.subplot(2,2,2);
-    plt.imshow(Y,vmin=0,vmax=0.7*np.max(h),interpolation='None' )
+    if useIDX is None:
+        plt.title('Measured Peak')
+    else:
+        plt.title('BG Removed Measured Peak')
+    plt.colorbar()
+    plt.subplot(2, 2, 2)
+    plt.imshow(Y, vmin=0, vmax=0.7*np.max(h), interpolation='None')
     #plt.imshow(Y,interpolation='None' )
     plt.title('Modeled Peak')
     plt.xlim([pLow*nX, pHigh*nX])
     plt.ylim([pLow*nY, pHigh*nY])
-    plt.colorbar() 
-    plt.subplot(2,2,3);
-    plt.imshow(h-Y,interpolation='None')
+    plt.colorbar()
+    plt.subplot(2, 2, 3)
+    plt.imshow(h-Y, interpolation='None')
     plt.xlim([pLow*nX, pHigh*nX])
     plt.ylim([pLow*nY, pHigh*nY])
     plt.xlabel('Difference')
-    plt.colorbar() 
+    plt.colorbar()
 
     if useIDX is not None:
-        h0, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram, useIDX=None)
-        plt.subplot(2,2,4);
-        plt.imshow(h0,vmin=0,vmax=1.0*np.max(h0),interpolation='None')
+        h0, thBins, phBins = getAngularHistogram(
+            box, nTheta=nTheta, nPhi=nPhi, fracBoxToHistogram=fracBoxToHistogram, useIDX=None)
+        plt.subplot(2, 2, 4)
+        plt.imshow(h0, vmin=0, vmax=1.0*np.max(h0), interpolation='None')
         plt.xlim([pLow*nX, pHigh*nX])
         plt.ylim([pLow*nY, pHigh*nY])
         plt.xlabel('Measured Peak')
-        plt.colorbar() 
+        plt.colorbar()
 
 
-def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX=None, forceParams=None, forceTolerance=0.1, dth=10, dph=10):
+def doBVGFit(box, nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX=None, forceParams=None, forceTolerance=0.1, dth=10, dph=10):
     """
     doBVGFit takes a binned MDbox and returns the fit of the peak shape along the non-TOF direction.  This is done in one of two ways:
         1) Standard least squares fit of the 2D histogram.
@@ -385,46 +411,51 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         forceParams: set of parameters to force.  These are the same format as a row in strongPeaksParams
         forceTolerance: the factor we allow sigX, sigY, sigP to change when forcing peaks.  Not used if forceParams is None.
         dth, dph: The peak center may move by (dth, dph) from predicted position (in units of histogram pixels).
-        
+
     """
-    h, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi,zBG=zBG,fracBoxToHistogram=fracBoxToHistogram,useIDX=goodIDX)
+    h, thBins, phBins = getAngularHistogram(
+        box, nTheta=nTheta, nPhi=nPhi, zBG=zBG, fracBoxToHistogram=fracBoxToHistogram, useIDX=goodIDX)
     dtH = np.mean(np.diff(thBins))
     dpH = np.mean(np.diff(phBins))
     thCenters = 0.5*(thBins[1:] + thBins[:-1])
     phCenters = 0.5*(phBins[1:] + phBins[:-1])
-    TH, PH = np.meshgrid(thCenters, phCenters,indexing='ij',copy=False)
+    TH, PH = np.meshgrid(thCenters, phCenters, indexing='ij', copy=False)
 
     fitIDX = np.ones_like(h).astype(np.bool)
     weights = np.sqrt(h)
-    weights[weights<1] = 1
+    weights[weights < 1] = 1
 
     pos = np.empty(TH.shape + (2,))
-    pos[:,:,0] = TH
-    pos[:,:,1] = PH
+    pos[:, :, 0] = TH
+    pos[:, :, 1] = PH
 
     H = np.empty(h.shape + (2,))
-    H[:,:,0] = h
-    H[:,:,1] = h
+    H[:, :, 0] = h
+    H[:, :, 1] = h
 
-
-    def fSigP(x,a,k,phi,b):
+    def fSigP(x, a, k, phi, b):
         return a*np.sin(k*x-phi) + b*x
 
     if forceParams is None:
         meanTH = TH.mean()
         meanPH = PH.mean()
         #sigX0 = 0.0018
-        #sigX0 = 0.002#ICCFT.oldScatFun(meanPH, 1.71151521e-02,   6.37218400e+00,   3.39439675e-03)
-        sigX0 = ICCFT.oldScatFun(meanPH, 1.71151521e-02,   6.37218400e+00,   3.39439675e-03)
-        sigY0 = 0.0025#np.polyval([ 0.00045678, -0.0017618 ,  0.0045013 , -0.00480677,  0.00376619], meanTH)
-        #sigP0 = 0.0#fSigP(meanTH,  0.1460775 ,  1.85816592,  0.26850086, -0.00725352) 
-        sigP0 = fSigP(meanTH,  0.1460775 ,  1.85816592,  0.26850086, -0.00725352) 
+        # sigX0 = 0.002#ICCFT.oldScatFun(meanPH, 1.71151521e-02,   6.37218400e+00,   3.39439675e-03)
+        sigX0 = ICCFT.oldScatFun(
+            meanPH, 1.71151521e-02,   6.37218400e+00,   3.39439675e-03)
+        # np.polyval([ 0.00045678, -0.0017618 ,  0.0045013 , -0.00480677,  0.00376619], meanTH)
+        sigY0 = 0.0025
+        # sigP0 = 0.0#fSigP(meanTH,  0.1460775 ,  1.85816592,  0.26850086, -0.00725352)
+        sigP0 = fSigP(meanTH,  0.1460775,  1.85816592,
+                      0.26850086, -0.00725352)
 
-        #Set some constraints
+        # Set some constraints
         boundsDict = {}
         boundsDict['A'] = [0.0, np.inf]
-        boundsDict['muX'] = [thBins[thBins.size//2 - dth], thBins[thBins.size//2 + dth]]
-        boundsDict['muY'] = [phBins[phBins.size//2 - dph], phBins[phBins.size//2 + dph]]
+        boundsDict['muX'] = [thBins[thBins.size//2 - dth],
+                             thBins[thBins.size//2 + dth]]
+        boundsDict['muY'] = [phBins[phBins.size//2 - dph],
+                             phBins[phBins.size//2 + dph]]
         #boundsDict['sigX'] = [0.7*sigX0, 1.3*sigX0]
         boundsDict['sigX'] = [0., 0.02]
         boundsDict['sigY'] = [0., 0.02]
@@ -432,7 +463,7 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         boundsDict['bg'] = [0, np.inf]
 
         # Set our initial guess
-        m = mbvg.MBVG() 
+        m = mbvg.MBVG()
         m.init()
         m['A'] = np.max(h)/np.max(h)
         #m['muX'] = meanTH
@@ -442,32 +473,43 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         m['sigX'] = sigX0
         m['sigY'] = sigY0
         m['sigP'] = sigP0
-        m.setAttributeValue('nX',h.shape[0])
-        m.setAttributeValue('nY',h.shape[1])
+        m.setAttributeValue('nX', h.shape[0])
+        m.setAttributeValue('nY', h.shape[1])
         m.setConstraints(boundsDict)
         #print 'before: '
-        #print(m)
+        # print(m)
         # Do the fit
-        bvgWS = CreateWorkspace(OutputWorkspace='bvgWS',DataX=pos.ravel(),DataY=H.ravel(), DataE=np.sqrt(H.ravel()))
+        bvgWS = CreateWorkspace(OutputWorkspace='bvgWS', DataX=pos.ravel(
+        ), DataY=H.ravel(), DataE=np.sqrt(H.ravel()))
         #fitResults = Fit(Function=m, InputWorkspace='bvgWS', Output='bvgfit',Minimizer='Levenberg-MarquardtMD')
         mins = ['FABADA', 'Levenberg-Marquardt', 'Levenberg-MarquardtMD']
         #mins = ['BFGS', 'Conjugate gradient (Fletcher-Reeves imp.)', 'Conjugate gradient (Polak-Ribiere imp.)', 'Damped GaussNewton', 'FABADA', 'Levenberg-Marquardt', 'Levenberg-MarquardtMD', 'Simplex', 'SteepestDescent', 'Trust Region']
-        fitResults = Fit(Function=m, InputWorkspace='bvgWS', Output='bvgfit',Minimizer=mins[2],MaxIterations=6000)
+        fitResults = Fit(Function=m, InputWorkspace='bvgWS',
+                         Output='bvgfit', Minimizer=mins[2], MaxIterations=6000)
         #print 'after'
         #print m
     elif forceParams is not None:
         p0 = np.zeros(7)
-        p0[0] = np.max(h); p0[1] = TH.mean(); p0[2] = PH.mean()
-        p0[3] = forceParams[5]; p0[4] = forceParams[6]; p0[5] = forceParams[7];
+        p0[0] = np.max(h)
+        p0[1] = TH.mean()
+        p0[2] = PH.mean()
+        p0[3] = forceParams[5]
+        p0[4] = forceParams[6]
+        p0[5] = forceParams[7]
 
-        #Set some constraints
+        # Set some constraints
         isPos = np.sign(p0)
         bounds = ((1.0-isPos*forceTolerance)*p0, (1.0+isPos*forceTolerance)*p0)
-        bounds[0][0] = 0.0;  bounds[1][0] = np.inf; #Amplitude
-        bounds[0][1] = min(thBins[thBins.size//2 - dth], thBins[thBins.size//2 + dth]);
-        bounds[1][1] = max(thBins[thBins.size//2 - dth], thBins[thBins.size//2 + dth]);
-        bounds[0][2] = min(phBins[phBins.size//2 - dph], phBins[phBins.size//2 + dph]);
-        bounds[1][2] = max(phBins[phBins.size//2 - dph], phBins[phBins.size//2 + dph]);
+        bounds[0][0] = 0.0
+        bounds[1][0] = np.inf  # Amplitude
+        bounds[0][1] = min(thBins[thBins.size//2 - dth],
+                           thBins[thBins.size//2 + dth])
+        bounds[1][1] = max(thBins[thBins.size//2 - dth],
+                           thBins[thBins.size//2 + dth])
+        bounds[0][2] = min(phBins[phBins.size//2 - dph],
+                           phBins[phBins.size//2 + dph])
+        bounds[1][2] = max(phBins[phBins.size//2 - dph],
+                           phBins[phBins.size//2 + dph])
         bounds[1][-1] = np.inf
 
         boundsDict = {}
@@ -475,8 +517,10 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         #boundsDict['muX'] = [bounds[0][1], bounds[1][1]]
         #boundsDict['muY'] = [bounds[0][2], bounds[1][2]]
         boundsDict['A'] = [0.0, np.inf]
-        boundsDict['muX'] = [thBins[thBins.size//2 - dth], thBins[thBins.size//2 + dth]]
-        boundsDict['muY'] = [phBins[phBins.size//2 - dph], phBins[phBins.size//2 + dph]]
+        boundsDict['muX'] = [thBins[thBins.size//2 - dth],
+                             thBins[thBins.size//2 + dth]]
+        boundsDict['muY'] = [phBins[phBins.size//2 - dph],
+                             phBins[phBins.size//2 + dph]]
         boundsDict['sigX'] = [bounds[0][3], bounds[1][3]]
         boundsDict['sigY'] = [bounds[0][4], bounds[1][4]]
         boundsDict['sigP'] = [bounds[0][5], bounds[1][5]]
@@ -491,17 +535,19 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         m['sigX'] = forceParams[5]
         m['sigY'] = forceParams[6]
         m['sigP'] = forceParams[7]
-        m.setAttributeValue('nX',h.shape[0])
-        m.setAttributeValue('nY',h.shape[1])
+        m.setAttributeValue('nX', h.shape[0])
+        m.setAttributeValue('nY', h.shape[1])
         m.setConstraints(boundsDict)
         print 'before:'
         print m
-        
+
         # Do the fit
         #plt.figure(18); plt.clf(); plt.imshow(m.function2D(pos)); plt.title('BVG Initial guess')
-        bvgWS = CreateWorkspace(OutputWorkspace='bvgWS',DataX=pos.ravel(),DataY=H.ravel(), DataE=np.sqrt(H.ravel()))
+        bvgWS = CreateWorkspace(OutputWorkspace='bvgWS', DataX=pos.ravel(
+        ), DataY=H.ravel(), DataE=np.sqrt(H.ravel()))
         fitFun = m
-        fitResults = Fit(Function=fitFun, InputWorkspace='bvgWS', Output='bvgfit', Minimizer='Levenberg-MarquardtMD')
+        fitResults = Fit(Function=fitFun, InputWorkspace='bvgWS',
+                         Output='bvgfit', Minimizer='Levenberg-MarquardtMD')
 
         print 'after:'
         print m
@@ -516,19 +562,20 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
     m['sigP'] = mtd['bvgfit_Parameters'].row(5)['Value']
     m['bg'] = mtd['bvgfit_Parameters'].row(6)['Value']
 
-    m.setAttributeValue('nX',h.shape[0])
-    m.setAttributeValue('nY',h.shape[1])
+    m.setAttributeValue('nX', h.shape[0])
+    m.setAttributeValue('nY', h.shape[1])
     chiSq = fitResults[1]
-    params = [[m['A'], m['muX'], m['muY'], m['sigX'], m['sigY'], m['sigP'], m['bg']], chiSq]
+    params = [[m['A'], m['muX'], m['muY'], m['sigX'],
+               m['sigY'], m['sigP'], m['bg']], chiSq]
     #print params
     return params, h, thBins, phBins
 
 
-def is_pos_def(x): #Checks if matrix x is positive definite
+def is_pos_def(x):  # Checks if matrix x is positive definite
     return np.all(np.linalg.eigvals(x) > 0)
 
 
-def bvg(A, mu,sigma,x,y,bg):
+def bvg(A, mu, sigma, x, y, bg):
     """
     bvg is the bivariate gaussian.  This function is a convenient wrapper for 
     multivariate_normal.  
@@ -546,8 +593,8 @@ def bvg(A, mu,sigma,x,y,bg):
     """
 
     if is_pos_def(sigma):
-        f =  bivariate_normal(x,y,sigmax=np.sqrt(sigma[0,0]), sigmay = np.sqrt(sigma[1,1]),
-                sigmaxy=sigma[1,0], mux=mu[0], muy=mu[1])
+        f = bivariate_normal(x, y, sigmax=np.sqrt(sigma[0, 0]), sigmay=np.sqrt(sigma[1, 1]),
+                             sigmaxy=sigma[1, 0], mux=mu[0], muy=mu[1])
         return A*f+bg
     else:
         print '   BVGFT:bvg:not PSD Matrix'
