@@ -19,14 +19,14 @@ def scatFun(x, A, bg):
     """
     scatFun: returns A/x+bg.  Used for background estimation.
     """
-    return A/x+bg
+    return A / x + bg
 
 
 def oldScatFun(x, A, k, bg):
     """
     oldScatFun: returns 1.0*A*np.exp(-k*x) + bg.  Used for background estimation.
     """
-    return 1.0*A*np.exp(-k*x) + bg
+    return 1.0 * A * np.exp(-1. * k * x) + bg
 
 
 def calcSomeTOF(box, peak, refitIDX=None, q_frame='sample'):
@@ -48,8 +48,7 @@ def calcSomeTOF(box, peak, refitIDX=None, q_frame='sample'):
     else:
         raise ValueError(
             'ICCFT:calcSomeTOF - q_frame must be either \'lab\' or \'sample\'; %s was provided' % q_frame)
-    PIXELFACTOR = np.ones_like(
-        QX)*(peak.getL1() + peak.getL2())*np.sin(0.5*peak.getScattering())
+    PIXELFACTOR = np.ones_like(QX) * (peak.getL1() + peak.getL2()) * np.sin(0.5 * peak.getScattering())
     for i, x in enumerate(qx):
         print i
         for j, y in enumerate(qy):
@@ -58,7 +57,7 @@ def calcSomeTOF(box, peak, refitIDX=None, q_frame='sample'):
                     qNew = V3D(x, y, z)
                     peak.setQSampleFrame(qNew)
                     L = peak.getL1() + peak.getL2()
-                    HALFSCAT = 0.5*peak.getScattering()
+                    HALFSCAT = 0.5 * peak.getScattering()
                     PIXELFACTOR[i, j, k] = L*np.sin(HALFSCAT)
     peak.setQSampleFrame(qS0)
 

@@ -1,8 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import ICCFitTools as ICCFT
-from mantid.simpleapi import Fit, CreateWorkspace, FunctionFactory, mtd, Polynomial
-# from mantid.simpleapi import *
+from mantid.simpleapi import *
 from scipy.interpolate import interp1d
 from scipy.ndimage.filters import convolve
 from matplotlib.mlab import bivariate_normal
@@ -14,7 +13,10 @@ FunctionFactory.subscribe(mbvg.MBVG)
 FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 
 
-def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150, fracBoxToHistogram=1.0, plotResults=False, zBG=1.96, bgPolyOrder=1, fICCParams=None, oldICCFit=None, strongPeakParams=None, forceCutoff=250, edgeCutoff=15, predCoefficients=None, neigh_length_m=3, q_frame='sample', dtSpread=0.03, pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1):
+def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150, fracBoxToHistogram=1.0,
+              plotResults=False, zBG=1.96, bgPolyOrder=1, fICCParams=None, oldICCFit=None,
+              strongPeakParams=None, forceCutoff=250, edgeCutoff=15, predCoefficients=None,
+              neigh_length_m=3, q_frame='sample', dtSpread=0.03, pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1):
     n_events = box.getNumEventsArray()
 
     if q_frame == 'lab':
@@ -26,10 +28,15 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150, fracBoxT
             'BVGFT:get3DPeak - q_frame must be either \'lab\' or \'sample\'; %s was provided' % q_frame)
 
     if fICCParams is None:
-        goodIDX, pp_lambda = ICCFT.getBGRemovedIndices(n_events, peak=peak, box=box, qMask=qMask, calc_pp_lambda=True, padeCoefficients=padeCoefficients,
-                                                       predCoefficients=predCoefficients, neigh_length_m=neigh_length_m, pp_lambda=None, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac, mindtBinWidth=mindtBinWidth)
-        YTOF, fICC, x_lims = fitTOFCoordinate(box, peak, padeCoefficients, dtSpread=dtSpread, qMask=qMask, bgPolyOrder=bgPolyOrder, zBG=zBG, plotResults=plotResults,
-                                              pp_lambda=pp_lambda, neigh_length_m=neigh_length_m, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac, mindtBinWidth=mindtBinWidth)
+        goodIDX, pp_lambda = ICCFT.getBGRemovedIndices(
+                    n_events, peak=peak, box=box, qMask=qMask, calc_pp_lambda=True, padeCoefficients=padeCoefficients,
+                    predCoefficients=predCoefficients, neigh_length_m=neigh_length_m, pp_lambda=None, pplmin_frac=pplmin_frac,
+                    pplmax_frac=pplmax_frac, mindtBinWidth=mindtBinWidth)
+
+        YTOF, fICC, x_lims = fitTOFCoordinate(
+                    box, peak, padeCoefficients, dtSpread=dtSpread, qMask=qMask, bgPolyOrder=bgPolyOrder, zBG=zBG,
+                    plotResults=plotResults, pp_lambda=pp_lambda, neigh_length_m=neigh_length_m, pplmin_frac=pplmin_frac,
+                    pplmax_frac=pplmax_frac, mindtBinWidth=mindtBinWidth)
 
     else:  # we already did I-C profile, so we'll just read the parameters
         pp_lambda = fICCParams[-1]
@@ -207,7 +214,9 @@ def getXTOF(box, peak):
     return tList
 
 
-def fitTOFCoordinate(box, peak, padeCoefficients, dtSpread=0.03, minFracPixels=0.01, neigh_length_m=3, zBG=1.96, bgPolyOrder=1, qMask=None, plotResults=False, fracStop=0.01, pp_lambda=None, pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1):
+def fitTOFCoordinate(box, peak, padeCoefficients, dtSpread=0.03, minFracPixels=0.01,
+                     neigh_length_m=3, zBG=1.96, bgPolyOrder=1, qMask=None, plotResults=False,
+                     fracStop=0.01, pp_lambda=None, pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1):
 
     # Get info from the peak
     tof = peak.getTOF()  # in us
@@ -389,7 +398,8 @@ def compareBVGFitData(box, params, nTheta=200, nPhi=200, figNumber=2, fracBoxToH
         plt.colorbar()
 
 
-def doBVGFit(box, nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX=None, forceParams=None, forceTolerance=0.1, dth=10, dph=10):
+def doBVGFit(box, nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX=None,
+             forceParams=None, forceTolerance=0.1, dth=10, dph=10):
     """
     doBVGFit takes a binned MDbox and returns the fit of the peak shape along the non-TOF direction.  This is done in one of two ways:
         1) Standard least squares fit of the 2D histogram.
