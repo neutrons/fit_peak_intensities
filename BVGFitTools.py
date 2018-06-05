@@ -366,7 +366,7 @@ def compareBVGFitData(box,params,nTheta=200,nPhi=200,figNumber=2,fracBoxToHistog
         plt.colorbar() 
 
 def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX=None, forceParams=None, forceTolerance=0.1, dth=10, dph=10):
-    '''
+    """
     doBVGFit takes a binned MDbox and returns the fit of the peak shape along the non-TOF direction.  This is done in one of two ways:
         1) Standard least squares fit of the 2D histogram.
         2) Forcing a set of parameters.  Under this, parameters are tightly constrained.  The peak center may move by (dth, dph) from
@@ -383,7 +383,7 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         forceTolerance: the factor we allow sigX, sigY, sigP to change when forcing peaks.  Not used if forceParams is None.
         dth, dph: The peak center may move by (dth, dph) from predicted position (in units of histogram pixels).
         
-    '''
+    """
     h, thBins, phBins = getAngularHistogram(box, nTheta=nTheta, nPhi=nPhi,zBG=zBG,fracBoxToHistogram=fracBoxToHistogram,useIDX=goodIDX)
     dtH = np.mean(np.diff(thBins))
     dpH = np.mean(np.diff(phBins))
@@ -524,7 +524,7 @@ def is_pos_def(x): #Checks if matrix x is positive definite
     return np.all(np.linalg.eigvals(x) > 0)
 
 def bvg(A, mu,sigma,x,y,bg):
-    '''
+    """
     bvg is the bivariate gaussian.  This function is a convenient wrapper for 
     multivariate_normal.  
     Intput:
@@ -538,7 +538,7 @@ def bvg(A, mu,sigma,x,y,bg):
         a numpy array with the same shape as x.  If sigma is not positive-definite,
         this array will contain all zeros.  Otherwise, the BVG will be evaluated
         at each point at the value is returned.
-    '''
+    """
 
     if is_pos_def(sigma):
         f =  bivariate_normal(x,y,sigmax=np.sqrt(sigma[0,0]), sigmay = np.sqrt(sigma[1,1]),

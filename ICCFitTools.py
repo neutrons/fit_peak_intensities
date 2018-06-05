@@ -21,15 +21,15 @@ from timeit import default_timer as timer
 from scipy.ndimage.filters import convolve
 
 def scatFun(x, A, bg):
-    '''
+    """
     scatFun: returns A/x+bg.  Used for background estimation.
-    '''
+    """
     return A/x+bg
 
 def oldScatFun(x,A,k,bg):
-    '''
+    """
     oldScatFun: returns 1.0*A*np.exp(-k*x) + bg.  Used for background estimation.
-    '''
+    """
     return 1.0*A*np.exp(-k*x) + bg
 
 def calcSomeTOF(box, peak, refitIDX = None, q_frame='sample'):
@@ -70,10 +70,10 @@ def calcSomeTOF(box, peak, refitIDX = None, q_frame='sample'):
 
 
 def cart2sph(x,y,z):
-    '''
+    """
     cart2sph takes in spherical coordinates (x,y,z) and returns 
     spherical coordinates (r,phi,theta)
-    '''
+    """
     hxy = np.hypot(x, y)
     r = np.hypot(hxy, z)
     el = np.arctan2(z, hxy)
@@ -81,12 +81,12 @@ def cart2sph(x,y,z):
     return r, az, el
 
 def getQXQYQZ(box):
-    '''
+    """
     getQXQYQZ - returns meshed coordinates from an MDHistoWorkspace
     input: box - a 3D MDHistoWorkspace of a*b*c bins
     output: QX,QY,QZ - a*b*c numpy arrays containing evenly spaced coordinates
                         over the range of each axis.
-    '''
+    """
     xaxis = box.getXDimension()
     qx = np.linspace(xaxis.getMinimum(), xaxis.getMaximum(), xaxis.getNBins())
     yaxis = box.getYDimension()
@@ -97,7 +97,7 @@ def getQXQYQZ(box):
     return QX, QY, QZ
 
 def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, qMask=None, pp_lambda=None, minppl_frac=0.8, maxppl_frac=1.5,mindtBinWidth=1, constraintScheme=1):
-    '''
+    """
     getQuickTOFWS - generates a quick-and-dirty TOFWS.  Useful for determining the background.
     Input:
         box: the MDHistoWorkspace for the peak we are fitting
@@ -116,7 +116,7 @@ def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, qMas
         h - list of [Y, X], with Y and X being numpy arrays of the Y and X of the tof profile
         intensity - fitted intensity
         sigma - fitted sig(int)
-    '''
+    """
     tof = peak.getTOF() #in us
     wavelength = peak.getWavelength() #in Angstrom
     flightPath = peak.getL1() + peak.getL2() #in m
@@ -157,7 +157,7 @@ def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, qMas
 
 
 def getPoissionGoodIDX(n_events, zBG=1.96, neigh_length_m=3):
-    '''
+    """
     getPoissionGoodIDX - returns a numpy arrays which is true if the voxel contains events at 
             the zBG z level (1.96=95%CI).  This is based only on Poission statistics.
     Input:
@@ -169,7 +169,7 @@ def getPoissionGoodIDX(n_events, zBG=1.96, neigh_length_m=3):
                 counts at a statistically significant level.
                 
         pp_lambda: the most likely number of background events
-    '''
+    """
     hasEventsIDX = n_events>0
     #Set up some things to only consider good pixels
     N = np.shape(n_events)[0]
@@ -193,7 +193,7 @@ def getPoissionGoodIDX(n_events, zBG=1.96, neigh_length_m=3):
     return goodIDX, pp_lambda
 
 def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3, qMask=None, peak=None, box=None, pp_lambda=None,peakNumber=-1, minppl_frac=0.8, maxppl_frac=1.5, predCoefficients=None, mindtBinWidth=1, constraintScheme=1):
-    '''
+    """
     getOptimizedGoodIDX - returns a numpy arrays which is true if the voxel contains events at 
             the zBG z level (1.96=95%CI).  Rather than using Poission statistics, this function
             will determine the optimal background level by trying to fit the TOF profile
@@ -220,7 +220,7 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3, 
         goodIDX: a numpy arrays the same size as n_events that is True of False for if it contains
                 counts to be included in the TOF profile.
         pp_lambda: the most likely number of background events
-    '''
+    """
     #Set up some things to only consider good pixels
     hasEventsIDX = n_events>0
     N = np.shape(n_events)[0]
@@ -297,7 +297,7 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3, 
 def getBGRemovedIndices(n_events,zBG=1.96,calc_pp_lambda=False, neigh_length_m=3, qMask=None, 
                         peak=None, box=None, pp_lambda=None,peakNumber=-1, padeCoefficients=None,predCoefficients=None,
                         pplmin_frac=0.8, pplmax_frac = 1.5, mindtBinWidth=1, constraintScheme=1):
-    '''
+    """
     getBGRemovedIndices - A wrapper for getOptimizedGoodIDX 
     Input:
         n_events - 3D numpy array containing counts
@@ -321,7 +321,7 @@ def getBGRemovedIndices(n_events,zBG=1.96,calc_pp_lambda=False, neigh_length_m=3
         goodIDX: a numpy arrays the same size as n_events that is True of False for if it contains
                 counts to be included in the TOF profile.
         pp_lambda: the most likely number of background events
-    '''
+    """
 
 
     if calc_pp_lambda is True and pp_lambda is not None:
@@ -365,11 +365,11 @@ def getBGRemovedIndices(n_events,zBG=1.96,calc_pp_lambda=False, neigh_length_m=3
 
 
 def getDQFracHKL(UB, frac=0.5):
-    '''
+    """
     UBmatrix as loaded by LoadIsawUB().  Only works in the
     return dQ -  a 3x2 numpy array saying how far in each direction you have 
         to go to get all of (h-frak,k-frac,l-frac; h+frac, k+frac, l+frac_)
-    '''
+    """
 
     dQ = np.zeros((3,2))
 
@@ -379,7 +379,7 @@ def getDQFracHKL(UB, frac=0.5):
     return dQ
 
 def getHKLMask(UB, frac=0.5,dQPixel=0.005, dQ=None):
-    '''
+    """
     getHKLMask returns the qMask used throughout most of the fitting.
     Intput:
         UB: the UB matrix (3x3 numpy array)
@@ -388,7 +388,7 @@ def getHKLMask(UB, frac=0.5,dQPixel=0.005, dQ=None):
         dQ: how far to go.  Will calculate if set to None
     returns
         mask: the qMask used by many fitting functions.
-    '''
+    """
     if dQ is None:
         dQ = np.abs(getDQFracHKL(UB, frac=frac))
         dQ[dQ>0.5] = 0.5
@@ -409,26 +409,26 @@ def getHKLMask(UB, frac=0.5,dQPixel=0.005, dQ=None):
 
 
 def padeWrapper(x,a,b,c,d,f,g,h,i,j,k):
-    '''
+    """
     padeWrapper is a wrapper for the pade(c,x) function for compatability with curve_fit.
     Inputs are x (numpy array) and the 8 coefficients for the approximant.
     Output are the values of the pade approximant at each value of x.
-    '''
+    """
     pArr = np.zeros(10)
     pArr[0] = a; pArr[1] = b; pArr[2] = c; pArr[3] = d; pArr[4] = f; 
     pArr[5] = g; pArr[6] = h; pArr[7] = i; pArr[8] = j; pArr[9] = k;
     return pade(pArr,x)
 
 def pade(c,x): 
-    '''
+    """
     Stadnard 4th order pade approximant.
     For use with moderator characterization, c are the coefficients
     and x is the energy (in eV)
-    '''
+    """
     return c[0]*x**c[1]*(1+c[2]*x+c[3]*x**2+(x/c[4])**c[5])/(1+c[6]*x+c[7]*x**2+(x/c[8])**c[9])
 
 def integratePeak(x, yFit, yData, bg, pp_lambda=0, fracStop = 0.01,totEvents=1, bgEvents=1, varFit=0. ):
-    '''
+    """
     integratePeak does 1D integration of the peak.  This is currently done by rectangular integration (i.e.
     we just sum the values at each point on the curve for values considered to be the peak.)  The peak is 
     defined as all x values with yFit/max(yFit) > fracStop.
@@ -450,7 +450,7 @@ def integratePeak(x, yFit, yData, bg, pp_lambda=0, fracStop = 0.01,totEvents=1, 
         xStart - the time (in us) the peak started at
         xStop - the time (in us) the peak stopped at
          
-    '''
+    """
     #Find out start/stop point
     yScaled = (yFit-bg) / np.max(yFit-bg)
     goodIDX = yScaled > fracStop
@@ -486,12 +486,12 @@ def normPoiss(k,lam,eventHist):
 
 
 def get_pp_lambda(n_events, hasEventsIDX ):
-    '''
+    """
     #Estimate the most likely number of events based on a Poission
     #distribution of the box.  n_events an ND array (N=3 for Qx,Qy,Qz)
     #containing the number of events in each pixel.  Returns pp_lambda,
     #the most likely number of events.
-    '''
+    """
     eventValues = n_events[hasEventsIDX]
     numEvents = np.sum(eventValues)
     eventHist = np.bincount(eventValues.astype('int'))[1:]
@@ -502,7 +502,7 @@ def get_pp_lambda(n_events, hasEventsIDX ):
 
 
 def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, qMask, zBG=-1.0, dtSpread = 0.02, minFracPixels = 0.005, workspaceNumber=None,neigh_length_m=0, pp_lambda=None, calc_pp_lambda=False, padeCoefficients=None,predCoefficients=None,pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1,constraintScheme=1):  
-    '''
+    """
     Builds a TOF profile from the data in box which is nominally centered around a peak.
     Input:
         box - in a binned MD box.
@@ -533,7 +533,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, qMask, zBG=-1.
         tofWS - a mantid containing the TOF profile.  X-axis is TOF (units: us) and
                Y-axis is the number of events.
         pp_lambda - the most likey number of bg events.
-    '''
+    """
     #Find the qVoxels to use
     n_events = box.getNumEventsArray()
     hasEventsIDX = np.logical_and(n_events>0,qMask)
@@ -599,10 +599,10 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, qMask, zBG=-1.
     return tofWS, float(pp_lambda)
 
 def getT0Shift(E,L):
-    '''
+    """
     getT0Shift(E,L) returns the time it takes a neutron of energy E
     (in eV) to go a distance L (in m).  Time is returned in us.
-    '''
+    """
     #E is energy in eV, L is flight path in m
     mn = 1.674929e-27 #neutron mass, kg
     E = E * 1.60218e-19 #convert eV to J
@@ -611,10 +611,10 @@ def getT0Shift(E,L):
     return t0Shift
 
 def getModeratorCoefficients(fileName):
-    '''
+    """
     getModeratorCoefficients takes coefficients saved via numpy and loads 
     them as a dictionary for use in other functions.
-    '''
+    """
     r = np.loadtxt(fileName)
     d = dict()
     d['A'] = r[0]
@@ -628,13 +628,13 @@ def oneOverXSquared(x, A, bg):
 
 
 def getInitialGuess(tofWS, paramNames, energy, flightPath, padeCoefficients):
-    '''
+    """
     Returns intial parameters for fitting based on a few quickly derived TOF
      profile parameters.  tofWS is a worskapce containng the TOF profile,
      paramNames is the list of parameter names
      energy is the energy of the peak (units: eV)
      flightPath is L = L1 + L2 (units: m)
-    '''
+    """
     x0 = np.zeros(len(paramNames))
     x = tofWS.readX(0)
     y = tofWS.readY(0)
@@ -661,7 +661,7 @@ def getInitialGuess(tofWS, paramNames, energy, flightPath, padeCoefficients):
 # workDir is not used
 # loadDir is the directory to extract the data from
 def getSample(run, DetCalFile,  workDir, fileName, qLow=-25, qHigh=25, q_frame='sample'):
-    '''
+    """
     getSample loads the event workspace, converts it to reciprocal space as an MDWorkspace.
         The event workspace will be removed from memory.
     Input:
@@ -673,7 +673,7 @@ def getSample(run, DetCalFile,  workDir, fileName, qLow=-25, qHigh=25, q_frame='
         q_frame - either 'sample' or 'lab'.  Wether to return in the lab or sample coordinate system.
     Returns: 
         MDdata - a handle for the mtd['MDdata'] object, which contains the loaded run in reciprocal space.
-    '''
+    """
 
     #data
     print 'Loading file', fileName
@@ -696,10 +696,10 @@ def getSample(run, DetCalFile,  workDir, fileName, qLow=-25, qHigh=25, q_frame='
     return MDdata
 
 def plotFit(filenameFormat, r,tofWS,fICC,runNumber, peakNumber, energy, chiSq,bgFinal, xStart, xStop, bgx0=None):
-    '''
+    """
     Function to make and save plots of the fits. bgx0=polynomial coefficients (polyfit order)
     for the initial guess
-    '''
+    """
     plt.figure(1); plt.clf()
     plt.plot(r.readX(0),r.readY(0),'o',label='Data')
     if bgx0 is not None:
@@ -718,7 +718,7 @@ def plotFit(filenameFormat, r,tofWS,fICC,runNumber, peakNumber, energy, chiSq,bg
 
 
 def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.005,fracHKL = 0.5, fracHKLRefine = 0.2, q_frame='sample'):
-    '''
+    """
     getBoxFracHKL returns the binned MDbox going from (x,y,z) - (dq_x, dq_y, dq_z) to (x,y,z) + (dq_x, dq_y, dq_z) 
      Inputs:
         peak: peak object to be analyzed.  HKL and peak centers must be defined
@@ -734,7 +734,7 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.00
         q_frame - str; either 'sample' or 'lab'
       Returns:
           Box, an MDWorkspace with histogrammed events around the peak
-    '''
+    """
 
     runNumber = peak.getRunNumber()
     if q_frame == 'lab':
@@ -759,7 +759,7 @@ def getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, dQPixel=0.00
 
 
 def doICCFit(tofWS, energy, flightPath, padeCoefficients, constraintScheme=None, outputWSName='fit', fitOrder=1):
-    '''
+    """
     doICCFit - Carries out the actual least squares fit for the TOF workspace.
     Intput:
         tofWS - a workspace with x being timepoints and y being the TOF profile
@@ -780,7 +780,7 @@ def doICCFit(tofWS, energy, flightPath, padeCoefficients, constraintScheme=None,
     Returns:
         fitResults - the output from Mantid's Fit() routine
         fICC - an IkedaCarpenterConvoluted function with parameters set to the fit values.
-    '''
+    """
     #Set up our inital guess
     fICC = ICC.IkedaCarpenterConvoluted()
     fICC.init()
@@ -818,7 +818,7 @@ def doICCFit(tofWS, energy, flightPath, padeCoefficients, constraintScheme=None,
     return fitResults, fICC
 
 def integrateSample(run, MDdata, peaks_ws, paramList, UBMatrix, dQ, qMask, padeCoefficients, figsFormat=None, dtSpread=0.02, fracHKL = 0.5, minFracPixels=0.0000, fracStop = 0.01, dQPixel=0.005, p=None,neigh_length_m=0,zBG=-1.0,bgPolyOrder=1, doIterativeBackgroundFitting=False,predCoefficients=None, q_frame='sample', progressFile=None, minpplfrac=0.8, maxpplfrac=1.5, mindtBinWidth=1, keepFitDict=False, constraintScheme=1):
-    '''
+    """
     integrateSample contains the loop that integrates over all of the peaks in a run and saves the results.  Importantly, it also handles
     errors (mostly by passing and recording special values for failed fits.)
     Input:
@@ -860,7 +860,7 @@ def integrateSample(run, MDdata, peaks_ws, paramList, UBMatrix, dQ, qMask, padeC
             k_conv, Ai (the background coefficients, A0 and A1 for linear), reducedChiSquared, pp_lambda]
         fitDict - if keepFitDict is False, an empty dictionary.  If keepFitDict is true, a dictionary (integer peak number as key)
             containing the x, yData, yFit for each peak. 
-    '''
+    """
     if p is None:
         p = range(peaks_ws.getNumberPeaks())
     fitDict = {}
