@@ -176,7 +176,6 @@ def boxToTOFThetaPhi(box,peak):
     return X
 
 def fitScaling(n_events,box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
-    print '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'
     YJOINT = 1.0*YTOF * YBVG
     YJOINT /= 1.0*YJOINT.max() #Joint PDF - max is 1, integral is unknown
 
@@ -189,7 +188,6 @@ def fitScaling(n_events,box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
     QX, QY, QZ = ICCFT.getQXQYQZ(box)
     dP = 8
     fitMaxIDX = tuple(np.array(np.unravel_index(YJOINT.argmax(), YJOINT.shape)))
-    print fitMaxIDX, '*************************'
     if goodIDX is None:
         goodIDX = np.zeros_like(YJOINT).astype(np.bool)
         goodIDX[max(fitMaxIDX[0]-dP,0):min(fitMaxIDX[0]+dP,goodIDX.shape[0]), 
@@ -201,7 +199,6 @@ def fitScaling(n_events,box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
     scaleLinear = Polynomial(n=1)
     #A1 = slope, A0 = offset
     scaleLinear.constrain("A1>0")
-    print scaleLinear
     scaleX = YJOINT[goodIDX]
     scaleY = n_events[goodIDX]
     scaleWS = CreateWorkspace(OutputWorkspace='scaleWS', dataX=scaleX, dataY=scaleY)#, dataE=np.sqrt(scaleY))   
@@ -209,7 +206,6 @@ def fitScaling(n_events,box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
     scaleFitWorkspace = mtd['scaleFit_Workspace']
     A0 = fitResultsScaling[3].row(0)['Value']
     A1 = fitResultsScaling[3].row(1)['Value']
-    print A1, A0
     YRET = A1*YJOINT + A0
     chiSqRed = fitResultsScaling[1]
 
@@ -230,7 +226,6 @@ def getXTOF(box, peak):
     origQS = peak.getQSampleFrame()
     tList = np.zeros_like(QX)
     for i in xrange(QX.shape[0]):
-        #print i
         for j in xrange(QX.shape[1]):
             for k in xrange(QX.shape[2]):
                 newQ = V3D(QX[i,j,k],QY[i,j,k],QZ[i,j,k])
@@ -269,7 +264,6 @@ def fitTOFCoordinate(box,peak, padeCoefficients,dtSpread=0.03,minFracPixels=0.01
     bgCoeffs = []
     for bgRow in bgParamsRows[::-1]:#reverse for numpy order 
         bgCoeffs.append(mtd['fit_Parameters'].row(bgRow)['Value'])
-    #print bgCoeffs
     x = tofWS.readX(0)
     bg = np.polyval(bgCoeffs, x)
     yFit = mtd['fit_Workspace'].readY(1)
@@ -365,9 +359,6 @@ def fitPeak3D(box, n_events, peak,goodIDX,padeCoefficients,qMask=None):
     try:
         params= curve_fit(peak3DFitFunction, X[goodIDX], n_events[goodIDX],  p0,maxfev=1000, sigma=np.sqrt(n_events[goodIDX]),bounds=bounds)
     except ValueError as e:
-        print '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
-        print e
-        print 'Returning initial guess (p0, p0)'
         params = (p0,p0)
     return params
 
@@ -636,16 +627,16 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         m.setAttributeValue('nX',h.shape[0])
         m.setAttributeValue('nY',h.shape[1])
         m.setConstraints(boundsDict)
-        print 'before: '
-        print(m)
+        #print 'before: '
+        #print(m)
         # Do the fit
         bvgWS = CreateWorkspace(OutputWorkspace='bvgWS',DataX=pos.ravel(),DataY=H.ravel(), DataE=np.sqrt(H.ravel()))
         #fitResults = Fit(Function=m, InputWorkspace='bvgWS', Output='bvgfit',Minimizer='Levenberg-MarquardtMD')
         mins = ['FABADA', 'Levenberg-Marquardt', 'Levenberg-MarquardtMD']
         #mins = ['BFGS', 'Conjugate gradient (Fletcher-Reeves imp.)', 'Conjugate gradient (Polak-Ribiere imp.)', 'Damped GaussNewton', 'FABADA', 'Levenberg-Marquardt', 'Levenberg-MarquardtMD', 'Simplex', 'SteepestDescent', 'Trust Region']
         fitResults = Fit(Function=m, InputWorkspace='bvgWS', Output='bvgfit',Minimizer=mins[2],MaxIterations=6000)
-        print 'after'
-        print m
+        #print 'after'
+        #print m
     elif forceParams is not None:
         p0 = np.zeros(7)
         p0[0] = np.max(h); p0[1] = TH.mean(); p0[2] = PH.mean()
@@ -694,6 +685,8 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
         fitFun = m
         fitResults = Fit(Function=fitFun, InputWorkspace='bvgWS', Output='bvgfit', Minimizer='Levenberg-MarquardtMD')
 
+        print 'after:'
+        print m
     # Recover the result
     m = mbvg.MBVG()
     m.init()
@@ -709,7 +702,7 @@ def doBVGFit(box,nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX
     m.setAttributeValue('nY',h.shape[1])
     chiSq = fitResults[1]
     params = [[m['A'], m['muX'], m['muY'], m['sigX'], m['sigY'], m['sigP'], m['bg']], chiSq]
-    print params
+    #print params
     return params, h, thBins, phBins
 
 def is_pos_def(x): #Checks if matrix x is positive definite
