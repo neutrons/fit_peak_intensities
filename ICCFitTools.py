@@ -67,7 +67,7 @@ def calcSomeTOF(box, peak, refitIDX=None, q_frame='sample'):
 
 def cart2sph(x, y, z):
     """
-    cart2sph takes in spherical coordinates (x,y,z) and returns 
+    cart2sph takes in spherical coordinates (x,y,z) and returns
     spherical coordinates (r,phi,theta)
     """
     hxy = np.hypot(x, y)
@@ -94,14 +94,15 @@ def getQXQYQZ(box):
     return QX, QY, QZ
 
 
-def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, qMask=None, pp_lambda=None, minppl_frac=0.8, maxppl_frac=1.5, mindtBinWidth=1, constraintScheme=1):
+def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, qMask=None,
+                  pp_lambda=None, minppl_frac=0.8, maxppl_frac=1.5, mindtBinWidth=1, constraintScheme=1):
     """
     getQuickTOFWS - generates a quick-and-dirty TOFWS.  Useful for determining the background.
     Input:
         box: the MDHistoWorkspace for the peak we are fitting
         peak: the peak object we are trying to fit
         padeCoefficients: the dictionary containing coefficients for the Pade coefficients describing thd moderator.
-        goodIDX - which indices to consider.  Should be a numpy array with the same shape as box.  Will use all 
+        goodIDX - which indices to consider.  Should be a numpy array with the same shape as box.  Will use all
                     voxels if this is None.
         dtSpread - how far on each side of the peak TOF to consider.
         qMask - which voxels to consider as a result of only keeping (h-eta, k-eta,l-eta) to (h+eta, k+eta, l+eta)
@@ -127,8 +128,10 @@ def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, qMas
     if pp_lambda is None:
         calc_pp_lambda = True
 
-    tofWS, ppl = getTOFWS(box, flightPath, scatteringHalfAngle, tof, peak, qMask, dtSpread=dtSpread, minFracPixels=0.01, neigh_length_m=3, zBG=1.96,
-                          pp_lambda=pp_lambda, calc_pp_lambda=calc_pp_lambda, pplmin_frac=minppl_frac, pplmax_frac=minppl_frac, mindtBinWidth=mindtBinWidth)
+    tofWS, ppl = getTOFWS(box, flightPath, scatteringHalfAngle, tof, peak, qMask, dtSpread=dtSpread,
+                          minFracPixels=0.01, neigh_length_m=3, zBG=1.96, pp_lambda=pp_lambda,
+                          calc_pp_lambda=calc_pp_lambda, pplmin_frac=minppl_frac, pplmax_frac=minppl_frac,
+                          mindtBinWidth=mindtBinWidth)
     fitResults, fICC = doICCFit(
         tofWS, energy, flightPath, padeCoefficients, fitOrder=1, constraintScheme=constraintScheme)
     h = [tofWS.readY(0), tofWS.readX(0)]
@@ -145,18 +148,17 @@ def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, qMas
     icProfile = r.readY(1)
     bgCoefficients = fitBG[::-1]
 
-    # peak.setSigmaIntensity(np.sqrt(np.sum(icProfile)))i
-    t0 = param.row(3)['Value']
-
-    intensity, sigma, xStart, xStop = integratePeak(r.readX(0), icProfile, r.readY(0), np.polyval(bgCoefficients, r.readX(
-        1)), pp_lambda=pp_lambda, fracStop=0.01, totEvents=np.sum(n_events[goodIDX*qMask]), bgEvents=np.sum(goodIDX*qMask)*pp_lambda, varFit=chiSq)
+    intensity, sigma, xStart, xStop = integratePeak(
+        r.readX(0), icProfile, r.readY(0), np.polyval(bgCoefficients, r.readX(1)), pp_lambda=pp_lambda,
+        fracStop=0.01, totEvents=np.sum(n_events[goodIDX*qMask]), bgEvents=np.sum(goodIDX*qMask)*pp_lambda,
+        varFit=chiSq)
 
     return chiSq, h, intensity, sigma
 
 
 def getPoissionGoodIDX(n_events, zBG=1.96, neigh_length_m=3):
     """
-    getPoissionGoodIDX - returns a numpy arrays which is true if the voxel contains events at 
+    getPoissionGoodIDX - returns a numpy arrays which is true if the voxel contains events at
             the zBG z level (1.96=95%CI).  This is based only on Poission statistics.
     Input:
         n_events: 3D numpy array containing counts
@@ -170,10 +172,8 @@ def getPoissionGoodIDX(n_events, zBG=1.96, neigh_length_m=3):
     """
     hasEventsIDX = n_events > 0
     # Set up some things to only consider good pixels
-    N = np.shape(n_events)[0]
     # Set to zero for "this pixel only" mode - performance is optimized for neigh_length_m=0
     neigh_length_m = neigh_length_m
-    maxBin = np.shape(n_events)
 
     # Get the most probably number of events
     pp_lambda = get_pp_lambda(n_events, hasEventsIDX)
@@ -187,7 +187,6 @@ def getPoissionGoodIDX(n_events, zBG=1.96, neigh_length_m=3):
             goodIDX = np.logical_and(
                 hasEventsIDX, conv_n_events > pp_lambda+zBG*np.sqrt(pp_lambda/(2*neigh_length_m+1)**3))
             boxMean = n_events[goodIDX]
-            boxMeanIDX = np.where(goodIDX)
             if allEvents > np.sum(boxMean):
                 found_pp_lambda = True
             else:
