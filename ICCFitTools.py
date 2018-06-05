@@ -1,24 +1,19 @@
 import matplotlib.pyplot as plt
-plt.ion()
 import numpy as np
 import sys
 import os
-from scipy.interpolate import interp1d
 from scipy.misc import factorial
 from scipy.optimize import curve_fit
-sys.path.append("/opt/mantidnightly/bin")
 from mantid.simpleapi import *
 from mantid.kernel import V3D
-import pickle
-from scipy import interpolate
 import ICConvoluted as ICC
-reload(ICC)
 import getEdgePixels as EdgeTools
-reload(EdgeTools)
 import itertools
-from scipy.interpolate import LinearNDInterpolator
-from timeit import default_timer as timer
 from scipy.ndimage.filters import convolve
+reload(ICC)
+reload(EdgeTools)
+plt.ion()
+
 
 def scatFun(x, A, bg):
     """
@@ -26,11 +21,13 @@ def scatFun(x, A, bg):
     """
     return A/x+bg
 
+
 def oldScatFun(x,A,k,bg):
     """
     oldScatFun: returns 1.0*A*np.exp(-k*x) + bg.  Used for background estimation.
     """
     return 1.0*A*np.exp(-k*x) + bg
+
 
 def calcSomeTOF(box, peak, refitIDX = None, q_frame='sample'):
     xaxis = box.getXDimension()
@@ -44,7 +41,6 @@ def calcSomeTOF(box, peak, refitIDX = None, q_frame='sample'):
     if refitIDX  is None:
         refitIDX = np.ones_like(QX).astype(np.bool)
 
-    from mantid.kernel import V3D
     if q_frame == 'lab':
         qS0 = peak.getQLabFrame()
     elif q_frame == 'sample': 
@@ -80,6 +76,7 @@ def cart2sph(x,y,z):
     az = np.arctan2(y, x)
     return r, az, el
 
+
 def getQXQYQZ(box):
     """
     getQXQYQZ - returns meshed coordinates from an MDHistoWorkspace
@@ -95,6 +92,7 @@ def getQXQYQZ(box):
     qz = np.linspace(zaxis.getMinimum(), zaxis.getMaximum(), zaxis.getNBins())
     QX, QY, QZ = np.meshgrid(qx, qy, qz,indexing='ij',copy=False)
     return QX, QY, QZ
+
 
 def getQuickTOFWS(box, peak, padeCoefficients, goodIDX=None, dtSpread=0.03, qMask=None, pp_lambda=None, minppl_frac=0.8, maxppl_frac=1.5,mindtBinWidth=1, constraintScheme=1):
     """
@@ -191,6 +189,7 @@ def getPoissionGoodIDX(n_events, zBG=1.96, neigh_length_m=3):
             else:
                 pp_lambda *= 1.05
     return goodIDX, pp_lambda
+
 
 def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3, qMask=None, peak=None, box=None, pp_lambda=None,peakNumber=-1, minppl_frac=0.8, maxppl_frac=1.5, predCoefficients=None, mindtBinWidth=1, constraintScheme=1):
     """
@@ -293,7 +292,7 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3, 
         return goodIDX*qMask, pp_lambda
     return goodIDX, pp_lambda
  
-#Must give this a peak, box, and qMask to do iterative pp_lambda
+
 def getBGRemovedIndices(n_events,zBG=1.96,calc_pp_lambda=False, neigh_length_m=3, qMask=None, 
                         peak=None, box=None, pp_lambda=None,peakNumber=-1, padeCoefficients=None,predCoefficients=None,
                         pplmin_frac=0.8, pplmax_frac = 1.5, mindtBinWidth=1, constraintScheme=1):
@@ -361,9 +360,8 @@ def getBGRemovedIndices(n_events,zBG=1.96,calc_pp_lambda=False, neigh_length_m=3
                 #raise
                 pplmin_frac -= 0.4
     print 'ERROR WITH ICCFT:getBGRemovedIndices!' 
+
     
-
-
 def getDQFracHKL(UB, frac=0.5):
     """
     UBmatrix as loaded by LoadIsawUB().  Only works in the
@@ -377,6 +375,7 @@ def getDQFracHKL(UB, frac=0.5):
     dQ[:,0] = np.max(q,axis=0)#TODO THIS CAN BE 1D since it's symmetric
     dQ[:,1] = np.min(q,axis=0)
     return dQ
+
 
 def getHKLMask(UB, frac=0.5,dQPixel=0.005, dQ=None):
     """
@@ -419,6 +418,7 @@ def padeWrapper(x,a,b,c,d,f,g,h,i,j,k):
     pArr[5] = g; pArr[6] = h; pArr[7] = i; pArr[8] = j; pArr[9] = k;
     return pade(pArr,x)
 
+
 def pade(c,x): 
     """
     Stadnard 4th order pade approximant.
@@ -426,6 +426,7 @@ def pade(c,x):
     and x is the energy (in eV)
     """
     return c[0]*x**c[1]*(1+c[2]*x+c[3]*x**2+(x/c[4])**c[5])/(1+c[6]*x+c[7]*x**2+(x/c[8])**c[9])
+
 
 def integratePeak(x, yFit, yData, bg, pp_lambda=0, fracStop = 0.01,totEvents=1, bgEvents=1, varFit=0. ):
     """
@@ -474,11 +475,11 @@ def integratePeak(x, yFit, yData, bg, pp_lambda=0, fracStop = 0.01,totEvents=1, 
     print 'Intensity: ', intensity, 'Sigma: ', sigma, 'pp_lambda:', pp_lambda
     return intensity, sigma, xStart, xStop
 
-#Poission distribution
+
 def poisson(k,lam):
     return (lam**k)*(np.exp(-lam)/factorial(k))
 
-#Normalized Poission distribution
+
 def normPoiss(k,lam,eventHist):
     pp_dist = poisson(k,lam)
     pp_n = np.dot(pp_dist,eventHist)/np.dot(pp_dist,pp_dist)
@@ -598,6 +599,7 @@ def getTOFWS(box, flightPath, scatteringHalfAngle, tofPeak, peak, qMask, zBG=-1.
         tofWS = CreateWorkspace(OutputWorkspace='tofWS%i'%workspaceNumber, DataX=tPoints, DataY=yPoints, DataE=np.sqrt(yPoints))
     return tofWS, float(pp_lambda)
 
+
 def getT0Shift(E,L):
     """
     getT0Shift(E,L) returns the time it takes a neutron of energy E
@@ -609,6 +611,7 @@ def getT0Shift(E,L):
     t0Shift = L*np.sqrt(mn/2/E) #units = s
     t0Shift = t0Shift * 1.0e6 #units =us
     return t0Shift
+
 
 def getModeratorCoefficients(fileName):
     """
@@ -622,6 +625,7 @@ def getModeratorCoefficients(fileName):
     d['R'] = r[2]
     d['T0'] = r[3]
     return d
+
 
 def oneOverXSquared(x, A, bg):
     return A/np.sqrt(x) + bg
@@ -654,12 +658,7 @@ def getInitialGuess(tofWS, paramNames, energy, flightPath, padeCoefficients):
     x0[6] = 120.0 #Exponential decay rate for convolution
     return x0
 
-#Get sample loads the NeXus evnts file and converts from detector space to
-# reciprocal space.
-# run is the run number.
-# DetCalFile is a string for the file containng the detector calibration
-# workDir is not used
-# loadDir is the directory to extract the data from
+
 def getSample(run, DetCalFile,  workDir, fileName, qLow=-25, qHigh=25, q_frame='sample'):
     """
     getSample loads the event workspace, converts it to reciprocal space as an MDWorkspace.
@@ -694,6 +693,7 @@ def getSample(run, DetCalFile,  workDir, fileName, qLow=-25, qHigh=25, q_frame='
         LorentzCorrection=False)
     mtd.remove('data')
     return MDdata
+
 
 def plotFit(filenameFormat, r,tofWS,fICC,runNumber, peakNumber, energy, chiSq,bgFinal, xStart, xStop, bgx0=None):
     """
@@ -816,6 +816,7 @@ def doICCFit(tofWS, energy, flightPath, padeCoefficients, constraintScheme=None,
     fitFun = f + bg
     fitResults = Fit(Function=fitFun, InputWorkspace='tofWS', Output=outputWSName)
     return fitResults, fICC
+
 
 def integrateSample(run, MDdata, peaks_ws, paramList, UBMatrix, dQ, qMask, padeCoefficients, figsFormat=None, dtSpread=0.02, fracHKL = 0.5, minFracPixels=0.0000, fracStop = 0.01, dQPixel=0.005, p=None,neigh_length_m=0,zBG=-1.0,bgPolyOrder=1, doIterativeBackgroundFitting=False,predCoefficients=None, q_frame='sample', progressFile=None, minpplfrac=0.8, maxpplfrac=1.5, mindtBinWidth=1, keepFitDict=False, constraintScheme=1):
     """

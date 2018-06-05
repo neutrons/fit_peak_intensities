@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import ICCFitTools as ICCFT
 from mantid.simpleapi import Fit, CreateWorkspace, FunctionFactory, mtd, Polynomial
+# from mantid.simpleapi import *
 from scipy.interpolate import interp1d
 from scipy.ndimage.filters import convolve
 from matplotlib.mlab import bivariate_normal
