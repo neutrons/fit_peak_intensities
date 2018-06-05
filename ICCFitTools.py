@@ -7,11 +7,9 @@ from scipy.optimize import curve_fit
 from mantid.simpleapi import *
 from mantid.kernel import V3D
 import ICConvoluted as ICC
-import getEdgePixels as EdgeTools
 import itertools
 from scipy.ndimage.filters import convolve
 reload(ICC)
-reload(EdgeTools)
 plt.ion()
 
 
