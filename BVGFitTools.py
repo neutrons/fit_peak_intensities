@@ -14,35 +14,6 @@ reload(mbvg)
 FunctionFactory.subscribe(mbvg.MBVG)
 FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 
-
-class mvn():
-    '''
-    This class is a wrapper for the matplotlib.mlab.bivariate_normal
-    implementation of a bivariate Gaussian.  It is designed to be transparent
-    with scipy.stats.multivariate_normal, but can be used when older versions
-    of scipy are available (e.g. on the analysis machine).
-    '''
-    def __init__(self, mu, sigma):
-        self.mux = mu[0]
-        self.muy = mu[1]
-        self.sigx = np.sqrt(sigma[0][0])
-        self.sigy = np.sqrt(sigma[1][1])
-        self.sigxy = sigma[0][1]
-        self.p = 1.0*self.sigxy/self.sigx/self.sigy
-    
-    def __str__(self):
-        return 'bivariate guassian with mu=[%4.4f, %4.4f] and sigma = [%4.4f %4.4f; %4.4f %4.4f]'%(mux, muy, sigx, sigxy, sigxy, sigy)
-        
-    def __repr__(self):
-        return 'bivariate guassian with mu=[%4.4f, %4.4f] and sigma = [%4.4f %4.4f; %4.4f %4.4f]'%(mux, muy, sigx, sigxy, sigxy, sigy)
-    def pdf(self, pos):
-        X = pos[...,0]
-        Y = pos[...,1]
-        return bivariate_normal(X,Y, sigmax=self.sigx, sigmay=self.sigy,
-                            mux=self.mux,muy=self.muy,sigmaxy=self.sigxy)
-
-multivariate_normal = mvn
-
 def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxToHistogram=1.0, plotResults=False, zBG=1.96,bgPolyOrder=1, fICCParams = None, oldICCFit=None, strongPeakParams=None, forceCutoff=250, edgeCutoff=15, predCoefficients=None, neigh_length_m=3, q_frame = 'sample', dtSpread=0.03, pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1):
     n_events = box.getNumEventsArray()
 
@@ -71,6 +42,7 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
         fICC['k_conv'] = fICCParams[11] 
         goodIDX, _ = ICCFT.getBGRemovedIndices(n_events, pp_lambda=pp_lambda, qMask=qMask)
 
+        #Get the 3D TOF component, YTOF
         if oldICCFit is not None:
             x_lims = [np.min(oldICCFit[0]), np.max(oldICCFit[0])]
             tofxx = oldICCFit[0]; tofyy = oldICCFit[2]
@@ -82,11 +54,14 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
         ftof = interp1d(tofxx, tofyy,bounds_error=False,fill_value=0.0)
         XTOF = boxToTOFThetaPhi(box,peak)[:,:,:,0]
         YTOF = ftof(XTOF)
-    goodIDX *= qMask #TODO: we can do this when we get the goodIDX
+
+    # Get YBVG - the detector component
+    if goodIDX is not None:
+        goodIDX *= qMask
     X = boxToTOFThetaPhi(box,peak)
     dEdge = edgeCutoff
     useForceParams = peak.getIntensity() < forceCutoff or peak.getRow() <= dEdge or peak.getRow() >= 255-dEdge or peak.getCol() <= dEdge or peak.getCol() >= 255-dEdge
-    if strongPeakParams is not None and useForceParams:
+    if strongPeakParams is not None and useForceParams: #We will force parameters on this fit
         ph = np.arctan2(q0[1],q0[0])
         th = np.arctan2(q0[2],np.hypot(q0[0],q0[1])) 
         phthPeak = np.array([ph,th])
@@ -95,22 +70,40 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
         nnIDX = np.argmin(distSq)
         print 'Using [ph, th] =', strongPeakParams[nnIDX,:2], 'for ', phthPeak, '; nnIDX = ', nnIDX
         params,h,t,p = doBVGFit(box,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram, goodIDX=goodIDX, forceParams=strongPeakParams[nnIDX])
-    else:
+    else: #Just do the fit - no nearest neighbor assumptions
         params,h,t,p = doBVGFit(box,nTheta=nTheta,nPhi=nPhi,fracBoxToHistogram=fracBoxToHistogram, goodIDX=goodIDX)
     
     if plotResults:
         compareBVGFitData(box,params[0],nTheta, nPhi, fracBoxToHistogram=fracBoxToHistogram, useIDX=goodIDX)
 
+    #set up the BVG
     A = params[0][0]
-    mu0 = params[0][1]
-    mu1 = params[0][2]
-    sigX = params[0][3]
-    sigY = params[0][4]
-    p = params[0][5]
-    bgBVG = params[0][6]
+    mu0 = params[0][1];  mu1 = params[0][2]
+    sigX = params[0][3]; sigY = params[0][4];   p = params[0][5]
+    bgBVG = params[0][6];
     sigma = np.array([[sigX**2,p*sigX*sigY], [p*sigX*sigY,sigY**2]])
     mu = np.array([mu0,mu1])
     
+    XTOF = X[:,:,:,0]
+    XTHETA = X[:,:,:,1]
+    XPHI = X[:,:,:,2]
+    XANGLE = X[:,:,:,1:]
+
+    YBVG= bvg(1.0, mu,sigma,XTHETA,XPHI,0)
+
+    #Do scaling to the data
+    Y,redChiSq, scaleFactor = fitScaling(n_events,box, YTOF, YBVG)
+    YBVG2 = bvg(1.0, mu,sigma,XTHETA,XPHI,0)
+    YTOF2 = getYTOF(fICC, XTOF, x_lims)
+    Y2 = YTOF2*YBVG2
+    Y2 = scaleFactor*Y2/Y2.max() 
+    
+    QX, QY, QZ = ICCFT.getQXQYQZ(box)
+    fitMaxIDX = tuple(np.array(np.unravel_index(Y2.argmax(), Y2.shape)))
+    newCenter = np.array([QX[fitMaxIDX], QY[fitMaxIDX], QZ[fitMaxIDX]])
+
+
+    #Set a dictionary with the parameters to return
     retParams = {}
     retParams['Alpha'] = fICC['A']
     retParams['Beta'] = fICC['B']
@@ -124,31 +117,8 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150,fracBoxTo
     retParams['sigY'] = sigY
     retParams['sigP'] = p
     retParams['bgBVG'] = bgBVG
-
-    XTOF = X[:,:,:,0]
-    XTHETA = X[:,:,:,1]
-    XPHI = X[:,:,:,2]
-    XANGLE = X[:,:,:,1:]
-
-    YBVG= bvg(1.0, mu,sigma,XTHETA,XPHI,0)
-    Y,redChiSq, scaleFactor = fitScaling(n_events,box, YTOF, YBVG)
     retParams['scale3d'] = scaleFactor
     retParams['chiSq3d'] = redChiSq
-
-    
-    XTOF = X[:,:,:,0]
-    XTHETA = X[:,:,:,1]
-    XPHI = X[:,:,:,2]
-    XANGLE = X[:,:,:,1:]
-    YBVG2 = bvg(1.0, mu,sigma,XTHETA,XPHI,0)
-    YTOF2 = getYTOF(fICC, XTOF, x_lims)
-    Y2 = YTOF2*YBVG2
-    Y2 = scaleFactor*Y2/Y2.max() 
-    
-    QX, QY, QZ = ICCFT.getQXQYQZ(box)
-    fitMaxIDX = tuple(np.array(np.unravel_index(Y2.argmax(), Y2.shape)))
-    newCenter = np.array([QX[fitMaxIDX], QY[fitMaxIDX], QZ[fitMaxIDX]])
-
     retParams['dQ'] =  np.linalg.norm(newCenter - q0)
     retParams['newQ'] =  newCenter 
 
@@ -724,17 +694,11 @@ def bvg(A, mu,sigma,x,y,bg):
         this array will contain all zeros.  Otherwise, the BVG will be evaluated
         at each point at the value is returned.
     '''
-    pos = np.empty(x.shape+(2,))
-    if pos.ndim == 4:
-        pos[:,:,:,0] = x; pos[:,:,:,1] = y
-    elif pos.ndim == 3:
-        pos[:,:,0] = x; pos[:,:,1] = y
-    else:
-        pos[:,0] = x; pos[:,1] = y
 
     if is_pos_def(sigma):
-        rv = multivariate_normal(mu, sigma)
-        return A*rv.pdf(pos) +bg
+        f =  bivariate_normal(x,y,sigmax=np.sqrt(sigma[0,0]), sigmay = np.sqrt(sigma[1,1]),
+                sigmaxy=sigma[1,0], mux=mu[0], muy=mu[1])
+        return A*f+bg
     else:
         print '   BVGFT:bvg:not PSD Matrix'
         return 0.0*np.ones_like(x)
