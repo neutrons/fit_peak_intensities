@@ -485,8 +485,8 @@ def doBVGFit(box, nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodID
         mins = ['FABADA', 'Levenberg-Marquardt', 'Levenberg-MarquardtMD']
         fitResults = Fit(Function=m, InputWorkspace='bvgWS',
                          Output='bvgfit', Minimizer=mins[2], MaxIterations=6000)
-        # print 'after'
-        # print m
+        print 'after'
+        print m
     elif forceParams is not None:
         p0 = np.zeros(7)
         p0[0] = np.max(h)
