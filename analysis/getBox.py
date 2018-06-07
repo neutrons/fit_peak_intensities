@@ -7,6 +7,7 @@ for i in range(len(sys.path))[::-1]:
 import socket
 if 'sns' in socket.gethostname():
     sys.path.append('/SNS/users/ntv/mantid/mantid/release/bin')
+    #sys.path.append('/SNS/users/ntv/workspace/mantid/release/bin')
 else:
     sys.path.append('/home/ntv/mantid/mantid/bin/')
 
@@ -389,8 +390,9 @@ if True:
     yP = np.polyval(gP,t)
     #plt.plot(t,yP,'m--')
     '''
-padeCoefficients = ICCFT.getModeratorCoefficients('/home/ntv/integrate/franz_coefficients_2017.dat')
-strongPeakParams = pickle.load(open('/home/ntv/integrate/strongPeakParams_beta_lac_mut_mbvg.pkl', 'rb'))
+padeCoefficients = ICCFT.getModeratorCoefficients('/SNS/users/ntv/integrate/franz_coefficients_2017.dat')
+strongPeakParams = pickle.load(open('/SNS/users/ntv/integrate/strongPeakParams_beta_lac_mut_mbvg.pkl', 'rb'))
 Y3D, gIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=True, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1, strongPeakParams=strongPeakParams, predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac,forceCutoff=250,edgeCutoff=3)
 peakIDX = Y3D/Y3D.max()>0.05
+plt.pause(0.01)
 print 'ell: %4.4f; new: %4.4f'%(peak.getIntensity(), np.sum(Y3D[peakIDX]))

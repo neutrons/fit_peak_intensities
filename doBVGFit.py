@@ -191,7 +191,7 @@ def doBVGFits(sampleRunsList=None):
     qLow = -10.0; qHigh = 10.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
     dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
-    descriptor = 'beta_lac_3D_mbvg_mutant' #Does not end with '/'
+    descriptor = 'beta_lac_3D_mbvg_mutant_2' #Does not end with '/'
     doIterativeBackgroundFitting = False
     numTimesToInterpolate=0
     workDir = '/SNS/users/ntv/dropbox/'

@@ -466,8 +466,8 @@ def doBVGFit(box, nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodID
         m = mbvg.MBVG()
         m.init()
         m['A'] = np.max(h) / np.max(h)
-        # m['muX'] = meanTH
-        # m['muY'] = meanPH
+        #m['muX'] = meanTH
+        #m['muY'] = meanPH
         m['muX'] = TH[np.unravel_index(h.argmax(), h.shape)]
         m['muY'] = PH[np.unravel_index(h.argmax(), h.shape)]
         m['sigX'] = sigX0
@@ -481,10 +481,10 @@ def doBVGFit(box, nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodID
         # Do the fit
         bvgWS = CreateWorkspace(OutputWorkspace='bvgWS', DataX=pos.ravel(
         ), DataY=H.ravel(), DataE=np.sqrt(H.ravel()))
-        # fitResults = Fit(Function=m, InputWorkspace='bvgWS', Output='bvgfit',Minimizer='Levenberg-MarquardtMD')
-        mins = ['FABADA', 'Levenberg-Marquardt', 'Levenberg-MarquardtMD']
-        fitResults = Fit(Function=m, InputWorkspace='bvgWS',
-                         Output='bvgfit', Minimizer=mins[2], MaxIterations=6000)
+
+        fitResults = Fit(Function=m, InputWorkspace='bvgWS', Output='bvgfit',
+                         Minimizer='Levenberg-MarquardtMD')
+
         print 'after'
         print m
     elif forceParams is not None:
@@ -524,10 +524,10 @@ def doBVGFit(box, nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodID
         m = mbvg.MBVG()
         m.init()
         m['A'] = np.max(h)
-        # m['muX'] = TH.mean()
-        # m['muY'] = PH.mean()
-        m['muX'] = TH[np.unravel_index(h.argmax(), h.shape)]
-        m['muY'] = PH[np.unravel_index(h.argmax(), h.shape)]
+        m['muX'] = TH.mean()
+        m['muY'] = PH.mean()
+        #m['muX'] = TH[np.unravel_index(h.argmax(), h.shape)]
+        #m['muY'] = PH[np.unravel_index(h.argmax(), h.shape)]
         m['sigX'] = forceParams[5]
         m['sigY'] = forceParams[6]
         m['sigP'] = forceParams[7]
