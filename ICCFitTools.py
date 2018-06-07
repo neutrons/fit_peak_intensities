@@ -291,11 +291,11 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3, 
             break
         except KeyboardInterrupt:
             sys.exit()
-    print '\n'.join([str(v)
-                     for v in zip(chiSqList[:i+1], ISIGList[:i+1], IList[:i+1])])
+    #print '\n'.join([str(v)
+    #                 for v in zip(chiSqList[:i+1], ISIGList[:i+1], IList[:i+1])])
     use_ppl = np.argmin(np.abs(chiSqList[:i+1]-1.0))
     pp_lambda = pp_lambda_toCheck[use_ppl]
-    print 'USING PP_LAMBDA', pp_lambda, 'WITH CHISQ:', chiSqList[use_ppl]
+    #print 'USING PP_LAMBDA', pp_lambda, 'WITH CHISQ:', chiSqList[use_ppl]
     goodIDX, _ = getBGRemovedIndices(n_events, pp_lambda=pp_lambda)
     chiSq, h, intens, sigma = getQuickTOFWS(box, peak, padeCoefficients, goodIDX=goodIDX, qMask=qMask,
                                             pp_lambda=pp_lambda, minppl_frac=minppl_frac, maxppl_frac=maxppl_frac,
@@ -497,7 +497,7 @@ def integratePeak(x, yFit, yData, bg, pp_lambda=0, fracStop=0.01, totEvents=1, b
     # Calculate the background sigma = sqrt(var(Fit) + sum(BG))
     # sigma = np.sqrt(totEvents + bgEvents)
     sigma = np.sqrt(intensity + 2.0*bgEvents + varFit)
-    print 'Intensity: ', intensity, 'Sigma: ', sigma, 'pp_lambda:', pp_lambda
+    #print 'Intensity: ', intensity, 'Sigma: ', sigma, 'pp_lambda:', pp_lambda
     return intensity, sigma, xStart, xStop
 
 

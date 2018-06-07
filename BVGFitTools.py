@@ -16,7 +16,8 @@ FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150, fracBoxToHistogram=1.0,
               plotResults=False, zBG=1.96, bgPolyOrder=1, fICCParams=None, oldICCFit=None,
               strongPeakParams=None, forceCutoff=250, edgeCutoff=15, predCoefficients=None,
-              neigh_length_m=3, q_frame='sample', dtSpread=0.03, pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1):
+              neigh_length_m=3, q_frame='sample', dtSpread=0.03, pplmin_frac=0.8, pplmax_frac=1.5, mindtBinWidth=1,
+              figureNumber=2):
     n_events = box.getNumEventsArray()
 
     if q_frame == 'lab':
@@ -91,7 +92,8 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150, fracBoxT
 
     if plotResults:
         compareBVGFitData(
-            box, params[0], nTheta, nPhi, fracBoxToHistogram=fracBoxToHistogram, useIDX=goodIDX)
+            box, params[0], nTheta, nPhi, fracBoxToHistogram=fracBoxToHistogram, useIDX=goodIDX,
+            figNumber=figureNumber)
 
     # set up the BVG
     # A = params[0][0]  # never used
@@ -263,8 +265,8 @@ def fitTOFCoordinate(box, peak, padeCoefficients, dtSpread=0.03, minFracPixels=0
         plt.clf()
         plt.plot(tofxx, tofyy, label='Interpolated')
         plt.plot(tofWS.readX(0), tofWS.readY(0), 'o', label='Data')
-        print 'sum:', np.sum(fICC.function1D(tofWS.readX(0)))
-        print 'bg: ', np.sum(bg[iStart:iStop])
+        #print 'sum:', np.sum(fICC.function1D(tofWS.readX(0)))
+        #print 'bg: ', np.sum(bg[iStart:iStop])
         plt.plot(mtd['fit_Workspace'].readX(1),
                  mtd['fit_Workspace'].readY(1), label='Fit')
         plt.title(fitResults.OutputChi2overDoF)
@@ -485,8 +487,8 @@ def doBVGFit(box, nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodID
         fitResults = Fit(Function=m, InputWorkspace='bvgWS', Output='bvgfit',
                          Minimizer='Levenberg-MarquardtMD')
 
-        print 'after'
-        print m
+        #print 'after'
+        #print m
     elif forceParams is not None:
         p0 = np.zeros(7)
         p0[0] = np.max(h)
@@ -534,8 +536,8 @@ def doBVGFit(box, nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodID
         m.setAttributeValue('nX', h.shape[0])
         m.setAttributeValue('nY', h.shape[1])
         m.setConstraints(boundsDict)
-        print 'before:'
-        print m
+        #print 'before:'
+        #print m
 
         # Do the fit
         # plt.figure(18); plt.clf(); plt.imshow(m.function2D(pos)); plt.title('BVG Initial guess')
@@ -545,8 +547,8 @@ def doBVGFit(box, nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodID
         fitResults = Fit(Function=fitFun, InputWorkspace=bvgWS,
                          Output='bvgfit', Minimizer='Levenberg-MarquardtMD')
 
-        print 'after:'
-        print m
+        #print 'after:'
+        #print m
     # Recover the result
     m = mbvg.MBVG()
     m.init()
