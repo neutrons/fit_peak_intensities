@@ -467,7 +467,7 @@ def doBVGFit(box, nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodID
         # Set our initial guess
         m = mbvg.MBVG()
         m.init()
-        m['A'] = np.max(h) / np.max(h)
+        m['A'] = 1.
         #m['muX'] = meanTH
         #m['muY'] = meanPH
         m['muX'] = TH[np.unravel_index(h.argmax(), h.shape)]
@@ -525,30 +525,33 @@ def doBVGFit(box, nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodID
         # Set our initial guess
         m = mbvg.MBVG()
         m.init()
-        m['A'] = np.max(h)
-        m['muX'] = TH.mean()
-        m['muY'] = PH.mean()
-        #m['muX'] = TH[np.unravel_index(h.argmax(), h.shape)]
-        #m['muY'] = PH[np.unravel_index(h.argmax(), h.shape)]
+        m['A'] = 0.1
+        
+        #m['muX'] = np.average(thCenters,weights=np.sum(h,axis=1))
+        #m['muY'] = np.average(phCenters,weights=np.sum(h,axis=0))
+
+        #m['muX'] = TH.mean()
+        #m['muY'] = PH.mean()
+        m['muX'] = TH[np.unravel_index(h.argmax(), h.shape)]
+        m['muY'] = PH[np.unravel_index(h.argmax(), h.shape)]
         m['sigX'] = forceParams[5]
         m['sigY'] = forceParams[6]
         m['sigP'] = forceParams[7]
         m.setAttributeValue('nX', h.shape[0])
         m.setAttributeValue('nY', h.shape[1])
         m.setConstraints(boundsDict)
-        #print 'before:'
-        #print m
+        print 'before:'
+        print m
 
         # Do the fit
-        # plt.figure(18); plt.clf(); plt.imshow(m.function2D(pos)); plt.title('BVG Initial guess')
-        bvgWS = CreateWorkspace(OutputWorkspace='bvgWS', DataX=pos.ravel(
-        ), DataY=H.ravel(), DataE=np.sqrt(H.ravel()))
+        #plt.figure(18); plt.clf(); plt.imshow(m.function2D(pos)); plt.title('BVG Initial guess')
+        bvgWS = CreateWorkspace(OutputWorkspace='bvgWS', DataX=pos.ravel(), DataY=H.ravel(), DataE=np.sqrt(H.ravel()))
         fitFun = m
         fitResults = Fit(Function=fitFun, InputWorkspace=bvgWS,
                          Output='bvgfit', Minimizer='Levenberg-MarquardtMD')
 
-        #print 'after:'
-        #print m
+        print 'after:'
+        print m
     # Recover the result
     m = mbvg.MBVG()
     m.init()

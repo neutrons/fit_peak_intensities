@@ -207,7 +207,11 @@ class MBVG(IFunction1D): #MantidBVG
         nc = np.prod(np.shape(c))
         for k in range(nc):
             dc = np.zeros(nc)
-            dc[k] = max(eps,eps*c[k])
+            if k == 1 or k == 2:
+                epsUse = 1.e-3
+            else:
+                epsUse = eps
+            dc[k] = max(epsUse,epsUse*c[k])
             f_new = self.function1DDiffParams(xvals,c+dc)
             for i,dF in enumerate(f_new-f_int):
                 jacobian.set(i,k,dF/dc[k])

@@ -45,7 +45,7 @@ pg = PointGroupFactory.createPointGroup("6/mmm")
 #Beta lactamase mutant
 sampleRuns = range(5921,5931+1)
 workDir = '/SNS/users/ntv/dropbox/'
-descriptorBVG = 'beta_lac_3D_mbvg_mutant'
+descriptorBVG = 'beta_lac_3D_mbvg_mutant_2'
 descriptorTOF = 'beta_lac_lab_highres_mut2'
 peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
 #peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
