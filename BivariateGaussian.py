@@ -1,24 +1,24 @@
 import numpy as np
-from mantid.api._api import IFunction1D
+from mantid.api._api import IFunction1D, FunctionFactory
 from matplotlib.mlab import bivariate_normal
 
 
-class BVG(IFunction1D): #MantidBVG
+class BivariateGaussian(IFunction1D): 
     """
-    BVG implements a bivariate gaussian (BVG) in Mantid (M) as a 1D function.  This is done so that it can be
+    BivariateGaussian implements a bivariate gaussian (BivariateGaussian) in Mantid (M) as a 1D function.  This is done so that it can be
     fit in a straightforward fashion using Mantid's Fit() function.  To achieve this, we use the flattened
     version of the 2D profile and fit it as a 1D function.  It is built on matplotlib.mlab.bivariate_normal, which
     is available on SNS analysis machines.
 
     To make it compatible with fitting, X, Y, and E must all be the same shape.  This is possible if we input
-    twice and reconstruct the BVG in the function.
+    twice and reconstruct the BivariateGaussian in the function.
 
     If h is an n*n 2d profile we're trying to fitt and th, ph are the n*1 arrays containing the x and y coordinates,
     we would fit it as follows:
 
 
         TH, PH = np.meshgrid(th, ph,indexing='ij') #Get 2D version
-        m = BivariateGaussian.BVG()
+        m = BivariateGaussian.BivariateGaussian()
         m.init()
         m['A'] = 1.0
         # ... #Set initial parameters
@@ -131,14 +131,14 @@ class BVG(IFunction1D): #MantidBVG
 
     def function2D(self, t):
         """
-        function2D returns the 2D version of the BVG.
+        function2D returns the 2D version of the BivariateGaussian.
         Input may be in two forms:
             1) 1D array (e.g. pos.ravel()).  This will be reshaped into an nX*nY*2 array, so
                 it must contain nX*nY*2 elements.
             2) 3D array of size A*B*2. A and B are arbitrary integers.
         Output:
             a 2D array either size nX*nY (intput type 1) or A*B (input type 2) with intensities
-            of the BVG.
+            of the BivariateGaussian.
         """
         if t.ndim == 1:
             nX = int(self.getAttributeValue('nX'))
@@ -215,3 +215,6 @@ class BVG(IFunction1D): #MantidBVG
             f_new = self.function1DDiffParams(xvals,c+dc)
             for i,dF in enumerate(f_new-f_int):
                 jacobian.set(i,k,dF/dc[k])
+
+
+FunctionFactory.subscribe(BivariateGaussian)

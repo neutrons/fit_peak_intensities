@@ -9,7 +9,7 @@ import ICConvoluted as ICC
 import BivariateGaussian as BivariateGaussian
 plt.ion()
 reload(BivariateGaussian)
-FunctionFactory.subscribe(BivariateGaussian.BVG)
+FunctionFactory.subscribe(BivariateGaussian.BivariateGaussian)
 FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 
 
