@@ -8,9 +8,6 @@ from matplotlib.mlab import bivariate_normal
 import ICConvoluted as ICC
 import BivariateGaussian as BivariateGaussian
 plt.ion()
-reload(BivariateGaussian)
-FunctionFactory.subscribe(BivariateGaussian.BivariateGaussian)
-FunctionFactory.subscribe(ICC.IkedaCarpenterConvoluted)
 
 
 def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150, fracBoxToHistogram=1.0,
@@ -334,7 +331,7 @@ def getBVGResult(box, params, nTheta=200, nPhi=200, fracBoxToHistogram=1.0):
     TH, PH = np.meshgrid(thCenters, phCenters, indexing='ij', copy=False)
 
     # Set our initial guess
-    m = BivariateGaussian.BVG()
+    m = BivariateGaussian.BivariateGaussian()
     m.init()
     m['A'] = params[0]
     m['muX'] = params[1]
@@ -465,7 +462,7 @@ def doBVGFit(box, nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodID
         boundsDict['bg'] = [0, np.inf]
 
         # Set our initial guess
-        m = BivariateGaussian.BVG()
+        m = BivariateGaussian.BivariateGaussian()
         m.init()
         m['A'] = 1.
         #m['muX'] = meanTH
@@ -523,7 +520,7 @@ def doBVGFit(box, nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodID
         boundsDict['sigY'] = [bounds[0][4], bounds[1][4]]
         boundsDict['sigP'] = [bounds[0][5], bounds[1][5]]
         # Set our initial guess
-        m = BivariateGaussian.BVG()
+        m = BivariateGaussian.BivariateGaussian()
         m.init()
         m['A'] = 0.1
         
@@ -553,7 +550,7 @@ def doBVGFit(box, nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodID
         print 'after:'
         print m
     # Recover the result
-    m = BivariateGaussian.BVG()
+    m = BivariateGaussian.BivariateGaussian()
     m.init()
     m['A'] = mtd['bvgfit_Parameters'].row(0)['Value']
     m['muX'] = mtd['bvgfit_Parameters'].row(1)['Value']

@@ -6,7 +6,7 @@
 #
 #
 import numpy as np
-from mantid.api._api import IFunction1D
+from mantid.api import IFunction1D, FunctionFactory
 
 
 class IkedaCarpenterConvoluted(IFunction1D):
@@ -117,3 +117,6 @@ class IkedaCarpenterConvoluted(IFunction1D):
             f_new = self.function1DDiffParams(xvals,c+dc)
             for i,dF in enumerate(f_new-f_int):
                 jacobian.set(i,k,dF/dc[k])
+
+
+FunctionFactory.subscribe(IkedaCarpenterConvoluted)
