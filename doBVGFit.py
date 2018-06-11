@@ -202,6 +202,7 @@ def doBVGFits(sampleRunsList=None):
     q_frame='lab'
     mindtBinWidth = 15
     pplmin_frac = 0.4; pplmax_frac = 1.5
+    fracHKLQMask = 0.4
 
     '''
     #Beta Lac
@@ -255,7 +256,9 @@ def doBVGFits(sampleRunsList=None):
     dQ = np.abs(ICCFT.getDQFracHKL(UBMatrix, frac=0.5))
     dQ[dQ>0.3] = 0.3
 
-    try: qMask = ICCFT.getHKLMask(UBMatrix, frac=fracHKLQMask, dQPixel=dQPixel,dQ=dQ)
+    try: 
+        qMask = ICCFT.getHKLMask(UBMatrix, frac=fracHKLQMask, dQPixel=dQPixel,dQ=dQ)
+        print 'fracHKLQMask=%4.4f'%fracHKLQMask
     except: qMask = ICCFT.getHKLMask(UBMatrix, frac=fracHKL, dQPixel=dQPixel,dQ=dQ)
 
     padeCoefficients = ICCFT.getModeratorCoefficients('franz_coefficients_2017.dat')
@@ -314,8 +317,8 @@ def doBVGFits(sampleRunsList=None):
                     box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, fracHKL = fracHKL,  dQPixel=dQPixel, q_frame=q_frame)
                     #Will force weak peaks to be fit using a neighboring peak profile
                     if ICCFitParams is not None:
-                        iccfp = ICCFitParams[peakNumber]
-                        iccfp = None#ICCFitParams[peakNumber]
+                        #iccfp = ICCFitParams[peakNumber]
+                        iccfp = None
                     else: iccfp = None
                     Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1, fICCParams=iccfp, strongPeakParams=strongPeakParams, predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac, edgeCutoff=3)
                     #Does not force weak peaks

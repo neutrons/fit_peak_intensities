@@ -3,9 +3,9 @@ from mantid.api._api import IFunction1D
 from matplotlib.mlab import bivariate_normal
 
 
-class MBVG(IFunction1D): #MantidBVG
+class BVG(IFunction1D): #MantidBVG
     """
-    MBVG implements a bivariate gaussian (BVG) in Mantid (M) as a 1D function.  This is done so that it can be
+    BVG implements a bivariate gaussian (BVG) in Mantid (M) as a 1D function.  This is done so that it can be
     fit in a straightforward fashion using Mantid's Fit() function.  To achieve this, we use the flattened
     version of the 2D profile and fit it as a 1D function.  It is built on matplotlib.mlab.bivariate_normal, which
     is available on SNS analysis machines.
@@ -18,7 +18,7 @@ class MBVG(IFunction1D): #MantidBVG
 
 
         TH, PH = np.meshgrid(th, ph,indexing='ij') #Get 2D version
-        m = mbvg.MBVG()
+        m = BivariateGaussian.BVG()
         m.init()
         m['A'] = 1.0
         # ... #Set initial parameters

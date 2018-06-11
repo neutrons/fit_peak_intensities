@@ -711,7 +711,7 @@ def getSample(run, DetCalFile,  workDir, fileName, qLow=-25, qHigh=25, q_frame='
     """
 
     # data
-    print('Loading file', fileName)
+    print('Loading file' + fileName)
     data = Load(Filename=fileName)
     if DetCalFile is not None:
         LoadIsawDetCal(InputWorkspace=data, Filename=DetCalFile)
