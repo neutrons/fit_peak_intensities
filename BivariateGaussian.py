@@ -1,5 +1,5 @@
 import numpy as np
-from mantid.api._api import IFunction1D, FunctionFactory
+from mantid.api import IFunction1D, FunctionFactory
 from matplotlib.mlab import bivariate_normal
 
 
