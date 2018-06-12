@@ -205,6 +205,7 @@ pplmin_frac=0.8; pplmax_frac=2.0; mindtBinWidth=15
 peaksFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.integrate'
 peaksFile = '/SNS/MANDI/shared/ProfileFitting/demo_5921.integrate'
 UBFile =  '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.mat'
+UBFile =  '/SNS/MANDI/shared/ProfileFitting/demo_5921.mat'
 nxsTemplate = '/SNS/MANDI/IPTS-8776/data/MANDI_%i_event.nxs'
 predpplCoefficients = np.array([ 3.56405187,  8.34071842,  0.14134522])
 #predpplCoefficients = np.array([  4.88049788,  9.29823399,  0.14255074]) #Go with ICCFT.oldScatFun
