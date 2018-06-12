@@ -270,7 +270,7 @@ df['notOutlier'] = ~df['isOutlier']
 
 
 #---------------------Select outputs and save a LaueNorm File
-goodIDX = (df['chiSq'] < 50.0) & (df['chiSq3d']<10) & (df['notOutlier']) &  (df['Intens3d'] > -1.*np.inf) 
+goodIDX = (df['chiSq'] < 50.0) & (df['chiSq3d']<10) #& (df['notOutlier']) &  (df['Intens3d'] > -1.*np.inf) 
 tooFarIDX = (np.abs(df['Intens3d'] > 100)) & ((np.abs(df['Intens3d']-df['IntensEll']) > 2.*df['Intens3d']) |  (np.abs(df['Intens3d']-df['IntensEll']) > 2.*df['Intens3d']) | (df['Intens3d'] > 5.*df['IntensEll']))
 tooFarIDX2 = (np.abs(df['Intens3d'] < 100)) & (np.abs(df['Intens3d']-df['IntensEll']) >150)
 

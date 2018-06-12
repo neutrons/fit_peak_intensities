@@ -79,8 +79,8 @@ def get3DPeak(peak, box, padeCoefficients, qMask, nTheta=150, nPhi=150, fracBoxT
         tmp = strongPeakParams[:, :2] - phthPeak
         distSq = tmp[:, 0]**2 + tmp[:, 1]**2
         nnIDX = np.argmin(distSq)
-        print 'Using [ph, th] =', strongPeakParams[nnIDX,
-                                                   :2], 'for ', phthPeak, '; nnIDX = ', nnIDX
+        #print 'Using [ph, th] =', strongPeakParams[nnIDX,
+        #                                           :2], 'for ', phthPeak, '; nnIDX = ', nnIDX
         params, h, t, p = doBVGFit(box, nTheta=nTheta, nPhi=nPhi, fracBoxToHistogram=fracBoxToHistogram,
                                    goodIDX=goodIDX, forceParams=strongPeakParams[nnIDX])
     else:  # Just do the fit - no nearest neighbor assumptions
@@ -190,7 +190,7 @@ def fitScaling(n_events, box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
     YRET = A1 * YJOINT + A0
     chiSqRed = fitResultsScaling[1]
 
-    print chiSqRed, 'is chiSqRed'
+    #print chiSqRed, 'is chiSqRed'
     return YRET, chiSqRed, A1
 
 
@@ -537,8 +537,8 @@ def doBVGFit(box, nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodID
         m.setAttributeValue('nX', h.shape[0])
         m.setAttributeValue('nY', h.shape[1])
         m.setConstraints(boundsDict)
-        print 'before:'
-        print m
+        #print 'before:'
+        #print m
 
         # Do the fit
         #plt.figure(18); plt.clf(); plt.imshow(m.function2D(pos)); plt.title('BVG Initial guess')
@@ -547,8 +547,8 @@ def doBVGFit(box, nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodID
         fitResults = Fit(Function=fitFun, InputWorkspace=bvgWS,
                          Output='bvgfit', Minimizer='Levenberg-MarquardtMD')
 
-        print 'after:'
-        print m
+        #print 'after:'
+        #print m
     # Recover the result
     m = BivariateGaussian.BivariateGaussian()
     m.init()
