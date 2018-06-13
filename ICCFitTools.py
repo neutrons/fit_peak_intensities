@@ -239,12 +239,31 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3, 
 
     if peak is not None:
         if predCoefficients is not None:
-            pred_ppl = oldScatFun(peak.getScattering(
-            )/peak.getWavelength(), predCoefficients[0], predCoefficients[1], predCoefficients[2])
+            # Try to infer the background from n_events
+            nX, nY, nZ = n_events.shape
+            cX = nX//2; cY = nY//2; cZ = nZ//2;
+            dP = 5
+            peakMask = qMask.copy()
+            peakMask[cX-dP:cX+dP, cY-dP:cY+dP, cZ-dP:cZ+dP] = 0
+            neigh_length_m=3
+            convBox = 1.0 * \
+            np.ones([neigh_length_m, neigh_length_m,
+                     neigh_length_m]) / neigh_length_m**3
+            conv_n_events = convolve(n_events, convBox)
+            bgMask = np.logical_and(conv_n_events>0, peakMask>0)
+            meanBG = np.mean(n_events[bgMask])
+            #predppl = np.polyval(f,meanBG)*1.96
+            pred_ppl = np.polyval([0.98,0],meanBG)*1.96
+            #pp_lambda_toCheck = [pred_ppl]
+
+            # Old way
+            #pred_ppl = oldScatFun(peak.getScattering()/peak.getWavelength(), 
+            #                      predCoefficients[0], predCoefficients[1], predCoefficients[2])
             minppl = minppl_frac*pred_ppl
             maxppl = maxppl_frac*pred_ppl
-            if pred_ppl > 2.0:
-                maxppl = 2.0/1.5*maxppl_frac*pred_ppl
+            #if pred_ppl > 2.0:
+            #    maxppl = 2.0/1.5*maxppl_frac*pred_ppl
+
             pp_lambda_toCheck = pp_lambda_toCheck[pp_lambda_toCheck > minppl]
             pp_lambda_toCheck = pp_lambda_toCheck[pp_lambda_toCheck < maxppl]
         else:
@@ -291,8 +310,8 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3, 
             break
         except KeyboardInterrupt:
             sys.exit()
-    #print( '\n'.join([str(v)
-    #                 for v in zip(chiSqList[:i+1], ISIGList[:i+1], IList[:i+1])]))
+    print( '\n'.join([str(v)
+                     for v in zip(chiSqList[:i+1], ISIGList[:i+1], IList[:i+1])]))
     use_ppl = np.argmin(np.abs(chiSqList[:i+1]-1.0))
     pp_lambda = pp_lambda_toCheck[use_ppl]
     #print('USING PP_LAMBDA', pp_lambda, 'WITH CHISQ:', chiSqList[use_ppl])

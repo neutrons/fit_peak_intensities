@@ -191,7 +191,7 @@ def doBVGFits(sampleRunsList=None):
     qLow = -10.0; qHigh = 10.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
     dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
-    descriptor = 'beta_lac_3D_mbvg_mutant_2' #Does not end with '/'
+    descriptor = 'beta_lac_3D_mbvg_mutant_newppl' #Does not end with '/'
     doIterativeBackgroundFitting = False
     numTimesToInterpolate=0
     workDir = '/SNS/users/ntv/dropbox/'
@@ -201,7 +201,8 @@ def doBVGFits(sampleRunsList=None):
     #predpplCoefficients = np.array([  4.88049788,  9.29823399,  0.14255074]) #Go with ICCFT.oldScatFun
     q_frame='lab'
     mindtBinWidth = 15
-    pplmin_frac = 0.4; pplmax_frac = 1.5
+    pplmin_frac = 0.9; pplmax_frac = 1.1
+    #pplmin_frac = 0.4; pplmax_frac = 1.5
     fracHKLQMask = 0.4
 
     '''

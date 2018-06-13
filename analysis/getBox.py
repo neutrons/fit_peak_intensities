@@ -209,7 +209,8 @@ UBFile =  '/SNS/MANDI/shared/ProfileFitting/demo_5921.mat'
 nxsTemplate = '/SNS/MANDI/IPTS-8776/data/MANDI_%i_event.nxs'
 predpplCoefficients = np.array([ 3.56405187,  8.34071842,  0.14134522])
 #predpplCoefficients = np.array([  4.88049788,  9.29823399,  0.14255074]) #Go with ICCFT.oldScatFun
-pplmin_frac=0.4; pplmax_frac=1.5; mindtBinWidth=15
+#pplmin_frac=0.4; pplmax_frac=1.5; mindtBinWidth=15
+pplmin_frac=0.9; pplmax_frac=1.1; mindtBinWidth=15
 
 
 '''
@@ -392,6 +393,7 @@ if True:
     yP = np.polyval(gP,t)
     #plt.plot(t,yP,'m--')
     '''
+print '===================================='
 padeCoefficients = ICCFT.getModeratorCoefficients('/SNS/users/ntv/integrate/franz_coefficients_2017.dat')
 strongPeakParams = pickle.load(open('/SNS/users/ntv/integrate/strongPeakParams_beta_lac_mut_mbvg.pkl', 'rb'))
 Y3D, gIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=True, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1, strongPeakParams=strongPeakParams, predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac,forceCutoff=250,edgeCutoff=3)
