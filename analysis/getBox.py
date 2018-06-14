@@ -87,7 +87,8 @@ q_frame = 'lab'
 pplmin_frac=0.7; pplmax_frac=1.5; mindtBinWidth=15
 '''
 #PsbO 2016
-peaksFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.integrate'
+#peaksFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.integrate'
+peaksFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal_highres_2p0A.integrate'
 UBFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.mat'
 DetCalFile = None
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
@@ -97,7 +98,8 @@ dQPixel=0.003#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = np.array([14.36827809, 10.889742, 0.28754095]) #Go with ICCFT.oldScatFun
 #predpplCoefficients = np.array([12.51275, 13.078622, 0.18924]) #Go with ICCFT.oldScatFun
 q_frame = 'lab'
-pplmin_frac=0.8; pplmax_frac=1.5; mindtBinWidth=15
+#pplmin_frac=0.8; pplmax_frac=1.5; mindtBinWidth=15
+pplmin_frac=0.99; pplmax_frac=1.01; mindtBinWidth=15
 
 '''
 #NaK 2017
@@ -295,7 +297,7 @@ else:
 
 n_events = Box.getNumEventsArray()
 
-qMask = ICCFT.getHKLMask(UBMatrix, frac=0.5, dQPixel=dQPixel, dQ=dQ)
+qMask = ICCFT.getHKLMask(UBMatrix, frac=0.4, dQPixel=dQPixel, dQ=dQ)
 if not removeEdges:
     mask = np.ones_like(n_events)
 else:

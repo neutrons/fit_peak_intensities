@@ -44,7 +44,8 @@ def doBVGFits(sampleRunsList=None):
     loadDir = '/SNS/MANDI/IPTS-16286/data/'
     nxsTemplate = loadDir+'MANDI_%i_event.nxs'
     sampleRuns = range(6154,6165+1)
-    peaksFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.integrate'#_highres.integrate'
+    #peaksFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.integrate'#_highres.integrate'
+    peaksFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal_highres_2p0A.integrate'#_highres.integrate'
     UBFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.mat'#_highres.mat'
     DetCalFile = None
     qLow = -5.0; qHigh = 5.0
@@ -59,7 +60,8 @@ def doBVGFits(sampleRunsList=None):
     predpplCoefficients = np.array([14.36827809, 10.889742, 0.28754095]) #Go with ICCFT.oldScatFun
     q_frame='lab'
     mindtBinWidth = 15
-
+    pplmin_frac = 0.9; pplmax_frac = 1.1
+    fracHKLQMask = 0.4
     '''
     #DNA
     loadDir = '/data/dna/IPTS-18552/'
@@ -321,7 +323,12 @@ def doBVGFits(sampleRunsList=None):
                         #iccfp = ICCFitParams[peakNumber]
                         iccfp = None
                     else: iccfp = None
-                    Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1, fICCParams=iccfp, strongPeakParams=strongPeakParams, predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac, edgeCutoff=3)
+                    Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, 
+                                                                      plotResults=False, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1, 
+                                                                      fICCParams=iccfp, strongPeakParams=strongPeakParams, 
+                                                                      predCoefficients=predpplCoefficients, q_frame=q_frame, 
+                                                                      mindtBinWidth=mindtBinWidth, pplmin_frac=pplmin_frac, 
+                                                                      pplmax_frac=pplmax_frac, edgeCutoff=3)
                     #Does not force weak peaks
                     #Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1, fICCParams=ICCFitParams[peakNumber], oldICCFit=ICCFitDict[peakNumber],  predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth)
 
