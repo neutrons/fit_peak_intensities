@@ -45,7 +45,7 @@ pg = PointGroupFactory.createPointGroup("6/mmm")
 #Beta lactamase mutant
 sampleRuns = range(5921,5931+1)
 workDir = '/SNS/users/ntv/dropbox/'
-descriptorBVG = 'beta_lac_3D_mbvg_mutant_2'
+descriptorBVG = 'beta_lac_3D_mbvg_mutant_newppl'
 descriptorTOF = 'beta_lac_lab_highres_mut2'
 peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
 #peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
@@ -270,7 +270,7 @@ df['notOutlier'] = ~df['isOutlier']
 
 
 #---------------------Select outputs and save a LaueNorm File
-goodIDX = (df['chiSq'] < 50.0) & (df['chiSq3d']<10) #& (df['notOutlier']) &  (df['Intens3d'] > -1.*np.inf) 
+goodIDX = (df['chiSq'] < 50.0) & (df['chiSq3d']<10) & (df['notOutlier']) &  (df['Intens3d'] > -1.*np.inf) 
 tooFarIDX = (np.abs(df['Intens3d'] > 100)) & ((np.abs(df['Intens3d']-df['IntensEll']) > 2.*df['Intens3d']) |  (np.abs(df['Intens3d']-df['IntensEll']) > 2.*df['Intens3d']) | (df['Intens3d'] > 5.*df['IntensEll']))
 tooFarIDX2 = (np.abs(df['Intens3d'] < 100)) & (np.abs(df['Intens3d']-df['IntensEll']) >150)
 

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
@@ -9,7 +10,7 @@ from mantid.kernel import V3D
 import ICConvoluted as ICC
 import itertools
 from scipy.ndimage.filters import convolve
-reload(ICC)
+from functools import reduce
 plt.ion()
 
 
@@ -310,8 +311,8 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3, 
             break
         except KeyboardInterrupt:
             sys.exit()
-    print( '\n'.join([str(v)
-                     for v in zip(chiSqList[:i+1], ISIGList[:i+1], IList[:i+1])]))
+    #print( '\n'.join([str(v)
+    #                 for v in zip(chiSqList[:i+1], ISIGList[:i+1], IList[:i+1])]))
     use_ppl = np.argmin(np.abs(chiSqList[:i+1]-1.0))
     pp_lambda = pp_lambda_toCheck[use_ppl]
     #print('USING PP_LAMBDA', pp_lambda, 'WITH CHISQ:', chiSqList[use_ppl])
@@ -352,7 +353,6 @@ def getBGRemovedIndices(n_events, zBG=1.96, calc_pp_lambda=False, neigh_length_m
                 counts to be included in the TOF profile.
         pp_lambda: the most likely number of background events
     """
-
     if calc_pp_lambda is True and pp_lambda is not None:
         import sys
         sys.exit(
@@ -391,7 +391,7 @@ def getBGRemovedIndices(n_events, zBG=1.96, calc_pp_lambda=False, neigh_length_m
             except KeyboardInterrupt:
                 sys.exit()
             except:
-                # raise
+                #raise
                 pplmin_frac -= 0.4
     print('ERROR WITH ICCFT:getBGRemovedIndices!')
 

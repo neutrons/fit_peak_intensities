@@ -62,7 +62,6 @@ def doBVGFits(sampleRunsList=None):
     mindtBinWidth = 15
     '''
 
-    '''
     #DNA
     loadDir = '/data/dna/IPTS-18552/'
     nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
@@ -82,9 +81,8 @@ def doBVGFits(sampleRunsList=None):
     predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
     q_frame='lab'
     mindtBinWidth = 25
-    fracHKLQMask = 0.5
+    fracHKLQMask = 0.4
     pplmin_frac = 0.7; pplmax_frac = 5
-    '''
 
     '''
     #cryo
@@ -181,6 +179,7 @@ def doBVGFits(sampleRunsList=None):
     pplmin_frac = 0.7; pplmax_frac = 1.5
     '''
 
+    '''
     #Beta Lac Mutant
     loadDir = '/SNS/MANDI/IPTS-8776/data/'
     peaksFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.integrate'
@@ -204,6 +203,7 @@ def doBVGFits(sampleRunsList=None):
     pplmin_frac = 0.9; pplmax_frac = 1.1
     #pplmin_frac = 0.4; pplmax_frac = 1.5
     fracHKLQMask = 0.4
+    '''
 
     '''
     #Beta Lac
