@@ -4,6 +4,15 @@ import matplotlib.pyplot as plt
 import sys
 import ICCAnalysisTools as ICAT
 
+
+# cryo
+
+sampleRuns = range(8785,8791+1)
+workDir = '/SNS/users/ntv/dropbox/'
+descriptor = 'cryo_tof_2'
+loadDir = '/SNS/MANDI/IPTS-19172/nexus/'
+eventWS = Load(loadDir+'MANDI_8785.nxs.h5')
+'''
 #pth
 sampleRuns = [870,872,873,874,875,876]
 workDir = '/SNS/users/ntv/dropbox/'
@@ -11,8 +20,7 @@ descriptor = 'pth_tof_secondRun'
 loadDir = '/SNS/MANDI/IPTS-10943/0/NeXus/'
 #eventWS = Load('/SNS/MANDI/IPTS-10943/0/870/NeXus/MANDI_870_event.nxs')
 eventWS = Load('/data/pth/MANDI_870_event.nxs')
-
-
+'''
 
 '''
 #gfp

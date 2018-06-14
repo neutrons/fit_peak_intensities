@@ -7,6 +7,7 @@ for i in range(len(sys.path))[::-1]:
 import socket
 if 'sns' in socket.gethostname():
     sys.path.append('/SNS/users/ntv/mantid/mantid/release/bin')
+    #sys.path.append('/SNS/users/ntv/workspace/mantid/release/bin')
 else:
     sys.path.append('/home/ntv/mantid/mantid/bin/')
 
@@ -25,9 +26,11 @@ import getEdgePixels as EdgeTools
 from timeit import default_timer as timer
 reload(EdgeTools)
 reload(ICCFT)
-
+reload(BVGFT)
 
 print "Which peak?"
+try: print 'Current peak is %i'%peakToGet
+except: pass
 peakToGet = int(input())
 '''
 #Scolecite
@@ -39,7 +42,6 @@ UBFile='/SNS/TOPAZ/shared/PeakIntegration/DataSet/295K_predict_2016A/SC295K_Mono
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
-dtBinWidth = 4 
 dQPixel=0.005#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 q_frame='sample'
@@ -64,8 +66,6 @@ UBFile = '/home/ntv/Desktop/pth/UB_combined.mat'
 DetCalFile = '/home/ntv/Desktop/runReduction/MaNDi2015.DetCal'
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 nxsTemplate = '/data/pth/MANDI_{1}_event.nxs'
-#panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
-dtBinWidth = 25 
 dQPixel=0.003#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = np.array([ 6.12383767,  8.8677518 , -0.02761688]) #Go with ICCFT.oldScatFun
 #predpplCoefficients = np.array([[23.2736324 ,  10.10909695,   0.6229528 ]]) #Go with ICCFT.oldScatFun
@@ -80,8 +80,6 @@ DetCalFile = None
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = 'SNS/MANDI/2013_2_11B_SCI/{0}/{1}/NeXus/MANDI_{1}_event.nxs'
 nxsTemplate = '/SNS/MANDI/2013_2_11B_SCI/{0}/{1}/NeXus/MANDI_{1}_event.nxs'
-#panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
-dtBinWidth = 25 
 dQPixel=0.003#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = np.array([14.36827809, 10.889742, 0.28754095]) #Go with ICCFT.oldScatFun
 #predpplCoefficients = np.array([[23.2736324 ,  10.10909695,   0.6229528 ]]) #Go with ICCFT.oldScatFun
@@ -96,8 +94,6 @@ DetCalFile = None
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/MANDI/IPTS-16286/data/'
 nxsTemplate = loadDir+'MANDI_%i_event.nxs'
-#panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
-dtBinWidth = 25 
 dQPixel=0.003#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = np.array([14.36827809, 10.889742, 0.28754095]) #Go with ICCFT.oldScatFun
 #predpplCoefficients = np.array([12.51275, 13.078622, 0.18924]) #Go with ICCFT.oldScatFun
@@ -112,8 +108,6 @@ DetCalFile = None
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/MANDI/IPTS-17495/nexus/'
 nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
-#panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
-dtBinWidth = 25 
 dQPixel=0.003#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = np.array([12.51275, 13.078622, 0.18924]) #Go with ICCFT.oldScatFun
 q_frame = 'lab'
@@ -128,8 +122,6 @@ DetCalFile = None
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/MANDI/IPTS-8776/nexus/'
 nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
-#panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
-dtBinWidth = 25 
 dQPixel=0.005#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = None##np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 '''
@@ -141,8 +133,6 @@ UBFile =  '/SNS/users/ntv/integrate/corelli_beryl/combined_hexagonal.mat'
 DetCalFile = None
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 nxsTemplate = loadDir+'CORELLI_%i.nxs.h5'
-#panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
-dtBinWidth = 25 
 dQPixel=0.02#np.array([0.003, 0.003, 0.003])
 #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
@@ -150,6 +140,7 @@ q_frame='lab'
 pplmin_frac=0.; pplmax_frac=4.5; mindtBinWidth=10
 '''
 
+'''
 #DNA
 peaksFile = '/SNS/users/ntv/integrate/mandi_dna2/combined_1p5A.integrate'
 UBFile =  '/SNS/users/ntv/integrate/mandi_dna2/combined_1p5A.mat'
@@ -157,13 +148,27 @@ DetCalFile = '/SNS/users/ntv/integrate/mandi_dna2/mandi_dna.DetCal'
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/data/dna/IPTS-18552/'
 nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
-#panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
-dtBinWidth = 25 
 dQPixel=0.008#np.array([0.003, 0.003, 0.003])
 #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
 q_frame='lab'
-pplmin_frac=0.8; pplmax_frac=5.0; mindtBinWidth=25
+pplmin_frac=0.8; pplmax_frac=5; mindtBinWidth=25
+'''
+
+'''
+#cryo
+peaksFile = '/SNS/users/ntv/integrate/mandi_cryo/cryo_combined_2.integrate'
+UBFile =  '/SNS/users/ntv/integrate/mandi_cryo/cryo_combined_2.mat'
+DetCalFile = None#'/SNS/users/ntv/integrate/mandi_dna2/mandi_dna.DetCal'
+workDir = '/SNS/users/ntv/dropbox/' #End with '/'
+loadDir = '/SNS/MANDI/IPTS-19172/nexus/'
+nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
+dQPixel=0.003#np.array([0.003, 0.003, 0.003])
+#predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+predpplCoefficients =  np.array([28.73949834,  13.04192586,   0.41210929]) #Go with ICCFT.oldScatFun
+q_frame='lab'
+pplmin_frac=0.4; pplmax_frac=1.5; mindtBinWidth=15
+'''
 
 '''
 #secondDNA
@@ -173,8 +178,6 @@ DetCalFile = None#'/SNS/users/ntv/integrate/mandi_dna2/mandi_dna.DetCal'
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/MANDI/IPTS-15151/data/'
 nxsTemplate = loadDir+'MANDI_%i_event.nxs'
-#panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
-dtBinWidth = 25 
 dQPixel=0.005#np.array([0.003, 0.003, 0.003])
 #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
@@ -182,7 +185,6 @@ q_frame='lab'
 pplmin_frac=0.6; pplmax_frac=1.5; mindtBinWidth=25
 '''
 
-'''
 #Beta Lac
 #peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
 #UBFile =  '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
@@ -195,19 +197,36 @@ DetCalFile = None
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/MANDI/IPTS-15000/data/'
 nxsTemplate = loadDir+'MANDI_%i_event.nxs'
-#panelDict = pickle.load(open('panelDict_15647.pkl','rb'))
-dtBinWidth = 25 
 dQPixel=0.003#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 q_frame='lab'
 pplmin_frac=0.8; pplmax_frac=2.0; mindtBinWidth=15
    #---mutant
-#peaksFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.integrate'
-#UBFile =  '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.mat'
-#nxsTemplate = '/SNS/MANDI/IPTS-8776/data/MANDI_%i_event.nxs'
+peaksFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.integrate'
+peaksFile = '/SNS/MANDI/shared/ProfileFitting/demo_5921.integrate'
+UBFile =  '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.mat'
+UBFile =  '/SNS/MANDI/shared/ProfileFitting/demo_5921.mat'
+nxsTemplate = '/SNS/MANDI/IPTS-8776/data/MANDI_%i_event.nxs'
+predpplCoefficients = np.array([ 3.56405187,  8.34071842,  0.14134522])
+#predpplCoefficients = np.array([  4.88049788,  9.29823399,  0.14255074]) #Go with ICCFT.oldScatFun
+#pplmin_frac=0.4; pplmax_frac=1.5; mindtBinWidth=15
+pplmin_frac=0.9; pplmax_frac=1.1; mindtBinWidth=15
+
+
 '''
-
-
+#beta_lac_cryo
+peaksFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase_cryo/combined.integrate'
+UBFile =  '/SNS/users/ntv/integrate/mandi_beta_lactamase_cryo/8799.mat'
+DetCalFile = None#'/SNS/users/ntv/integrate/mandi_dna2/mandi_dna.DetCal'
+workDir = '/SNS/users/ntv/dropbox/' #End with '/'
+loadDir = '/SNS/MANDI/IPTS-8776/nexus/'
+nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
+dQPixel=0.005#np.array([0.003, 0.003, 0.003])
+#predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+predpplCoefficients =  np.array([28.73949834,  13.04192586,   0.41210929]) #Go with ICCFT.oldScatFun
+q_frame='lab'
+pplmin_frac=0.0; pplmax_frac=1.0; mindtBinWidth=15
+'''
 
 # Some parameters
 removeEdges = False 
@@ -255,7 +274,7 @@ dQ[dQ>0.4]=0.4
 
 print dQPixel
 print peak.getQSampleFrame()
-Box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakToGet, dQ, fracHKL=fracHKL,dQPixel=dQPixel, refineCenter=False, q_frame=q_frame)
+Box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakToGet, dQ, fracHKL=fracHKL,dQPixel=dQPixel,  q_frame=q_frame)
 box = Box
 Box.setTitle('Box for peak %i'%peakToGet)
 #SaveMD(InputWorkspace=Box, Filename = 'Box.nxs')
@@ -275,7 +294,7 @@ else:
 
 n_events = Box.getNumEventsArray()
 
-qMask = ICCFT.getHKLMask(UBMatrix, frac=0.35, dQPixel=dQPixel, dQ=dQ)
+qMask = ICCFT.getHKLMask(UBMatrix, frac=0.5, dQPixel=dQPixel, dQ=dQ)
 if not removeEdges:
     mask = np.ones_like(n_events)
 else:
@@ -327,13 +346,12 @@ if True:
     energy = 81.804 / wavelength**2 / 1000.0 #in eV
     flightPath = peak.getL1() + peak.getL2() #in m
     scatteringHalfAngle = 0.5*peak.getScattering()
-    edgesToCheck = []#EdgeTools.needsEdgeRemoval(Box,panelDict,peak)
     for dtS in dtSpreadToPlot:
-        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtS,doVolumeNormalization=False, minFracPixels=0.015, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=False, zBG=-1., calc_pp_lambda=False, mindtBinWidth=mindtBinWidth)
+        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, qMask, dtSpread=dtS, minFracPixels=0.015,  zBG=-1., calc_pp_lambda=False, mindtBinWidth=mindtBinWidth)
         YDATA1 = tofWS.readY(0).copy()
         plt.subplot(2,1,2)
         plt.plot(tofWS.readX(0), tofWS.readY(0),'o',label='%2.3f'%dtS)
-        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=dtS,doVolumeNormalization=False, minFracPixels=0.005, removeEdges=removeEdges, edgesToCheck=edgesToCheck, calcTOFPerPixel=False, zBG=1.96,neigh_length_m=3, padeCoefficients=ICCFT.getModeratorCoefficients('franz_coefficients_2017.dat'), predCoefficients=predpplCoefficients, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac,mindtBinWidth=mindtBinWidth)
+        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, qMask, dtSpread=dtS, minFracPixels=0.005, zBG=1.96,neigh_length_m=3, padeCoefficients=ICCFT.getModeratorCoefficients('franz_coefficients_2017.dat'), predCoefficients=predpplCoefficients, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac,mindtBinWidth=mindtBinWidth)
         YDATA2 = tofWS.readY(0).copy()
         print pp_lambda
         plt.subplot(2,1,2)
@@ -359,7 +377,7 @@ if True:
     yG = gaussian(t,gp[0], gp[1],gp[2],gp[3])
     plt.plot(t,yG,'r--')
 
-    tofWS = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=0.05,doVolumeNormalization=False, minFracPixels=0.015, removeEdges=removeEdges,tListMode=1)
+    tofWS = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=0.05, minFracPixels=0.015, removeEdges=removeEdges,tListMode=1)
     y = tofWS.readY(0) 
     t = tofWS.readX(0)
     bgIDX = np.logical_or(t<peak.getTOF()*0.995, t>peak.getTOF()*1.005)
@@ -375,3 +393,10 @@ if True:
     yP = np.polyval(gP,t)
     #plt.plot(t,yP,'m--')
     '''
+print '===================================='
+padeCoefficients = ICCFT.getModeratorCoefficients('/SNS/users/ntv/integrate/franz_coefficients_2017.dat')
+strongPeakParams = pickle.load(open('/SNS/users/ntv/integrate/strongPeakParams_beta_lac_mut_mbvg.pkl', 'rb'))
+Y3D, gIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=True, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1, strongPeakParams=strongPeakParams, predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac,forceCutoff=250,edgeCutoff=3)
+peakIDX = Y3D/Y3D.max()>0.05
+plt.pause(0.01)
+print 'ell: %4.4f; new: %4.4f'%(peak.getIntensity(), np.sum(Y3D[peakIDX]))

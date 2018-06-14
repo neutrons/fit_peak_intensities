@@ -42,11 +42,10 @@ peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1],
 ellipseFile = '/SNS/users/ntv/integrate/corelli_beryl/combined_hexagonal_indexedonly.integrate'
 pg = PointGroupFactory.createPointGroup("6/mmm")
 '''
-'''
 #Beta lactamase mutant
 sampleRuns = range(5921,5931+1)
 workDir = '/SNS/users/ntv/dropbox/'
-descriptorBVG = 'beta_lac_3D_lab_mutant'
+descriptorBVG = 'beta_lac_3D_mbvg_mutant_newppl'
 descriptorTOF = 'beta_lac_lab_highres_mut2'
 peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
 #peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
@@ -55,7 +54,6 @@ peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
 ellipseFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 32 2 1")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
-'''
 
 '''
 #pth
@@ -100,16 +98,18 @@ sg = SpaceGroupFactory.createSpaceGroup("P 32 2 1")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
 '''
 
+'''
 #DNA
 sampleRuns = range(8758,8769+1)
 workDir = '/SNS/users/ntv/dropbox/'
-descriptorBVG = 'dna_3D_highres'
+descriptorBVG = 'dna_3D_highres_mbvg'
 descriptorTOF = 'dna_tof_highres'
 #peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
 peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
 ellipseFile = '/SNS/users/ntv/integrate/mandi_dna2/combined_1p5A.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 21 21 21")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
+'''
 
 '''
 #secondDNA
@@ -135,6 +135,18 @@ sampleRuns = range(8275,8282+1)
 ellipseFile = '/SNS/users/ntv/integrate/mandi_nak/MANDI_nak_8275_8282.integrate'
 peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
 sg = SpaceGroupFactory.createSpaceGroup("I 4") 
+pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
+'''
+'''
+#cryo
+sampleRuns = range(8785,8791+1)
+workDir = '/SNS/users/ntv/dropbox/'
+descriptorBVG = 'cryo_3d_mbvg'
+descriptorTOF = 'cryo_tof_2'
+peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
+#peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
+ellipseFile = '/SNS/users/ntv/integrate/mandi_cryo/cryo_combined_2.integrate'
+sg = SpaceGroupFactory.createSpaceGroup("P 21 21 21")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
 '''
 
@@ -258,31 +270,27 @@ df['notOutlier'] = ~df['isOutlier']
 
 
 #---------------------Select outputs and save a LaueNorm File
-goodIDX = (df['chiSq'] < 50.0) & (df['chiSq3d']<10) & (df['notOutlier']) &  (df['Intens3d'] > 1.) 
+goodIDX = (df['chiSq'] < 50.0) & (df['chiSq3d']<10) & (df['notOutlier']) &  (df['Intens3d'] > -1.*np.inf) 
 tooFarIDX = (np.abs(df['Intens3d'] > 100)) & ((np.abs(df['Intens3d']-df['IntensEll']) > 2.*df['Intens3d']) |  (np.abs(df['Intens3d']-df['IntensEll']) > 2.*df['Intens3d']) | (df['Intens3d'] > 5.*df['IntensEll']))
 tooFarIDX2 = (np.abs(df['Intens3d'] < 100)) & (np.abs(df['Intens3d']-df['IntensEll']) >150)
 
 
-goodIDX = goodIDX #& ~tooFarIDX & ~tooFarIDX2
-goodIDX = goodIDX & (df['IntensEll'] != 0.0)
-goodIDX = goodIDX & ~((df['IntensEll']>100)&(df['Intens3d']<50))
-badIndices = np.array([ 1406,  1412,  3381,  3602,  4026,  6224,  8003, 12267, 12907,
-       14470, 16704, 16934, 20665, 23306, 24822])
-goodIDX[badIndices] = False
+#goodIDX = goodIDX & ~tooFarIDX #& ~tooFarIDX2
+#goodIDX = goodIDX & (df['IntensEll'] != 0.0)
+#goodIDX = goodIDX & ~((df['IntensEll']>100)&(df['Intens3d']<50))
 
 dEdge = 1
 edgeIDX = (df['Row'] <= dEdge) | (df['Row'] >= 255-dEdge) | (df['Col'] <= dEdge) | (df['Col'] >= 255-dEdge)
 goodIDX = goodIDX & ~edgeIDX 
 
 laueOutput = (df['DSpacing'] > 1.2) & (df['Wavelength'] > 2.0) & (df['Wavelength']<4.0) & (df['Intens3d']/df['SigInt3d'] > -3.0)
-laueOutput = (df['DSpacing'] > 4.22) & (df['Wavelength'] > 2.0) & (df['Wavelength']<4.0) & (df['Intens3d']/df['SigInt3d'] > 1.)
 plt.figure(3); plt.clf();
 plt.plot(df[goodIDX & laueOutput]['IntensEll'], df[goodIDX & laueOutput]['Intens3d'],'.',ms=2)
 
 print ' '
 print 'Removing bad peaks from peaks_ws.  This can take some time...'
 #events = Load('/data/corelli_beryl/IPTS-20302/CORELLI_58417.nxs.h5')
-#events = Load('/SNS/MANDI/IPTS-16286/data/MANDI_6154_event.nxs')
+events = Load('/SNS/MANDI/IPTS-16286/data/MANDI_6154_event.nxs')
 #events = Load('/SNS/MANDI/IPTS-10943/0/870/NeXus/MANDI_870_event.nxs')
 #events = Load('/SNS/MANDI/IPTS-15151/data/MANDI_5280_event.nxs')
 #ws = CreatePeaksWorkspace(NumberOfPeaks=0, OutputWorkspace="ws", InstrumentWorkspace='events')

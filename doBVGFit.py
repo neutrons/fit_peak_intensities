@@ -2,10 +2,6 @@ def doBVGFits(sampleRunsList=None):
     # Some parameters
     workDir = '/SNS/users/ntv/dropbox/' #End with '/'
     dQPixel = 0.005 #dQ for each voxel in qBox - recommended to decrease for successive fits
-    doVolumeNormalization = False #True if you want to normalize TOF profiles by volume
-    refineCenter = False #True if you want to determine new centers - still not very good
-    removeEdges = False #True if you want to not consider q-pixels that are off detector faces
-    calcTOFPerPixel = False #True to calculate TOF for each pixel in a qBox - uses interpolation for volNorm (if doVolumeNormalization is True)
     fracHKL = 0.5 #Fraction of HKL to look on either side
     fracStop = 0.01 #Fraction of max counts to include in peak selection
     neigh_length_m = 3 #Will average over a (neigh_length_m)**3 box
@@ -21,7 +17,6 @@ def doBVGFits(sampleRunsList=None):
     DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
     descriptor = 'scol_3d' #Does not end with '/'
     numTimesToInterpolate=1
-    dtBinWidth = 4 #Width (in us) in TOF profile bins
     qLow = -25; qHigh=25;
     '''
     '''
@@ -34,12 +29,9 @@ def doBVGFits(sampleRunsList=None):
     DetCalFile = None
     qLow = -25.0; qHigh = 25.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.02 #dQ for each voxel in qBox - recommended to decrease for successive fits
     descriptor = 'beryl_3D_full_newsigi' #Does not end with '/'
     doIterativeBackgroundFitting = False
-    nBG=5
-    parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     numTimesToInterpolate=0
     workDir = '/SNS/users/ntv/dropbox/'
     descriptorRead = 'beryl_lab'
@@ -58,12 +50,9 @@ def doBVGFits(sampleRunsList=None):
     DetCalFile = None
     qLow = -5.0; qHigh = 5.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
     descriptor = 'psbo_3D_full_lab_newpredppl'#_highres_newsigi' #Does not end with '/'
     doIterativeBackgroundFitting = False
-    nBG=5
-    parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     numTimesToInterpolate=0
     workDir = '/SNS/users/ntv/dropbox/'
     descriptorRead = 'psbo_lab_newpredppl_highres'
@@ -73,7 +62,6 @@ def doBVGFits(sampleRunsList=None):
     mindtBinWidth = 15
     '''
 
-    '''
     #DNA
     loadDir = '/data/dna/IPTS-18552/'
     nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
@@ -83,21 +71,42 @@ def doBVGFits(sampleRunsList=None):
     DetCalFile = '/SNS/users/ntv/integrate/mandi_dna2/mandi_dna.DetCal'
     qLow = -5.0; qHigh = 5.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.007 #dQ for each voxel in qBox - recommended to decrease for successive fits
-    descriptor = 'dna_3D_highres' #Does not end with '/'
+    descriptor = 'dna_3D_highres_mbvg' #Does not end with '/'
     doIterativeBackgroundFitting = False
-    nBG=5
-    parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     numTimesToInterpolate=0
     workDir = '/SNS/users/ntv/dropbox/'
-    descriptorRead = None#'dna_tof_2' 
+    descriptorRead = 'dna_tof_highres' 
     #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
     predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
     q_frame='lab'
     mindtBinWidth = 25
+    fracHKLQMask = 0.4
+    pplmin_frac = 0.7; pplmax_frac = 5
+
+    '''
+    #cryo
+    loadDir = '/SNS/MANDI/IPTS-19172/nexus/'
+    nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
+    sampleRuns = range(8785,8791+1)
+    peaksFile = '/SNS/users/ntv/integrate/mandi_cryo/cryo_combined_2.integrate'
+    UBFile = '/SNS/users/ntv/integrate/mandi_cryo/cryo_combined_2.mat'
+    DetCalFile = None#'/SNS/users/ntv/integrate/mandi_dna2/mandi_dna.DetCal'
+    qLow = -5.0; qHigh = 5.0
+    dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+    dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
+    descriptor = 'cryo_3d_mbvg' #Does not end with '/'
+    doIterativeBackgroundFitting = False
+    numTimesToInterpolate=0
+    workDir = '/SNS/users/ntv/dropbox/'
+    descriptorRead = 'cryo_tof_2' 
+    predpplCoefficients = np.array([28.73949834,  13.04192586,   0.41210929]) #Go with ICCFT.oldScatFun
+    q_frame='lab'
+    mindtBinWidth = 15
     fracHKLQMask = 0.5
-    pplmin_frac = 0.7; pplmax_frac = 1.5
+    pplmin_frac = 0.4; pplmax_frac = 1.5
+    '''
+
     '''
     #secondDNA
     loadDir = '/SNS/MANDI/IPTS-15151/data/'
@@ -108,12 +117,9 @@ def doBVGFits(sampleRunsList=None):
     DetCalFile = None#'/SNS/users/ntv/integrate/mandi_dna2/mandi_dna.DetCal'
     qLow = -5.0; qHigh = 5.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.005 #dQ for each voxel in qBox - recommended to decrease for successive fits
     descriptor = 'secondDNA_3D' #Does not end with '/'
     doIterativeBackgroundFitting = False
-    nBG=5
-    parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     numTimesToInterpolate=0
     workDir = '/SNS/users/ntv/dropbox/'
     descriptorRead = None#'dna_tof_2' 
@@ -123,7 +129,7 @@ def doBVGFits(sampleRunsList=None):
     mindtBinWidth = 25
     fracHKLQMask = 0.5
     pplmin_frac = 0.6; pplmax_frac = 1.5
-
+    '''
 
     '''
     #pth
@@ -135,12 +141,9 @@ def doBVGFits(sampleRunsList=None):
     DetCalFile = '/home/ntv/Desktop/runReduction/MaNDi2015.DetCal'
     qLow = -4.0; qHigh = 4.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
     descriptor = 'pth_3d_detcal' #Does not end with '/'
     doIterativeBackgroundFitting = False
-    nBG=5
-    parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     numTimesToInterpolate=0
     workDir = '/SNS/users/ntv/dropbox/'
     descriptorRead = 'pth_tof_secondTry'
@@ -162,12 +165,9 @@ def doBVGFits(sampleRunsList=None):
     DetCalFile = None
     qLow = -5.0; qHigh = 5.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
     descriptor = 'gfp_3d_goodhkl' #Does not end with '/'
     doIterativeBackgroundFitting = False
-    nBG=5
-    parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     numTimesToInterpolate=0
     workDir = '/SNS/users/ntv/dropbox/'
     descriptorRead = None#'beta_lac_lab_highres2'
@@ -189,19 +189,20 @@ def doBVGFits(sampleRunsList=None):
     DetCalFile = None
     qLow = -10.0; qHigh = 10.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
-    descriptor = 'beta_lac_3D_lab_mutant' #Does not end with '/'
+    descriptor = 'beta_lac_3D_mbvg_mutant_newppl' #Does not end with '/'
     doIterativeBackgroundFitting = False
-    nBG=5
-    parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     numTimesToInterpolate=0
     workDir = '/SNS/users/ntv/dropbox/'
-    descriptorRead = 'beta_lac_lab_highres2'
+    #descriptorRead = 'beta_lac_lab_highres2'
+    descriptorRead = 'beta_lac_lab_highres_mut2'
     predpplCoefficients = np.array([ 3.56405187,  8.34071842,  0.14134522]) #Go with ICCFT.oldScatFun
+    #predpplCoefficients = np.array([  4.88049788,  9.29823399,  0.14255074]) #Go with ICCFT.oldScatFun
     q_frame='lab'
     mindtBinWidth = 15
-    pplmin_frac = 0.4; pplmax_frac = 1.5
+    pplmin_frac = 0.9; pplmax_frac = 1.1
+    #pplmin_frac = 0.4; pplmax_frac = 1.5
+    fracHKLQMask = 0.4
     '''
 
     '''
@@ -218,12 +219,9 @@ def doBVGFits(sampleRunsList=None):
     DetCalFile = None
     qLow = -10.0; qHigh = 10.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
     descriptor = 'changeme' #Does not end with '/'
     doIterativeBackgroundFitting = False
-    nBG=5
-    parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     numTimesToInterpolate=0
     workDir = '/SNS/users/ntv/dropbox/'
     descriptorRead = 'beta_lac_lab_highres2'
@@ -242,12 +240,9 @@ def doBVGFits(sampleRunsList=None):
     DetCalFile = None
     qLow = -5.0; qHigh = 5.0
     dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
-    dtBinWidth = 40 #Width (in us) in TOF profile bins
     dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
     descriptor = 'nak_3D_full_lab_2' #Does not end with '/'
     doIterativeBackgroundFitting = False
-    nBG=5
-    parameterDict = pickle.load(open('det_calibration/calibration_dictionary_scolecite.pkl','rb'))
     numTimesToInterpolate=0
     workDir = '/SNS/users/ntv/dropbox/'
     descriptorRead = 'nak_predpws5_lab'
@@ -262,13 +257,16 @@ def doBVGFits(sampleRunsList=None):
     dQ = np.abs(ICCFT.getDQFracHKL(UBMatrix, frac=0.5))
     dQ[dQ>0.3] = 0.3
 
-    try: qMask = ICCFT.getHKLMask(UBMatrix, frac=fracHKLQMask, dQPixel=dQPixel,dQ=dQ)
+    try: 
+        qMask = ICCFT.getHKLMask(UBMatrix, frac=fracHKLQMask, dQPixel=dQPixel,dQ=dQ)
+        print 'fracHKLQMask=%4.4f'%fracHKLQMask
     except: qMask = ICCFT.getHKLMask(UBMatrix, frac=fracHKL, dQPixel=dQPixel,dQ=dQ)
 
     padeCoefficients = ICCFT.getModeratorCoefficients('franz_coefficients_2017.dat')
     try:
         ICCFitParams = ICAT.getFitParameters(workDir, descriptorRead, sampleRuns[0], sampleRuns[-1], sampleRuns=sampleRuns)
     except:
+        #raise
         print 'Cannot read ICCFitParams - will set to None and fit as we go!'
         ICCFitParams = None
     try:
@@ -276,9 +274,11 @@ def doBVGFits(sampleRunsList=None):
     except:
         print 'Cannot read ICCFitDict.  Will set to None...'
         ICCFitDict = None
-    strongPeakParams = pickle.load(open('strongPeakParams_betalac_lab.pkl', 'rb'))
+    #strongPeakParams = pickle.load(open('strongPeakParams_cryo.pkl', 'rb'))
     #strongPeakParams = pickle.load(open('strongPeakParams_dna.pkl', 'rb'))
-
+    #strongPeakParams = pickle.load(open('strongPeakParams_betalac_lab.pkl', 'rb'))
+    strongPeakParams = pickle.load(open('strongPeakParams_beta_lac_mut_mbvg.pkl', 'rb'))
+    #strongPeakParams = None
     from timeit import default_timer as timer
 
     badFits = []
@@ -311,21 +311,24 @@ def doBVGFits(sampleRunsList=None):
             print peakNumber, peak.getIntensity()
             try:
                 if peak.getRunNumber() == sampleRun:
+                    if peak.getH() == 0 and peak.getK() == 0 and peak.getL() == 0:
+                        print 'Peak number %i has hkl=000.  Skipping.'
+                        continue
                     print 'Integrating peak %i'%peakNumber
-                    box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, fracHKL = fracHKL, refineCenter = refineCenter, dQPixel=dQPixel, q_frame=q_frame)
+                    box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakNumber, dQ, fracHKL = fracHKL,  dQPixel=dQPixel, q_frame=q_frame)
                     #Will force weak peaks to be fit using a neighboring peak profile
                     if ICCFitParams is not None:
-                        iccfp = ICCFitParams[peakNumber]
+                        #iccfp = ICCFitParams[peakNumber]
+                        iccfp = None
                     else: iccfp = None
-                    Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False,nBG=5, dtBinWidth=dtBinWidth,zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1,numTimesToInterpolate=numTimesToInterpolate, fICCParams=iccfp, strongPeakParams=strongPeakParams, predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac)
+                    Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1, fICCParams=iccfp, strongPeakParams=strongPeakParams, predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac, edgeCutoff=3)
                     #Does not force weak peaks
-                    #Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False,nBG=5, dtBinWidth=dtBinWidth,zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1,numTimesToInterpolate=numTimesToInterpolate, fICCParams=ICCFitParams[peakNumber], oldICCFit=ICCFitDict[peakNumber],  predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth)
+                    #Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1, fICCParams=ICCFitParams[peakNumber], oldICCFit=ICCFitDict[peakNumber],  predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth)
 
 
                     # First we get the peak intensity
                     peakIDX = Y3D/Y3D.max() > 0.05
-                    intensity = np.sum(Y3D[peakIDX])/2**(3*numTimesToInterpolate)
-                    skipIDX = 2**numTimesToInterpolate
+                    intensity = np.sum(Y3D[peakIDX])
                    
 
                     # Now the number of background counts under the peak assuming a constant bg across the box
@@ -344,12 +347,9 @@ def doBVGFits(sampleRunsList=None):
                     varFit = np.average((n_events[peakIDX]-Y3D[peakIDX])*(n_events[peakIDX]-Y3D[peakIDX]), weights=(w_events[peakIDX]))
 
                     # Comapre with the old way
-                    bgOld = np.sum(goodIDX[Y3D[::skipIDX,::skipIDX,::skipIDX]/Y3D[::skipIDX,::skipIDX,::skipIDX].max()>0.05]*pp_lambda)
-                    sigmaOld = np.sqrt(intensity + bgOld)
 
                     # Now we add them all together.  Variances add linearly, so we just take the square root at the end.
                     sigma = np.sqrt(intensity + bgEvents + varFit)
-                    print sigma, sigmaOld
 
 
                     oldNewVals = [peaks_ws.getPeak(peakNumber).getIntensity(), peaks_ws.getPeak(peakNumber).getSigmaIntensity(), intensity, sigma]
