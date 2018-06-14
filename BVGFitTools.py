@@ -477,8 +477,8 @@ def doBVGFit(box, nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodID
         fitResults = Fit(Function=m, InputWorkspace='bvgWS', Output='bvgfit',
                          Minimizer='Levenberg-MarquardtMD')
 
-        #print 'after'
-        #print m
+        print 'after'
+        print m
     elif forceParams is not None:
         p0 = np.zeros(7)
         p0[0] = np.max(h)
@@ -539,8 +539,8 @@ def doBVGFit(box, nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodID
         fitResults = Fit(Function=fitFun, InputWorkspace=bvgWS,
                          Output='bvgfit', Minimizer='Levenberg-MarquardtMD')
 
-        #print 'after:'
-        #print m
+        print 'after:'
+        print m
     # Recover the result
     m = BivariateGaussian.BivariateGaussian()
     m.init()
