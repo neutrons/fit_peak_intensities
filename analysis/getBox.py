@@ -86,7 +86,6 @@ predpplCoefficients = np.array([14.36827809, 10.889742, 0.28754095]) #Go with IC
 q_frame = 'lab'
 pplmin_frac=0.7; pplmax_frac=1.5; mindtBinWidth=15
 '''
-'''
 #PsbO 2016
 peaksFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.integrate'
 UBFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.mat'
@@ -99,7 +98,7 @@ predpplCoefficients = np.array([14.36827809, 10.889742, 0.28754095]) #Go with IC
 #predpplCoefficients = np.array([12.51275, 13.078622, 0.18924]) #Go with ICCFT.oldScatFun
 q_frame = 'lab'
 pplmin_frac=0.8; pplmax_frac=1.5; mindtBinWidth=15
-'''
+
 '''
 #NaK 2017
 peaksFile = '/SNS/users/ntv/integrate/mandi_nak/MANDI_nak_8275_8282.integrate'
@@ -185,6 +184,7 @@ q_frame='lab'
 pplmin_frac=0.6; pplmax_frac=1.5; mindtBinWidth=25
 '''
 
+'''
 #Beta Lac
 #peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
 #UBFile =  '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase.mat'
@@ -211,6 +211,7 @@ predpplCoefficients = np.array([ 3.56405187,  8.34071842,  0.14134522])
 #predpplCoefficients = np.array([  4.88049788,  9.29823399,  0.14255074]) #Go with ICCFT.oldScatFun
 #pplmin_frac=0.4; pplmax_frac=1.5; mindtBinWidth=15
 pplmin_frac=0.9; pplmax_frac=1.1; mindtBinWidth=15
+'''
 
 
 '''

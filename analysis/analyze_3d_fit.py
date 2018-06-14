@@ -19,7 +19,6 @@ import pickle
 from scipy.optimize import curve_fit
 
 #------------------------------Load the bvgFit files
-'''
 #PsbO
 sampleRuns = range(6154, 6165+1)
 workDir = '/SNS/users/ntv/dropbox/'
@@ -30,7 +29,7 @@ peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF) #TOF fi
 ellipseFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal_highres.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 61 2 2")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
-'''
+
 '''
 # CORELLI - beryl
 sampleRuns = range(58411,58592+1)
@@ -41,6 +40,7 @@ descriptorTOF = 'beryl_lab_cs1'
 peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
 ellipseFile = '/SNS/users/ntv/integrate/corelli_beryl/combined_hexagonal_indexedonly.integrate'
 pg = PointGroupFactory.createPointGroup("6/mmm")
+'''
 '''
 #Beta lactamase mutant
 sampleRuns = range(5921,5931+1)
@@ -54,6 +54,7 @@ peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
 ellipseFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.integrate'
 sg = SpaceGroupFactory.createSpaceGroup("P 32 2 1")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
+'''
 
 '''
 #pth
