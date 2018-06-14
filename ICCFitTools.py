@@ -1,4 +1,3 @@
-from __future__ import print_function
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
@@ -10,7 +9,7 @@ from mantid.kernel import V3D
 import ICConvoluted as ICC
 import itertools
 from scipy.ndimage.filters import convolve
-from functools import reduce
+reload(ICC)
 plt.ion()
 
 
@@ -240,31 +239,12 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3, 
 
     if peak is not None:
         if predCoefficients is not None:
-            # Try to infer the background from n_events
-            nX, nY, nZ = n_events.shape
-            cX = nX//2; cY = nY//2; cZ = nZ//2;
-            dP = 5
-            peakMask = qMask.copy()
-            peakMask[cX-dP:cX+dP, cY-dP:cY+dP, cZ-dP:cZ+dP] = 0
-            neigh_length_m=3
-            convBox = 1.0 * \
-            np.ones([neigh_length_m, neigh_length_m,
-                     neigh_length_m]) / neigh_length_m**3
-            conv_n_events = convolve(n_events, convBox)
-            bgMask = np.logical_and(conv_n_events>0, peakMask>0)
-            meanBG = np.mean(n_events[bgMask])
-            #predppl = np.polyval(f,meanBG)*1.96
-            pred_ppl = np.polyval([0.98,0],meanBG)*1.96
-            #pp_lambda_toCheck = [pred_ppl]
-
-            # Old way
-            #pred_ppl = oldScatFun(peak.getScattering()/peak.getWavelength(), 
-            #                      predCoefficients[0], predCoefficients[1], predCoefficients[2])
+            pred_ppl = oldScatFun(peak.getScattering(
+            )/peak.getWavelength(), predCoefficients[0], predCoefficients[1], predCoefficients[2])
             minppl = minppl_frac*pred_ppl
             maxppl = maxppl_frac*pred_ppl
-            #if pred_ppl > 2.0:
-            #    maxppl = 2.0/1.5*maxppl_frac*pred_ppl
-
+            if pred_ppl > 2.0:
+                maxppl = 2.0/1.5*maxppl_frac*pred_ppl
             pp_lambda_toCheck = pp_lambda_toCheck[pp_lambda_toCheck > minppl]
             pp_lambda_toCheck = pp_lambda_toCheck[pp_lambda_toCheck < maxppl]
         else:
@@ -353,6 +333,7 @@ def getBGRemovedIndices(n_events, zBG=1.96, calc_pp_lambda=False, neigh_length_m
                 counts to be included in the TOF profile.
         pp_lambda: the most likely number of background events
     """
+
     if calc_pp_lambda is True and pp_lambda is not None:
         import sys
         sys.exit(
@@ -860,21 +841,21 @@ def doICCFit(tofWS, energy, flightPath, padeCoefficients, constraintScheme=None,
                          [nPts//3:2*nPts//3])/np.max(fICC.function1D(x)[nPts//3:2*nPts//3])
     x0[4] = x0[4]*scaleFactor
     fICC.setParameter(4, x0[4])
-    #fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.01, 1.0], T00=[0,1.0e10], k_conv0=[10,500],penalty=1.0e20)
+    #fICC.setPenalizedConstraints(A0=[0.01, 1.0], B0=[0.005, 1.5], R0=[0.01, 1.0], T00=[0,1.0e10], KConv0=[10,500],penalty=1.0e20)
     if constraintScheme == 1:
         try:
             fICC.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[
-                                         0.5*x0[2], 1.5*x0[2]], T00=[0., 1.e10], k_conv0=[100, 140], penalty=1.0e10)
+                                         0.5*x0[2], 1.5*x0[2]], T00=[0., 1.e10], KConv0=[100, 140], penalty=1.0e10)
         except:
             fICC.setPenalizedConstraints(A0=[0.5*x0[0], 1.5*x0[0]], B0=[0.5*x0[1], 1.5*x0[1]], R0=[
-                                         0.5*x0[2], 1.5*x0[2]], T00=[0., 1.e10], k_conv0=[100, 140], penalty=None)
+                                         0.5*x0[2], 1.5*x0[2]], T00=[0., 1.e10], KConv0=[100, 140], penalty=None)
     if constraintScheme == 2:
         try:
-            fICC.setPenalizedConstraints(A0=[0.0001, 1.0], B0=[0.005, 1.5], R0=[0.00, 1.], scale0=[
-                                         0.0, 1.0e10], T00=[0, 1.0e10], k_conv0=[100., 140.], penalty=1.0e20)
+            fICC.setPenalizedConstraints(A0=[0.0001, 1.0], B0=[0.005, 1.5], R0=[0.00, 1.], Scale0=[
+                                         0.0, 1.0e10], T00=[0, 1.0e10], KConv0=[100., 140.], penalty=1.0e20)
         except:
-            fICC.setPenalizedConstraints(A0=[0.0001, 1.0], B0=[0.005, 1.5], R0=[0.00, 1.], scale0=[
-                                         0.0, 1.0e10], T00=[0, 1.0e10], k_conv0=[100, 140.], penalty=None)
+            fICC.setPenalizedConstraints(A0=[0.0001, 1.0], B0=[0.005, 1.5], R0=[0.00, 1.], Scale0=[
+                                         0.0, 1.0e10], T00=[0, 1.0e10], KConv0=[100, 140.], penalty=None)
     f = FunctionWrapper(fICC)
     bg = Polynomial(n=fitOrder)
 
@@ -950,9 +931,9 @@ def integrateSample(run, MDdata, peaks_ws, paramList, UBMatrix, dQ, qMask, padeC
                 wavelength = peak.getWavelength()  # in Angstrom
                 energy = 81.804 / wavelength**2 / 1000.0  # in eV
                 flightPath = peak.getL1() + peak.getL2()  # in m
-                print( '---fitting peak ' + \
-                    str(i) + '  Num events: ' + \
-                    str(Box.getNEvents()), ' ', peak.getHKL())
+                print( '---fitting peak ' +
+                       str(i) + '  Num events: ' +
+                       str(Box.getNEvents()), ' ', peak.getHKL())
                 if Box.getNEvents() < 1 or np.all(np.abs(peak.getHKL()) == 0):
                     print("Peak %i has 0 events or is HKL=000. Skipping!" % i)
                     peak.setIntensity(0)
