@@ -22,11 +22,14 @@ from scipy.optimize import curve_fit
 #PsbO
 sampleRuns = range(6154, 6165+1)
 workDir = '/SNS/users/ntv/dropbox/'
-descriptorBVG = 'psbo_3D_full_lab_newpredppl_highres_newsigi'
-descriptorTOF = 'psbo_lab_newpredppl_highres'
-peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF) #TOF file, BVGxTOF is from fitDict
-#peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorTOF, sampleRuns[-1], descriptorTOF)
-ellipseFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal_highres.integrate'
+#descriptorBVG = 'psbo_3D_full_lab_newpredppl_highres_newsigi'
+descriptorBVG = 'psbo_3D_mbvg_predppl'
+descriptorTOF = None#'psbo_lab_newpredppl_highres'
+#peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorBVG) #TOF file, BVGxTOF is from fitDict
+#peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorBVG, sampleRuns[-1], descriptorBVG)
+#ellipseFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal_highres.integrate'
+ellipseFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal_highres_2p0A.integrate'
+peaksFile = ellipseFile #This is done to get around corrupted ISAW files; we'll only use peak properties anyway June 15 2018 -BS
 sg = SpaceGroupFactory.createSpaceGroup("P 61 2 2")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
 
@@ -155,25 +158,28 @@ pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
 #--------------------------------Load everything
 peaks_ws = ICAT.getPeaksWS(peaksFile, wsName='peaks_ws', forceLoad=True)
 peaks_ws2 = ICAT.getPeaksWS(ellipseFile,wsName='peaks_ws2', forceLoad=True)
-fitParams = ICAT.getFitParameters(workDir, descriptorTOF, sampleRuns[0], sampleRuns[-1], sampleRuns=sampleRuns)
-fitDict = ICAT.getFitDicts(workDir, descriptorTOF,sampleRuns[0], sampleRuns[-1], sampleRuns=sampleRuns)
 instrumentFile = EdgeTools.getInstrumentFile(peaks_ws, peaksFile)
 panelDict = EdgeTools.getPanelDictionary(instrumentFile)
+if descriptorTOF is not None:
+    fitParams = ICAT.getFitParameters(workDir, descriptorTOF, sampleRuns[0], sampleRuns[-1], sampleRuns=sampleRuns)
+    fitDict = ICAT.getFitDicts(workDir, descriptorTOF,sampleRuns[0], sampleRuns[-1], sampleRuns=sampleRuns)
 
-#--------------------------------Create the TOF dataframe 
-dfTOF = pdTOF.getDFForPeaksWS(peaks_ws, fitParams, fitDict, panelDict, pg)
+    #--------------------------------Create the TOF dataframe 
+    dfTOF = pdTOF.getDFForPeaksWS(peaks_ws, fitParams, fitDict, panelDict, pg)
+    mandiSpec = np.loadtxt('/SNS/users/ntv/integrate/MANDI_current.dat',skiprows=1,delimiter=',')
+    sortedIDX = np.argsort(mandiSpec[:,0])
+    intensSpec = interp1d(mandiSpec[sortedIDX[::3],0], mandiSpec[sortedIDX[::3],1],kind='cubic')
+    dfTOF['scaledIntens'] = dfTOF['Intens'] / intensSpec(dfTOF['Wavelength']) * np.mean(mandiSpec[:,1])
+    dfTOF['scaledIntensEll'] = dfTOF['IntensEll'] / intensSpec(dfTOF['Wavelength']) * np.mean(mandiSpec[:,1])
+    dfTOF['lorentzFactor'] = np.sin(0.5*dfTOF['Scattering'])**2 / dfTOF['Wavelength']**4
+    dfTOF['lorentzInt'] = dfTOF['Intens']*dfTOF['lorentzFactor']
+    dfTOF['lorentzSig'] = dfTOF['SigInt']*dfTOF['lorentzFactor']
+    dfTOF['lorentzIntEll'] = dfTOF['IntensEll']*dfTOF['lorentzFactor']
+    dfTOF['lorentzSigEll'] = dfTOF['SigEll']*dfTOF['lorentzFactor']
+else:
+    dfTOF = pdTOF.getDFForPeaksWS(peaks_ws, None, None, panelDict, pg)
+
 pdTOF.addPeaksWS(dfTOF,peaks_ws2)#add ellipsoid I, sigma(I)    
-mandiSpec = np.loadtxt('/SNS/users/ntv/integrate/MANDI_current.dat',skiprows=1,delimiter=',')
-sortedIDX = np.argsort(mandiSpec[:,0])
-intensSpec = interp1d(mandiSpec[sortedIDX[::3],0], mandiSpec[sortedIDX[::3],1],kind='cubic')
-dfTOF['scaledIntens'] = dfTOF['Intens'] / intensSpec(dfTOF['Wavelength']) * np.mean(mandiSpec[:,1])
-dfTOF['scaledIntensEll'] = dfTOF['IntensEll'] / intensSpec(dfTOF['Wavelength']) * np.mean(mandiSpec[:,1])
-dfTOF['lorentzFactor'] = np.sin(0.5*dfTOF['Scattering'])**2 / dfTOF['Wavelength']**4
-dfTOF['lorentzInt'] = dfTOF['Intens']*dfTOF['lorentzFactor']
-dfTOF['lorentzSig'] = dfTOF['SigInt']*dfTOF['lorentzFactor']
-dfTOF['lorentzIntEll'] = dfTOF['IntensEll']*dfTOF['lorentzFactor']
-dfTOF['lorentzSigEll'] = dfTOF['SigEll']*dfTOF['lorentzFactor']
-
 #---------------------------------Create the BVG dataframe
 bvgParamFiles = [workDir + descriptorBVG + '/bvgParams_%i_%s.pkl'%(sampleRun, descriptorBVG) for sampleRun in sampleRuns]
 bvgParams = []
@@ -183,6 +189,7 @@ dfBVG = pd.DataFrame(bvgParams)
 
 #--------------------------Join the two dataframes and create some geometric columns
 dfBVG['PeakNumber'] = dfBVG['peakNumber']
+
 df = dfTOF.merge(dfBVG, on='PeakNumber')
 df['theta'] = df['QLab'].apply(lambda x: np.arctan2(x[2],np.hypot(x[0],x[1])))
 df['phi'] = df['QLab'].apply(lambda x: np.arctan2(x[1],x[0]))
@@ -191,8 +198,8 @@ df['phi'] = df['QLab'].apply(lambda x: np.arctan2(x[1],x[0]))
 plt.close('all')
 goodIDX = (df['Intens']*5 > df['Intens3d']) & (df['Intens']*1.0/5.0 < df['Intens3d'])
 goodIDX = goodIDX & (df['Intens']<1.0e7) & (df['Intens']>250) 
-goodIDX = goodIDX & (df['sigX'] < 0.0199) & (df['sigY'] < 0.0199) #& ~(df['PeakNumber'].apply(lambda x: x in badPeaks))
-
+goodIDX = goodIDX & (df['SigX'] < 0.0199) & (df['SigY'] < 0.0199) #& ~(df['PeakNumber'].apply(lambda x: x in badPeaks))
+/
 def fSigX(x,a,k,x0,b):
     return a*np.exp(-k*(x-x0)) + b
     #return a/(x-x0) + b
@@ -200,21 +207,21 @@ def fSigX(x,a,k,x0,b):
 def fSigP(x,a,k,phi,b):
     return a*np.sin(k*x-phi) + b*x
 
-graph1 = sns.jointplot(df[goodIDX]['theta'], np.abs(df[goodIDX]['sigX']),s=1)
-#pX = np.polyfit(df[goodIDX]['phi'], np.abs(df[goodIDX]['sigX']),4)
+graph1 = sns.jointplot(df[goodIDX]['theta'], np.abs(df[goodIDX]['SigX']),s=1)
+#pX = np.polyfit(df[goodIDX]['phi'], np.abs(df[goodIDX]['SigX']),4)
 x = np.linspace(df[goodIDX]['phi'].min(), df[goodIDX]['phi'].max(), 100)
 #y = np.polyval(pX, x)
-pX,cov = curve_fit(fSigX, df[goodIDX]['phi'], df[goodIDX]['sigX'],maxfev=10000,p0=[0.02,0.4,0.05,0.005])
+pX,cov = curve_fit(fSigX, df[goodIDX]['phi'], df[goodIDX]['SigX'],maxfev=10000,p0=[0.02,0.4,0.05,0.005])
 graph1.x = x; graph1.y = fSigX(x,pX[0],pX[1],pX[2],pX[3]); graph1.plot_joint(plt.plot)
 
-graph2 = sns.jointplot(df[goodIDX]['phi'], df[goodIDX]['sigY'],s=1)
-pY = np.polyfit(df[goodIDX]['theta'], np.abs(df[goodIDX]['sigY']),2)
+graph2 = sns.jointplot(df[goodIDX]['phi'], df[goodIDX]['SigY'],s=1)
+pY = np.polyfit(df[goodIDX]['theta'], np.abs(df[goodIDX]['SigY']),2)
 x = np.linspace(-0.5, 2.5, 100)
 y = np.polyval(pY, x)
 
 
-graph3 = sns.jointplot(df[goodIDX]['theta'], df[goodIDX]['sigP'],s=1)
-pX,cov = curve_fit(fSigP, df[goodIDX]['theta'], df[goodIDX]['sigP'],maxfev=10000,p0=[0.25,2.,0.,0.])
+graph3 = sns.jointplot(df[goodIDX]['theta'], df[goodIDX]['SigP'],s=1)
+pX,cov = curve_fit(fSigP, df[goodIDX]['theta'], df[goodIDX]['SigP'],maxfev=10000,p0=[0.25,2.,0.,0.])
 x = np.linspace(df[goodIDX]['theta'].min(), df[goodIDX]['theta'].max(), 100)
 graph3.x = x; graph3.y = fSigP(x,pX[0],pX[1],pX[2],pX[3]); graph3.plot_joint(plt.plot)
 
@@ -223,10 +230,10 @@ graph3.x = x; graph3.y = fSigP(x,pX[0],pX[1],pX[2],pX[3]); graph3.plot_joint(plt
 
 
 #====to save
-#r = np.array(df[goodIDX][['theta', 'phi', 'scale3d', 'muTH', 'muPH', 'sigX', 'sigY', 'sigP']])
+#r = np.array(df[goodIDX][['phi', 'theta', 'scale3d', 'MuTH', 'MuPH', 'SigX', 'SigY', 'SigP', 'PeakNumber']])
 #pickle.dump(r, open('strongPeakParams.pkl', 'wb'))
 
-#sns.jointplot(np.abs(df[goodIDX]['muTH']), np.abs(df[goodIDX]['sigX']),s=1)
+#sns.jointplot(np.abs(df[goodIDX]['muTH']), np.abs(df[goodIDX]['SigX']),s=1)
 '''
 for bvgParam in bvgParams:
     for key in bvgParam.keys():

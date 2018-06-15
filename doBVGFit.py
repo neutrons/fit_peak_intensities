@@ -279,7 +279,8 @@ def doBVGFits(sampleRunsList=None):
     #strongPeakParams = pickle.load(open('strongPeakParams_cryo.pkl', 'rb'))
     #strongPeakParams = pickle.load(open('strongPeakParams_dna.pkl', 'rb'))
     #strongPeakParams = pickle.load(open('strongPeakParams_betalac_lab.pkl', 'rb'))
-    strongPeakParams = pickle.load(open('strongPeakParams_beta_lac_mut_mbvg.pkl', 'rb'))
+    #strongPeakParams = pickle.load(open('strongPeakParams_beta_lac_mut_mbvg.pkl', 'rb'))
+    strongPeakParams = pickle.load(open('strongPeaksParams_psbo_mbvg.pkl', 'rb'))
     #strongPeakParams = None
     from timeit import default_timer as timer
 

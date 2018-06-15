@@ -6,12 +6,13 @@ import ICCAnalysisTools as ICAT
 
 
 # cryo
-
+'''
 sampleRuns = range(8785,8791+1)
 workDir = '/SNS/users/ntv/dropbox/'
 descriptor = 'cryo_tof_2'
 loadDir = '/SNS/MANDI/IPTS-19172/nexus/'
 eventWS = Load(loadDir+'MANDI_8785.nxs.h5')
+'''
 '''
 #pth
 sampleRuns = [870,872,873,874,875,876]
@@ -49,14 +50,12 @@ loadDir = '/SNS/MANDI/IPTS-15000/data/'
 eventWS = Load(loadDir+'MANDI_%i_event.nxs'%sampleRuns[0])
 '''
 
-'''
 #PsbO
 sampleRuns = range(6154,6165+1)
 workDir = '/SNS/users/ntv/dropbox/'
-descriptor = 'psbo_lab_newpredppl_highres'
+descriptor = 'psbo_3D_mbvg_predppl'
 loadDir = '/SNS/MANDI/IPTS-16286/data/'
 eventWS = Load(loadDir+'MANDI_%i_event.nxs'%sampleRuns[0])
-'''
 
 '''
 # DNA

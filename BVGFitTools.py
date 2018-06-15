@@ -435,9 +435,9 @@ def doBVGFit(box, nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodID
         meanPH = PH.mean()
         # sigX0 = 0.0018
         # sigX0 = 0.002#ICCFT.oldScatFun(meanPH, 1.71151521e-02,   6.37218400e+00,   3.39439675e-03)
-        sigX0 = ICCFT.oldScatFun(
+        sigX0 = 0.8*ICCFT.oldScatFun(
             meanPH, 1.71151521e-02, 6.37218400e+00, 3.39439675e-03)
-        sigY0 = 0.0025
+        sigY0 = 0.0018
         sigP0 = fSigP(meanTH, 0.1460775, 1.85816592,
                       0.26850086, -0.00725352)
 
