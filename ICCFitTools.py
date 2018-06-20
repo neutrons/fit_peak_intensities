@@ -254,8 +254,8 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3, 
             pred_ppl = np.polyval([0.98,0],meanBG)*1.96
 
             
-#            pred_ppl = oldScatFun(peak.getScattering(
-#            )/peak.getWavelength(), predCoefficients[0], predCoefficients[1], predCoefficients[2])
+            #pred_ppl = oldScatFun(peak.getScattering(
+            #)/peak.getWavelength(), predCoefficients[0], predCoefficients[1], predCoefficients[2])
             minppl = minppl_frac*pred_ppl
             maxppl = maxppl_frac*pred_ppl
             #if pred_ppl > 2.0:

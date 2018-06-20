@@ -45,9 +45,8 @@ nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
 dQPixel=0.005#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 q_frame='sample'
-pplmin_frac=3.8; pplmax_frac=4.0; mindtBinWidth=4
+pplmin_frac=0.9; pplmax_frac=1.3; mindtBinWidth=5
 '''
-
 '''
 #Si 2016
 peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.integrate'
@@ -185,7 +184,6 @@ predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go w
 q_frame='lab'
 pplmin_frac=0.6; pplmax_frac=1.5; mindtBinWidth=25
 '''
-
 '''
 #Beta Lac
 #peaksFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
@@ -205,7 +203,7 @@ q_frame='lab'
 pplmin_frac=0.8; pplmax_frac=2.0; mindtBinWidth=15
    #---mutant
 peaksFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.integrate'
-peaksFile = '/SNS/MANDI/shared/ProfileFitting/demo_5921.integrate'
+#peaksFile = '/SNS/MANDI/shared/ProfileFitting/demo_5921.integrate'
 UBFile =  '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.mat'
 UBFile =  '/SNS/MANDI/shared/ProfileFitting/demo_5921.mat'
 nxsTemplate = '/SNS/MANDI/IPTS-8776/data/MANDI_%i_event.nxs'
@@ -215,6 +213,20 @@ predpplCoefficients = np.array([ 3.56405187,  8.34071842,  0.14134522])
 pplmin_frac=0.9; pplmax_frac=1.1; mindtBinWidth=15
 '''
 
+'''
+#MnSOD
+peaksFile = '/home/ntv/mandi_preprocessing/mnsod/8298_Niggli.integrate'
+UBFile =  '/home/ntv/mandi_preprocessing/mnsod/8298_Niggli.mat'
+
+DetCalFile = None
+workDir = '/SNS/users/ntv/dropbox/' #End with '/'
+loadDir = '/SNS/MANDI/IPTS-17425/nexus/'
+nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
+dQPixel=0.003#np.array([0.003, 0.003, 0.003])
+predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+q_frame='lab'
+pplmin_frac=0.9; pplmax_frac=1.1; mindtBinWidth=15
+'''
 
 '''
 #beta_lac_cryo
@@ -265,7 +277,7 @@ figNumber =1
 
 fracHKL = 0.5
 #dQPixel = ICCFT.getPixelStep(peak)
-dtSpread = 0.015
+dtSpread = 0.005
 dtSpreadToPlot = [0.01]
 wavelength = peak.getWavelength() #in Angstrom
 energy = 81.804 / wavelength**2 / 1000.0 #in eV
@@ -398,7 +410,9 @@ if True:
     '''
 print '===================================='
 padeCoefficients = ICCFT.getModeratorCoefficients('/SNS/users/ntv/integrate/franz_coefficients_2017.dat')
-strongPeakParams = pickle.load(open('/SNS/users/ntv/integrate/strongPeakParams_beta_lac_mut_mbvg.pkl', 'rb'))
+#strongPeakParams = pickle.load(open('/SNS/users/ntv/integrate/strongPeakParams_beta_lac_mut_mbvg.pkl', 'rb'))
+strongPeakParams = pickle.load(open('/SNS/users/ntv/integrate/strongPeaksParams_psbo_mbvg_2.pkl', 'rb'))
+
 Y3D, gIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=True, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1, strongPeakParams=strongPeakParams, predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac,forceCutoff=250,edgeCutoff=3)
 peakIDX = Y3D/Y3D.max()>0.05
 plt.pause(0.01)

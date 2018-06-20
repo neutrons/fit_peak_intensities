@@ -166,6 +166,7 @@ if descriptorTOF is not None:
 
     #--------------------------------Create the TOF dataframe 
     dfTOF = pdTOF.getDFForPeaksWS(peaks_ws, fitParams, fitDict, panelDict, pg)
+    pdTOF.addPeaksWS(dfTOF,peaks_ws2)#add ellipsoid I, sigma(I)    
     mandiSpec = np.loadtxt('/SNS/users/ntv/integrate/MANDI_current.dat',skiprows=1,delimiter=',')
     sortedIDX = np.argsort(mandiSpec[:,0])
     intensSpec = interp1d(mandiSpec[sortedIDX[::3],0], mandiSpec[sortedIDX[::3],1],kind='cubic')
@@ -178,8 +179,8 @@ if descriptorTOF is not None:
     dfTOF['lorentzSigEll'] = dfTOF['SigEll']*dfTOF['lorentzFactor']
 else:
     dfTOF = pdTOF.getDFForPeaksWS(peaks_ws, None, None, panelDict, pg)
+    pdTOF.addPeaksWS(dfTOF,peaks_ws2)#add ellipsoid I, sigma(I)   
 
-pdTOF.addPeaksWS(dfTOF,peaks_ws2)#add ellipsoid I, sigma(I)    
 #---------------------------------Create the BVG dataframe
 bvgParamFiles = [workDir + descriptorBVG + '/bvgParams_%i_%s.pkl'%(sampleRun, descriptorBVG) for sampleRun in sampleRuns]
 bvgParams = []
@@ -199,7 +200,7 @@ plt.close('all')
 goodIDX = (df['Intens']*5 > df['Intens3d']) & (df['Intens']*1.0/5.0 < df['Intens3d'])
 goodIDX = goodIDX & (df['Intens']<1.0e7) & (df['Intens']>250) 
 goodIDX = goodIDX & (df['SigX'] < 0.0199) & (df['SigY'] < 0.0199) #& ~(df['PeakNumber'].apply(lambda x: x in badPeaks))
-/
+
 def fSigX(x,a,k,x0,b):
     return a*np.exp(-k*(x-x0)) + b
     #return a/(x-x0) + b
@@ -264,9 +265,12 @@ def isOutlier(intensities):
     if len(intensities) > 1:
         meanI = np.mean(intensities)
         stdI = np.std(intensities)
-        isOutlier = (intensities > meanI + 4.0*stdI) + (intensities < meanI - 4.0*stdI) + (intensities > 2.0*meanI) + (intensities < 1.0/2.*meanI)
+        isOutlier = (intensities > meanI + 4.0*stdI) | (intensities < meanI - 4.0*stdI) | (intensities > 2.0*meanI) | (intensities < 1.0/2.*meanI)
         return isOutlier
     else: return 0.0
+
+if descriptorTOF is None:
+     df['chiSq'] = df['chiSq3d']
 
 checkIDX = (df['Intens3d'] > 3) & (df['chiSq']<50.0 ) & (df['chiSq3d']<10.) & (df['Intens3d']/df['SigInt3d'] > 1.)
 df['isOutlier'] = 0.0
