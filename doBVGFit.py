@@ -303,7 +303,8 @@ def doBVGFits(sampleRunsList=None):
     #strongPeakParams = pickle.load(open('strongPeakParams_dna.pkl', 'rb'))
     #strongPeakParams = pickle.load(open('strongPeakParams_betalac_lab.pkl', 'rb'))
     #strongPeakParams = pickle.load(open('strongPeakParams_beta_lac_mut_mbvg.pkl', 'rb'))
-    strongPeakParams = pickle.load(open('strongPeaksParams_psbo_mbvg_2.pkl', 'rb'))
+    #strongPeakParams = pickle.load(open('strongPeaksParams_psbo_mbvg_2.pkl', 'rb'))
+    strongPeakParams = pickle.load(open('strongPeaksParams_lpmo.pkl', 'rb'))
     #strongPeakParams = None
     from timeit import default_timer as timer
 
@@ -352,7 +353,7 @@ def doBVGFits(sampleRunsList=None):
                                                                       fICCParams=iccfp, strongPeakParams=strongPeakParams, 
                                                                       predCoefficients=predpplCoefficients, q_frame=q_frame, 
                                                                       mindtBinWidth=mindtBinWidth, pplmin_frac=pplmin_frac, 
-                                                                      pplmax_frac=pplmax_frac, edgeCutoff=3)
+                                                                      pplmax_frac=pplmax_frac, edgeCutoff=3, forceCutoff=200)
                     #Does not force weak peaks
                     #Y3D, goodIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=False, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1, fICCParams=ICCFitParams[peakNumber], oldICCFit=ICCFitDict[peakNumber],  predCoefficients=predpplCoefficients, q_frame=q_frame, mindtBinWidth=mindtBinWidth)
 
