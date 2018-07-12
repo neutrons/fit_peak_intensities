@@ -18,7 +18,7 @@ else:
 #numRuns = 182; numJobs = 18
 
 #numRuns=7; numJobs=5
-numRuns=12; numJobs=6
+numRuns=18; numJobs=6
 #numRuns=9; numJobs=3
 
 jobsList = np.array_split(range(numRuns), numJobs)

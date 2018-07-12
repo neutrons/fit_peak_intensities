@@ -58,6 +58,18 @@ ellipseFile = '/SNS/users/ntv/integrate/mandi_beta_lactamase3/combined.integrate
 sg = SpaceGroupFactory.createSpaceGroup("P 32 2 1")
 pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
 '''
+#lpmo
+sampleRuns =[9052,9053,9054,9055,9056,9057,9059,9060,9061,9063,9064,9067,9068,9070,9071,9072,9073,9074] 
+workDir = '/SNS/users/ntv/dropbox/'
+descriptorBVG = 'lpmo_3d'
+descriptorTOF = None#'beta_lac_lab_highres_mut2'
+#peaksFile = '%s%s/peaks_combined_good.integrate'%(workDir,descriptorTOF)
+peaksFile = '%s%s/peaks_%i_%s.integrate'%(workDir,descriptorBVG, sampleRuns[-1], descriptorBVG)
+#ellipseFile = '/SNS/users/ntv/integrate/mandi_betalactamase/MANDI_betalactamase_2.integrate'
+#ellipseFile = '/SNS/users/ntv/integrate/mandi_betalactamase/combined_triclinic.integrate'
+ellipseFile = '/SNS/users/ntv/integrate/mandi_lpmo/lpmo_combined.integrate'
+sg = SpaceGroupFactory.createSpaceGroup("P 1 21 1")
+pg = PointGroupFactory.createPointGroupFromSpaceGroup(sg)
 
 '''
 #pth
@@ -282,7 +294,7 @@ df['notOutlier'] = ~df['isOutlier']
 
 
 #---------------------Select outputs and save a LaueNorm File
-goodIDX = (df['chiSq'] < 50.0) & (df['chiSq3d']<10) & (df['notOutlier']) &  (df['Intens3d'] > -1.*np.inf) 
+goodIDX = (df['chiSq'] < 50.0) & (df['chiSq3d']<10) #& (df['notOutlier']) &  (df['Intens3d'] > -1.*np.inf) 
 tooFarIDX = (np.abs(df['Intens3d'] > 100)) & ((np.abs(df['Intens3d']-df['IntensEll']) > 2.*df['Intens3d']) |  (np.abs(df['Intens3d']-df['IntensEll']) > 2.*df['Intens3d']) | (df['Intens3d'] > 5.*df['IntensEll']))
 tooFarIDX2 = (np.abs(df['Intens3d'] < 100)) & (np.abs(df['Intens3d']-df['IntensEll']) >150)
 

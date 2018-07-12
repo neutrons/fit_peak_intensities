@@ -238,36 +238,29 @@ def getOptimizedGoodIDX(n_events, padeCoefficients, zBG=1.96, neigh_length_m=3, 
         pp_lambda_toCheck) > 0.001]
 
     if peak is not None:
-        if predCoefficients is not None:
-            nX, nY, nZ = n_events.shape
-            cX = nX//2; cY = nY//2; cZ = nZ//2;
-            dP = 5
-            peakMask = qMask.copy()
-            peakMask[cX-dP:cX+dP, cY-dP:cY+dP, cZ-dP:cZ+dP] = 0
-            neigh_length_m=3
-            convBox = 1.0 * \
-            np.ones([neigh_length_m, neigh_length_m,
-                     neigh_length_m]) / neigh_length_m**3
-            conv_n_events = convolve(n_events, convBox)
-            bgMask = np.logical_and(conv_n_events>0, peakMask>0)
-            meanBG = np.mean(n_events[bgMask])
-            pred_ppl = np.polyval([0.98,0],meanBG)*1.96
+        nX, nY, nZ = n_events.shape
+        cX = nX//2; cY = nY//2; cZ = nZ//2;
+        dP = 5
+        peakMask = qMask.copy()
+        peakMask[cX-dP:cX+dP, cY-dP:cY+dP, cZ-dP:cZ+dP] = 0
+        neigh_length_m=3
+        convBox = 1.0 * \
+        np.ones([neigh_length_m, neigh_length_m,
+                 neigh_length_m]) / neigh_length_m**3
+        conv_n_events = convolve(n_events, convBox)
+        bgMask = np.logical_and(conv_n_events>0, peakMask>0)
+        meanBG = np.mean(n_events[bgMask])
+        pred_ppl = np.polyval([0.98,0],meanBG)*1.96
 
-            
-            #pred_ppl = oldScatFun(peak.getScattering(
-            #)/peak.getWavelength(), predCoefficients[0], predCoefficients[1], predCoefficients[2])
-            minppl = minppl_frac*pred_ppl
-            maxppl = maxppl_frac*pred_ppl
-            #if pred_ppl > 2.0:
-            #    maxppl = 2.0/1.5*maxppl_frac*pred_ppl
-            pp_lambda_toCheck = pp_lambda_toCheck[pp_lambda_toCheck > minppl]
-            pp_lambda_toCheck = pp_lambda_toCheck[pp_lambda_toCheck < maxppl]
-        else:
-            minppl = np.min(conv_n_events[conv_n_events > 0])
-            maxppl = np.max(pp_lambda_toCheck)
-            for ppl in pp_lambda_toCheck:
-                if np.sum(conv_n_events > ppl) > 10:
-                    maxppl = np.max(pp_lambda_toCheck)
+        
+        #pred_ppl = oldScatFun(peak.getScattering(
+        #)/peak.getWavelength(), predCoefficients[0], predCoefficients[1], predCoefficients[2])
+        minppl = minppl_frac*pred_ppl
+        maxppl = maxppl_frac*pred_ppl
+        #if pred_ppl > 2.0:
+        #    maxppl = 2.0/1.5*maxppl_frac*pred_ppl
+        pp_lambda_toCheck = pp_lambda_toCheck[pp_lambda_toCheck > minppl]
+        pp_lambda_toCheck = pp_lambda_toCheck[pp_lambda_toCheck < maxppl]
 
     else:
         minppl = 0
@@ -387,7 +380,7 @@ def getBGRemovedIndices(n_events, zBG=1.96, calc_pp_lambda=False, neigh_length_m
             except KeyboardInterrupt:
                 sys.exit()
             except:
-                #raise
+                raise
                 pplmin_frac -= 0.4
     print('ERROR WITH ICCFT:getBGRemovedIndices!')
 

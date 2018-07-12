@@ -165,7 +165,8 @@ def fitScaling(n_events, box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
     conv_n_events = convolve(n_events, convBox)
 
     QX, QY, QZ = ICCFT.getQXQYQZ(box)
-    dP = 8
+    #dP = 8
+    dP = 4
     fitMaxIDX = tuple(
         np.array(np.unravel_index(YJOINT.argmax(), YJOINT.shape)))
     if goodIDX is None:

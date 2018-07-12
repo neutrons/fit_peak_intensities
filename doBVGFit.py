@@ -39,7 +39,29 @@ def doBVGFits(sampleRunsList=None):
     q_frame='lab'
     mindtBinWidth=10
     '''
-
+    #lpmo
+    loadDir = '/SNS/MANDI/IPTS-21379/nexus/'
+    nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
+    sampleRuns = [9052,9053,9054,9055,9056,9057,9059,9060,9061,9063,9064,9067,9068,9070,9071,9072,9073,9074]
+    #peaksFile = '/SNS/users/ntv/integrate/mandi_psbo/combined_hexagonal.integrate'#_highres.integrate'
+    peaksFile = '/SNS/users/ntv/integrate/mandi_lpmo/lpmo_combined.integrate'
+    UBFile = '/SNS/users/ntv/integrate/mandi_lpmo/lpmo_combined.mat'
+    DetCalFile = None
+    qLow = -5.0; qHigh = 5.0
+    dtSpread = 0.03 #how far we look on either side of the nominal peak for each fit criteria - recommended to increase
+    dQPixel = 0.003 #dQ for each voxel in qBox - recommended to decrease for successive fits
+    descriptor = 'lpmo_3d'#_highres_newsigi' #Does not end with '/'
+    doIterativeBackgroundFitting = False
+    numTimesToInterpolate=0
+    workDir = '/SNS/users/ntv/dropbox/'
+    descriptorRead = None#'psbo_lab_newpredppl_highres'
+    #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+    predpplCoefficients = np.array([14.36827809, 10.889742, 0.28754095]) #Go with ICCFT.oldScatFun
+    q_frame='lab'
+    mindtBinWidth = 15
+    pplmin_frac = 0.9; pplmax_frac = 1.1
+    fracHKLQMask = 0.4
+    '''
     #PsbO
     loadDir = '/SNS/MANDI/IPTS-16286/data/'
     nxsTemplate = loadDir+'MANDI_%i_event.nxs'
@@ -62,6 +84,7 @@ def doBVGFits(sampleRunsList=None):
     mindtBinWidth = 15
     pplmin_frac = 0.9; pplmax_frac = 1.1
     fracHKLQMask = 0.4
+    '''
     '''
     #DNA
     loadDir = '/data/dna/IPTS-18552/'
