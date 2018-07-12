@@ -165,8 +165,8 @@ def fitScaling(n_events, box, YTOF, YBVG, goodIDX=None, neigh_length_m=3):
     conv_n_events = convolve(n_events, convBox)
 
     QX, QY, QZ = ICCFT.getQXQYQZ(box)
-    #dP = 8
-    dP = 4
+    dP = 8
+    #dP = 4
     fitMaxIDX = tuple(
         np.array(np.unravel_index(YJOINT.argmax(), YJOINT.shape)))
     if goodIDX is None:
@@ -392,7 +392,7 @@ def compareBVGFitData(box, params, nTheta=200, nPhi=200, figNumber=2, fracBoxToH
 
 
 def doBVGFit(box, nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodIDX=None,
-             forceParams=None, forceTolerance=0.1, dth=10, dph=10):
+             forceParams=None, forceTolerance=0.1, dth=8, dph=8):
     """
     doBVGFit takes a binned MDbox and returns the fit of the peak shape along the non-TOF direction.  This is done in one of two ways:
         1) Standard least squares fit of the 2D histogram.
@@ -522,8 +522,15 @@ def doBVGFit(box, nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodID
 
         #m['muX'] = TH.mean()
         #m['muY'] = PH.mean()
-        m['MuX'] = TH[np.unravel_index(h.argmax(), h.shape)]
-        m['MuY'] = PH[np.unravel_index(h.argmax(), h.shape)]
+        neigh_length_m=3
+        convBox = 1.0 * \
+            np.ones([neigh_length_m, neigh_length_m]) / \
+        neigh_length_m**2
+
+        h_conv = convolve(h, convBox)
+
+        m['MuX'] = TH[np.unravel_index(h_conv.argmax(), h.shape)]
+        m['MuY'] = PH[np.unravel_index(h_conv.argmax(), h.shape)]
         m['SigX'] = forceParams[5]
         m['SigY'] = forceParams[6]
         m['SigP'] = forceParams[7]
@@ -540,7 +547,7 @@ def doBVGFit(box, nTheta=200, nPhi=200, zBG=1.96, fracBoxToHistogram=1.0, goodID
         fitResults = Fit(Function=fitFun, InputWorkspace=bvgWS,
                          Output='bvgfit', Minimizer='Levenberg-MarquardtMD')
 
-        print 'after:'
+        print 'after (forced):'
         print m
     # Recover the result
     m = BivariateGaussian.BivariateGaussian()

@@ -128,6 +128,21 @@ dQPixel=0.005#np.array([0.003, 0.003, 0.003])
 predpplCoefficients = None##np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 '''
 '''
+#CORELLI - natrolite 42357 July 2017
+loadDir = '/data/corelli_natrolite/'
+peaksFile = '/data/corelli_natrolite/peaks_42357.integrate'
+UBFile =  '/data/corelli_natrolite/peaks_42357.mat'
+DetCalFile = None
+workDir = '/SNS/users/ntv/dropbox/' #End with '/'
+nxsTemplate = loadDir+'CORELLI_%i.nxs.h5'
+dQPixel=0.007#np.array([0.003, 0.003, 0.003])
+#predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
+predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
+q_frame='lab'
+pplmin_frac=0.9; pplmax_frac=1.1; mindtBinWidth=1; maxdtBinWidth=60
+'''
+
+'''
 #CORELLI - beryl
 loadDir = '/data/corelli_beryl/IPTS-20302/'
 peaksFile = '/SNS/users/ntv/integrate/corelli_beryl/combined_hexagonal_indexedonly.integrate'
@@ -135,7 +150,7 @@ UBFile =  '/SNS/users/ntv/integrate/corelli_beryl/combined_hexagonal.mat'
 DetCalFile = None
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 nxsTemplate = loadDir+'CORELLI_%i.nxs.h5'
-dQPixel=0.01#np.array([0.003, 0.003, 0.003])
+dQPixel=0.005#np.array([0.003, 0.003, 0.003])
 #predpplCoefficients = np.array([5.24730283,  7.23719321,  0.27449887]) #Go with ICCFT.oldScatFun
 predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go with ICCFT.oldScatFun
 q_frame='lab'
@@ -151,7 +166,7 @@ loadDir = '/SNS/MANDI/IPTS-21379/nexus/'
 nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
 dQPixel=0.003#np.array([0.003, 0.003, 0.003])
 q_frame='lab'
-pplmin_frac=0.95; pplmax_frac=1.05; mindtBinWidth=15; maxdtBinWidth=50;
+pplmin_frac=0.9; pplmax_frac=1.1; mindtBinWidth=15; maxdtBinWidth=50;
 '''
 #DNA
 peaksFile = '/SNS/users/ntv/integrate/mandi_dna2/combined_1p5A.integrate'
@@ -422,7 +437,7 @@ print '====================================****'
 #strongPeakParams = pickle.load(open('/SNS/users/ntv/integrate/strongPeakParams_beta_lac_mut_mbvg.pkl', 'rb'))
 strongPeakParams = pickle.load(open('/SNS/users/ntv/integrate/strongPeaksParams_psbo_mbvg_2.pkl', 'rb'))
 instrumentName = peaks_ws.getInstrument().getFullName()
-#Y3D, gIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=40, nPhi=40, plotResults=True, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1, strongPeakParams=strongPeakParams, q_frame=q_frame, mindtBinWidth=mindtBinWidth, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac,forceCutoff=250,edgeCutoff=0,instrumentName=instrumentName,maxdtBinWidth=maxdtBinWidth)
+#Y3D, gIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=40, nPhi=40, plotResults=True, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1, strongPeakParams=strongPeakParams, q_frame=q_frame, mindtBinWidth=mindtBinWidth, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac,forceCutoff=-10,edgeCutoff=0,instrumentName=instrumentName,maxdtBinWidth=maxdtBinWidth)
 Y3D, gIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=True, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1, strongPeakParams=strongPeakParams, q_frame=q_frame, mindtBinWidth=mindtBinWidth, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac,forceCutoff=250,edgeCutoff=0)
 peakIDX = Y3D/Y3D.max()>0.05
 plt.pause(0.01)
