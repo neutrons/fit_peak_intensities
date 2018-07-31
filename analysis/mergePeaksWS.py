@@ -4,9 +4,15 @@ import matplotlib.pyplot as plt
 import sys
 import ICCAnalysisTools as ICAT
 
-
 # cryo
+sampleRuns = range(42357,42404+1)
+workDir = 'data/corelli_multiinstrument/'
+descriptor = 'xpw'
+loadDir = '/SNS/MANDI/IPTS-19172/nexus/'
+eventWS = Load('/SNS/CORELLI/IPTS-18479/nexus/CORELLI_42357.nxs.h5')
+
 '''
+# cryo
 sampleRuns = range(8785,8791+1)
 workDir = '/SNS/users/ntv/dropbox/'
 descriptor = 'cryo_tof_2'
@@ -50,12 +56,14 @@ loadDir = '/SNS/MANDI/IPTS-15000/data/'
 eventWS = Load(loadDir+'MANDI_%i_event.nxs'%sampleRuns[0])
 '''
 
+'''
 #PsbO
 sampleRuns = range(6154,6165+1)
 workDir = '/SNS/users/ntv/dropbox/'
 descriptor = 'psbo_3D_mbvg_predppl'
 loadDir = '/SNS/MANDI/IPTS-16286/data/'
 eventWS = Load(loadDir+'MANDI_%i_event.nxs'%sampleRuns[0])
+'''
 
 '''
 # DNA
@@ -77,6 +85,7 @@ eventWS = Load(loadDir+'CORELLI_%i.nxs.h5'%sampleRuns[0])
 
 
 peaksFile = workDir+descriptor+'/peaks_%i_%s.integrate'
+peaksFile = workDir+'/peaks_ws_%i_%s.integrate'
 
 ws = CreatePeaksWorkspace(NumberOfPeaks=0, OutputWorkspace="ws",InstrumentWorkspace=eventWS)
 #First one - remove extra peaks
