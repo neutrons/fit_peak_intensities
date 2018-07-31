@@ -305,7 +305,6 @@ if importFlag:
 figNumber =1 
 
 fracHKL = 0.5
-#dQPixel = ICCFT.getPixelStep(peak)
 dtSpread = 0.002
 dtSpreadToPlot = [0.01]
 wavelength = peak.getWavelength() #in Angstrom
@@ -321,19 +320,6 @@ box = Box
 Box.setTitle('Box for peak %i'%peakToGet)
 #SaveMD(InputWorkspace=Box, Filename = 'Box.nxs')
 
-
-'''
-instrumentFile = EdgeTools.getInstrumentFile(peaks_ws, peaksFile)
-if removeEdges:
-    try:
-        panelDict = pickle.load(open('panelDict_%i.pkl'%peak.getRunNumber(),'rb'))
-    except:
-        panelDict = EdgeTools.getInstrumentDict(instrumentFile, peaks_ws, peaks_ws.getPeak(peakToGet).getRunNumber(), fitOrder=2)
-        pickle.dump(panelDict,open('panelDict_%i.pkl'%peak.getRunNumber(),'wb'))
-
-else:
-    panelDict = EdgeTools.getPanelDictionary(instrumentFile)
-'''
 n_events = Box.getNumEventsArray()
 
 qMask = ICCFT.getHKLMask(UBMatrix, frac=0.4, dQPixel=dQPixel, dQ=dQ)
@@ -345,74 +331,27 @@ yaxis = Box.getYDimension()
 qy = np.linspace(yaxis.getMinimum(), yaxis.getMaximum(), yaxis.getNBins())
 zaxis = Box.getZDimension()
 qz = np.linspace(zaxis.getMinimum(), zaxis.getMaximum(), zaxis.getNBins())
-if False:
-    ctsX = np.sum(n_events, axis=(1,2))
-    ctsY = np.sum(n_events, axis=(0,2))
-    ctsZ = np.sum(n_events, axis=(0,1))
-    plt.figure(figNumber)
-    plt.clf()
-    plt.plot(qx, np.sum(n_events, axis=(1,2)),label='qx')
-    plt.plot(qy, np.sum(n_events, axis=(0,2)),label='qy')
-    plt.plot(qz, np.sum(n_events, axis=(0,1)),label='qz')
-    plt.legend(loc='best')
+    
+QX, QY, QZ = np.meshgrid(qx, qy, qz,indexing='ij')
+qSq = QX**2 + QY**2 + QZ**2
+tof = 3176.507 * (peak.getL1()+peak.getL2())*np.sin(peak.getScattering()*0.5) * 1/np.sqrt(QX**2 + QY**2 + QZ**2)
+tBins = np.arange(np.min(tof), np.max(tof), 10)
+tofSpread = [0.95*peak.getTOF(), 1.05*peak.getTOF()]
 
-if False:
-    #qMask = np.ones_like(n_events).astype(np.bool)
-    QX, QY, QZ = np.meshgrid(qx, qy, qz,indexing='ij')
-    qSq = QX**2 + QY**2 + QZ**2
-    #tList = 1/np.sqrt(qSq)
-    #tof = tList * 3176.507 * (peak.getL1() + peak.getL2()) + np.sin(0.5*peak.getScattering())
-    tof = 3176.507 * (peak.getL1()+peak.getL2())*np.sin(peak.getScattering()*0.5) * 1/np.sqrt(QX**2 + QY**2 + QZ**2)
-    tBins = np.arange(np.min(tof), np.max(tof), 10)
-    tofSpread = [0.95*peak.getTOF(), 1.05*peak.getTOF()]
-    plt.figure(figNumber)
-    plt.clf()
-    plt.subplot(2,1,1)
-    if removeEdges:
-        plt.hist((tof*qMask*mask).flatten(), tBins, edgecolor='none')
-    else:
-        plt.hist((tof*qMask).flatten(), tBins,edgecolor='none')
-    for i, dtS in enumerate(dtSpreadToPlot):
-        tofSpread = [(1.0-dtS)*peak.getTOF(), (1.0+dtS)*peak.getTOF()]
-        plt.plot(tofSpread, (0.9+0.025*i)*plt.ylim()[1]*np.ones(2),lw=3, label='%4.3f'%dtS)
-    plt.legend(loc='best')
-    plt.title('Peak %i'%peakToGet)
-    plt.xlabel('TOF (us)')
-    plt.ylabel('Num Pixels in Box')
-    topXLim = plt.xlim()
-    peakTOF = peak.getTOF() #in us
-    wavelength = peak.getWavelength() #in Angstrom
-    energy = 81.804 / wavelength**2 / 1000.0 #in eV
-    flightPath = peak.getL1() + peak.getL2() #in m
-    scatteringHalfAngle = 0.5*peak.getScattering()
-    for dtS in dtSpreadToPlot:
-        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, qMask, dtSpread=dtS, minFracPixels=0.015,  zBG=-1., calc_pp_lambda=False, mindtBinWidth=mindtBinWidth)
-        YDATA1 = tofWS.readY(0).copy()
-        plt.subplot(2,1,2)
-        plt.plot(tofWS.readX(0), tofWS.readY(0),'o',label='%2.3f'%dtS)
-        tofWS,pp_lambda = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, qMask, dtSpread=dtS, minFracPixels=0.005, zBG=1.96,neigh_length_m=3, padeCoefficients=padeCoefficients, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac,mindtBinWidth=mindtBinWidth)
-        YDATA2 = tofWS.readY(0).copy()
-        print pp_lambda
-        plt.subplot(2,1,2)
-        plt.plot(tofWS.readX(0), tofWS.readY(0),'-o',label='%2.3f'%dtS)
-    plt.xlabel('TOF (us)')
-    plt.ylabel('Counts')
-    plt.legend(loc='best')
-    plt.xlim(topXLim)
-    plt.plot([peakTOF, peakTOF],plt.ylim(),'k',lw=2)
-    plt.subplot(2,1,1)
-    plt.plot([peakTOF, peakTOF],plt.ylim(),'k',lw=2)
-    theta = np.arctan(QY/QX)[qMask]
-    phi = np.arccos(QZ/np.sqrt(QX**2 + QY**2 + QZ**2))[qMask]
+theta = np.arctan(QY/QX)[qMask]
+phi = np.arccos(QZ/np.sqrt(QX**2 + QY**2 + QZ**2))[qMask]
 print '====================================****'
 
-padeCoefficients = ICCFT.getModeratorCoefficients('/SNS/users/ntv/integrate/franz_coefficients_2010.dat')
+padeCoefficients = ICCFT.getModeratorCoefficients('/SNS/users/ntv/integrate/franz_coefficients_2017.dat')
 strongPeakParams = None
 instrumentName = peaks_ws.getInstrument().getFullName()
 mindtBinWidth = peaks_ws.getInstrument().getNumberParameter("minDTBinWidth")[0]
-maxdtBinWidth = peaks_ws.getInstrument().getNumberParameter("minDTBinWidth")[0]
+maxdtBinWidth = peaks_ws.getInstrument().getNumberParameter("maxDTBinWidth")[0]
+nTheta = peaks_ws.getInstrument().getIntParameter("numBinsTheta")[0]
+nPhi   = peaks_ws.getInstrument().getIntParameter("numBinsPhi")[0]
 iccFitDict = ICCFT.parseConstraints(peaks_ws)
-Y3D, gIDX, pp_lambda, params = BVGFT.get3DPeak(peak, peaks_ws, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=True, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1, strongPeakParams=strongPeakParams, q_frame=q_frame, mindtBinWidth=mindtBinWidth, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac,forceCutoff=-10,edgeCutoff=0,maxdtBinWidth=maxdtBinWidth, iccFitDict=iccFitDict)
+Y3D, gIDX, pp_lambda, params = BVGFT.get3DPeak(peak, peaks_ws, box, padeCoefficients,qMask,nTheta=nTheta, nPhi=nPhi, plotResults=True, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1, strongPeakParams=strongPeakParams, q_frame=q_frame, mindtBinWidth=mindtBinWidth, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac,forceCutoff=-10,edgeCutoff=0,maxdtBinWidth=maxdtBinWidth, iccFitDict=iccFitDict)
+
 peakIDX = Y3D/Y3D.max()>0.05
 plt.pause(0.01)
 print 'ell: %4.4f; new: %4.4f'%(peak.getIntensity(), np.sum(Y3D[peakIDX]))
