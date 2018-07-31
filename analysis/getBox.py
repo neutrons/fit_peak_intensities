@@ -47,7 +47,6 @@ q_frame='lab'
 pplmin_frac=0.9; pplmax_frac=1.1; mindtBinWidth=2; maxdtBinWidth=15
 '''
 
-'''
 #Si 2016
 peaksFile = '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.integrate'
 UBFile =  '/SNS/TOPAZ/shared/PeakIntegration/DataSet/Si2mm_2016A_15647_15669/Si2mm_Cubic_F.mat'
@@ -55,7 +54,8 @@ DetCalFile = '/SNS/TOPAZ/shared/PeakIntegration/calibration/TOPAZ_2016A.DetCal'
 workDir = '/SNS/users/ntv/dropbox/' #End with '/'
 loadDir = '/SNS/TOPAZ/shared/PeakIntegration/data/'
 nxsTemplate = loadDir+'TOPAZ_%i_event.nxs'
-'''
+q_frame = 'lab'
+pplmin_frac=0.9; pplmax_frac=1.1;
 '''
 #pth
 peaksFile = '/SNS/users/ntv/integrate/pth/852_pred.integrate'
@@ -156,6 +156,7 @@ predpplCoefficients = np.array([ 10.46241806,  10.53543448,   0.23630636]) #Go w
 q_frame='lab'
 pplmin_frac=0.9; pplmax_frac=1.1; mindtBinWidth=4; maxdtBinWidth=60
 '''
+'''
 #lpmo
 peaksFile = '/SNS/users/ntv/integrate/mandi_lpmo/lpmo_combined.integrate'
 UBFile =  '/SNS/users/ntv/integrate/mandi_lpmo/lpmo_combined.mat'
@@ -167,6 +168,7 @@ nxsTemplate = loadDir+'MANDI_%i.nxs.h5'
 dQPixel=0.003#np.array([0.003, 0.003, 0.003])
 q_frame='lab'
 pplmin_frac=0.9; pplmax_frac=1.1; mindtBinWidth=15; maxdtBinWidth=50;
+'''
 '''
 #DNA
 peaksFile = '/SNS/users/ntv/integrate/mandi_dna2/combined_1p5A.integrate'
@@ -304,18 +306,16 @@ figNumber =1
 
 fracHKL = 0.5
 #dQPixel = ICCFT.getPixelStep(peak)
-dtSpread = 0.005
+dtSpread = 0.002
 dtSpreadToPlot = [0.01]
 wavelength = peak.getWavelength() #in Angstrom
 energy = 81.804 / wavelength**2 / 1000.0 #in eV
 flightPath = peak.getL1() + peak.getL2() #in m
 scatteringHalfAngle = 0.5*peak.getScattering()
 dQ = np.abs(ICCFT.getDQFracHKL(UBMatrix, frac=fracHKL))
-dQ[dQ>0.15]=0.15
+dQ[dQ>0.25]=0.25
 
-
-print dQPixel
-print peak.getQSampleFrame()
+dQPixel = peaks_ws.getInstrument().getNumberParameter("DQPixel")[0]
 Box = ICCFT.getBoxFracHKL(peak, peaks_ws, MDdata, UBMatrix, peakToGet, dQ, fracHKL=fracHKL,dQPixel=dQPixel,  q_frame=q_frame)
 box = Box
 Box.setTitle('Box for peak %i'%peakToGet)
@@ -356,8 +356,7 @@ if False:
     plt.plot(qz, np.sum(n_events, axis=(0,1)),label='qz')
     plt.legend(loc='best')
 
-if True:
-    padeCoefficients = ICCFT.getModeratorCoefficients('/SNS/users/ntv/integrate/franz_coefficients_2010.dat')
+if False:
     #qMask = np.ones_like(n_events).astype(np.bool)
     QX, QY, QZ = np.meshgrid(qx, qy, qz,indexing='ij')
     qSq = QX**2 + QY**2 + QZ**2
@@ -405,40 +404,15 @@ if True:
     plt.plot([peakTOF, peakTOF],plt.ylim(),'k',lw=2)
     theta = np.arctan(QY/QX)[qMask]
     phi = np.arccos(QZ/np.sqrt(QX**2 + QY**2 + QZ**2))[qMask]
-    '''
-    def gaussian(x, amp, cen, wid, BG):
-        return amp * np.exp(-(x-cen)**2 /wid) + BG
-
-    numPixelsInBin = plt.hist((tof*qMask*mask).flatten(), tBins, edgecolor='none')[0]
-    t = 0.5*(tBins[1:] + tBins[:-1])
-    plt.figure(2); plt.clf();
-    plt.plot(t, numPixelsInBin)
-    gp = curve_fit(gaussian, t, numPixelsInBin,p0=[np.max(numPixelsInBin),np.mean(t),50.0,0])[0]
-    yG = gaussian(t,gp[0], gp[1],gp[2],gp[3])
-    plt.plot(t,yG,'r--')
-
-    tofWS = ICCFT.getTOFWS(Box,flightPath, scatteringHalfAngle, peakTOF, peak, panelDict, qMask, dtBinWidth=dtBinWidth,dtSpread=0.05, minFracPixels=0.015, removeEdges=removeEdges,tListMode=1)
-    y = tofWS.readY(0) 
-    t = tofWS.readX(0)
-    bgIDX = np.logical_or(t<peak.getTOF()*0.995, t>peak.getTOF()*1.005)
-    #bgIDX = np.ones_like(t).astype(np.bool)
-    plt.figure(2); plt.clf();
-    plt.plot(t, y,'bo')
-    
-    gpD = curve_fit(gaussian, t[bgIDX], y[bgIDX],p0=[np.mean(y),gp[1], gp[2], 0])[0]
-    yGD = gaussian(t,gpD[0], gpD[1],gpD[2],gpD[3])
-    plt.plot(t,yGD,'r--')
-    
-    gP = np.polyfit(t[bgIDX],y[bgIDX],2)
-    yP = np.polyval(gP,t)
-    #plt.plot(t,yP,'m--')
-    '''
 print '====================================****'
-#strongPeakParams = pickle.load(open('/SNS/users/ntv/integrate/strongPeakParams_beta_lac_mut_mbvg.pkl', 'rb'))
-strongPeakParams = pickle.load(open('/SNS/users/ntv/integrate/strongPeaksParams_psbo_mbvg_2.pkl', 'rb'))
+
+padeCoefficients = ICCFT.getModeratorCoefficients('/SNS/users/ntv/integrate/franz_coefficients_2010.dat')
+strongPeakParams = None
 instrumentName = peaks_ws.getInstrument().getFullName()
-#Y3D, gIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=40, nPhi=40, plotResults=True, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1, strongPeakParams=strongPeakParams, q_frame=q_frame, mindtBinWidth=mindtBinWidth, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac,forceCutoff=-10,edgeCutoff=0,instrumentName=instrumentName,maxdtBinWidth=maxdtBinWidth)
-Y3D, gIDX, pp_lambda, params = BVGFT.get3DPeak(peak, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=True, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1, strongPeakParams=strongPeakParams, q_frame=q_frame, mindtBinWidth=mindtBinWidth, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac,forceCutoff=250,edgeCutoff=0)
+mindtBinWidth = peaks_ws.getInstrument().getNumberParameter("minDTBinWidth")[0]
+maxdtBinWidth = peaks_ws.getInstrument().getNumberParameter("minDTBinWidth")[0]
+iccFitDict = ICCFT.parseConstraints(peaks_ws)
+Y3D, gIDX, pp_lambda, params = BVGFT.get3DPeak(peak, peaks_ws, box, padeCoefficients,qMask,nTheta=50, nPhi=50, plotResults=True, zBG=1.96,fracBoxToHistogram=1.0,bgPolyOrder=1, strongPeakParams=strongPeakParams, q_frame=q_frame, mindtBinWidth=mindtBinWidth, pplmin_frac=pplmin_frac, pplmax_frac=pplmax_frac,forceCutoff=-10,edgeCutoff=0,maxdtBinWidth=maxdtBinWidth, iccFitDict=iccFitDict)
 peakIDX = Y3D/Y3D.max()>0.05
 plt.pause(0.01)
 print 'ell: %4.4f; new: %4.4f'%(peak.getIntensity(), np.sum(Y3D[peakIDX]))
